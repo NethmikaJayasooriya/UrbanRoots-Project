@@ -12,7 +12,7 @@ import { AppService } from './app.service';
       isGlobal: true, // Makes .env available everywhere
     }),
 
-    // 2. Connect to Database using the variables
+    //Connect to Database using the variables
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,7 +23,7 @@ import { AppService } from './app.service';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        entities: [], // Add your entities here later
+        entities: [],
         synchronize: true,
       }),
     }),
