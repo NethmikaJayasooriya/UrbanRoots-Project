@@ -256,12 +256,16 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: isSelectionValid
-                      ? () {
-                          //navigate to next page
-                          print("Navigate to Step 2");
-                        }
-                      : null, // disable button if nothing selected
+                 onPressed: isSelectionValid
+    ? () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const IoTConnectionScreen(),
+          ),
+        );
+      }
+    : null,// disable button if nothing selected
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isSelectionValid ? neonGreen : surfaceColor,
                     shape: RoundedRectangleBorder(
