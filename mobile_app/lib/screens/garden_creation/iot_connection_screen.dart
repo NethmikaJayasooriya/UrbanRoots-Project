@@ -14,9 +14,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
   bool _isConnecting = false;
   String? _selectedDevice;
 
-}
-
-@override
+  @override
   Widget build(BuildContext context) {
     // theme colors
     const bgColor = Color(0xFF121413);
@@ -51,11 +49,14 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
             const SizedBox(height: 10),
             Text(
               "Turn on your device and bring it close to your phone.",
-              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
+              style: GoogleFonts.poppins(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
             ),
-            const SizedBox(height: 40),]
-        )))}
-        // scanning animation area
+            const SizedBox(height: 40),
+
+            // scanning animation area
             Center(
               child: Container(
                 height: 150,
@@ -64,15 +65,15 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                   shape: BoxShape.circle,
                   color: surfaceColor,
                   border: Border.all(
-                    color: _isScanning 
-                        ? neonGreen.withValues(alpha: 0.5) 
+                    color: _isScanning
+                        ? neonGreen.withOpacity(0.5)
                         : Colors.transparent,
                     width: 2,
                   ),
                   boxShadow: _isScanning
                       ? [
                           BoxShadow(
-                            color: neonGreen.withValues(alpha: 0.2),
+                            color: neonGreen.withOpacity(0.2),
                             blurRadius: 30,
                             spreadRadius: 10,
                           )
@@ -82,9 +83,17 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                 child: Center(
                   child: _isScanning
                       ? const CircularProgressIndicator(color: neonGreen)
-                      : const Icon(Icons.wifi_tethering,
-                          size: 60, color: Colors.white),
+                      : const Icon(
+                          Icons.wifi_tethering,
+                          size: 60,
+                          color: Colors.white,
+                        ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
