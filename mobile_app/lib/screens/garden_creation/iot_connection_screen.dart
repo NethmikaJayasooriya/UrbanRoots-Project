@@ -205,6 +205,47 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                       },
                     ),
             ),
+            const SizedBox(height: 20),
+            
+            // connect button
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                // Only enable button if a device is selected AND not currently loading
+                onPressed: (_selectedDevice != null && !_isConnecting)
+                    ? _connectDevice
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: neonGreen,
+                  // gray color when disabled
+                  disabledBackgroundColor: surfaceColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isConnecting
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : Text(
+                        "Connect Device",
+                        style: GoogleFonts.poppins(
+                          // Black text if ready, Grey if disabled
+                          color: _selectedDevice != null
+                              ? Colors.black
+                              : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+              ),
+            ),
           ],
         ),
       ),
