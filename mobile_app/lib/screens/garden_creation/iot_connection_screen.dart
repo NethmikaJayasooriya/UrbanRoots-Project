@@ -37,6 +37,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
       });
     }
   }
+
   // simulate connecting to a device
   void _connectDevice() async {
     setState(() => _isConnecting = true);
@@ -55,7 +56,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
         ),
       );
       
-      //Navigate to Dashboard
+      // TODO: Navigate to Dashboard
       print("Navigate to Dashboard");
     }
   }
@@ -205,6 +206,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                       },
                     ),
             ),
+            
             const SizedBox(height: 20),
             
             // connect button
@@ -244,6 +246,23 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                           fontSize: 16,
                         ),
                       ),
+              ),
+            ),
+            
+            // skip button
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  // TODO: Navigate to dashboard without device
+                  print("Skipped connection");
+                },
+                child: Text(
+                  "Skip for now",
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           ],
