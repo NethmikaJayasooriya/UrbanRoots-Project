@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'manual_environment_screen.dart';
 
 class IoTConnectionScreen extends StatefulWidget {
   const IoTConnectionScreen({super.key});
@@ -252,10 +253,14 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
             // skip button
             Center(
               child: TextButton(
-                onPressed: () {
-                  // TODO: Navigate to dashboard without device
-                  print("Skipped connection");
-                },
+               onPressed: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const ManualEnvironmentScreen(),
+    ),
+  );
+},
                 child: Text(
                   "Skip for now",
                   style: GoogleFonts.poppins(
