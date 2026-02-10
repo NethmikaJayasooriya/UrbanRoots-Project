@@ -14,6 +14,52 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
   bool _isConnecting = false;
   String? _selectedDevice;
 
+  // mock list of devices
+  final List<String> _foundDevices = [
+    "UrbanRoots Sensor X1",
+    "Smart Garden Hub",
+    "ESP32-Garden-04"
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // simulate scanning delay
+    _startScan();
+  }
+
+  void _startScan() async {
+    // wait 3 seconds then show devices
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      setState(() {
+        _isScanning = false;
+      });
+    }
+  }
+  // simulate connecting to a device
+  void _connectDevice() async {
+    setState(() => _isConnecting = true);
+    // wait 2 seconds to simulate connection
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (mounted) {
+      setState(() => _isConnecting = false);
+      
+      // show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Connected Successfully! 🌱"),
+          backgroundColor: Color(0xFF00E676),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      
+      //Navigate to Dashboard
+      print("Navigate to Dashboard");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // theme colors
@@ -66,14 +112,14 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                   color: surfaceColor,
                   border: Border.all(
                     color: _isScanning
-                        ? neonGreen.withOpacity(0.5)
+                        ? neonGreen.withValues(alpha: 0.5)
                         : Colors.transparent,
                     width: 2,
                   ),
                   boxShadow: _isScanning
                       ? [
                           BoxShadow(
-                            color: neonGreen.withOpacity(0.2),
+                            color: neonGreen.withValues(alpha: 0.2),
                             blurRadius: 30,
                             spreadRadius: 10,
                           )
@@ -90,6 +136,74 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
                         ),
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+
+            // status text
+            Center(
+              child: Text(
+                _isScanning ? "Scanning for devices..." : "Devices Found",
+                style: GoogleFonts.poppins(
+                  color: neonGreen,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+
+            // device list section
+            Expanded(
+              child: _isScanning
+                  ? const SizedBox()
+                  : ListView.builder(
+                      itemCount: _foundDevices.length,
+                      itemBuilder: (context, index) {
+                        final deviceName = _foundDevices[index];
+                        final isSelected = _selectedDevice == deviceName;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() => _selectedDevice = deviceName);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: surfaceColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: isSelected
+                                  ? Border.all(color: neonGreen, width: 2)
+                                  : Border.all(color: Colors.transparent),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.devices,
+                                        color: Colors.white70),
+                                    const SizedBox(width: 15),
+                                    Text(
+                                      deviceName,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (isSelected)
+                                  const Icon(Icons.check_circle,
+                                      color: neonGreen, size: 20),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
