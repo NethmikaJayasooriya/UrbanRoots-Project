@@ -39,6 +39,8 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
     const bgColor = Color(0xFF121413);
     const surfaceColor = Color(0xFF1E2220);
     const neonGreen = Color(0xFF00E676);
+
+    final sunInfo = _getSunlightInfo();
     
     return Scaffold(
       backgroundColor: bgColor,
@@ -72,7 +74,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Question 1: Soil Source (Grid)
+              // Question 1: Soil Source
               Text(
                 "1. Soil Source",
                 style: GoogleFonts.poppins(
@@ -126,6 +128,41 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                     ),
                   );
                 },
+              ),
+
+              const SizedBox(height: 30),
+
+              // Question 2: Sunlight (Slider)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "2. Typical Sunlight",
+                    style: GoogleFonts.poppins(
+                        color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                  Icon(sunInfo["icon"], color: Colors.white, size: 24),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                sunInfo["label"],
+                style: GoogleFonts.poppins(
+                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: neonGreen,
+                  inactiveTrackColor: surfaceColor,
+                  thumbColor: Colors.white,
+                  overlayColor: neonGreen.withValues(alpha: 0.2),
+                  trackHeight: 6,
+                ),
+                child: Slider(
+                  value: _sunlightValue,
+                  min: 0, max: 100, divisions: 10,
+                  onChanged: (value) => setState(() => _sunlightValue = value),
+                ),
               ),
             ],
           ),
