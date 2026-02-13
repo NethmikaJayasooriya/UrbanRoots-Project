@@ -228,6 +228,35 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                   ],
                 ),
               ),
+
+              const SizedBox(height: 40),
+
+              // Next Button
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Navigate to Strategy Screen
+                    print("Soil: $_selectedSoil, Sun: $_sunlightValue, Water: $_wateringFrequency, Windy: $_isWindy");
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: neonGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    "Next Step",
+                    style: GoogleFonts.poppins(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
