@@ -132,7 +132,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
 
               const SizedBox(height: 30),
 
-              // Question 2: Sunlight (Slider)
+              // Question 2: Sunlight
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -162,6 +162,70 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                   value: _sunlightValue,
                   min: 0, max: 100, divisions: 10,
                   onChanged: (value) => setState(() => _sunlightValue = value),
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              // Question 3: Watering Habits
+              Text(
+                "3. How often will you water?",
+                style: GoogleFonts.poppins(
+                    color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              Wrap(
+                spacing: 10,
+                children: _wateringOptions.map((option) {
+                  final isSelected = _wateringFrequency == option;
+                  return ChoiceChip(
+                    label: Text(option),
+                    labelStyle: GoogleFonts.poppins(
+                      color: isSelected ? Colors.black : Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    selected: isSelected,
+                    selectedColor: neonGreen,
+                    backgroundColor: surfaceColor,
+                    onSelected: (selected) {
+                      setState(() => _wateringFrequency = option);
+                    },
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 30),
+
+              // Question 4: Wind Exposure
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "High Wind Exposure?",
+                          style: GoogleFonts.poppins(
+                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        Text(
+                          "Usually for balconies above 3rd floor",
+                          style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: _isWindy,
+                      activeColor: neonGreen,
+                      onChanged: (val) => setState(() => _isWindy = val),
+                    ),
+                  ],
                 ),
               ),
             ],
