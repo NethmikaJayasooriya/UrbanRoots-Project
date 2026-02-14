@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'manual_environment_screen.dart';
+import 'garden_strategy_screen.dart';
 
 class IoTConnectionScreen extends StatefulWidget {
   const IoTConnectionScreen({super.key});
@@ -39,7 +40,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
     }
   }
 
-  // simulate connecting to a device
+// simulate connecting to a device
   void _connectDevice() async {
     setState(() => _isConnecting = true);
     // wait 2 seconds to simulate connection
@@ -57,8 +58,13 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> {
         ),
       );
       
-      // TODO: Navigate to Dashboard
-      print("Navigate to Dashboard");
+      // Navigate to Strategy Screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const GardenStrategyScreen(),
+        ),
+      );
     }
   }
 

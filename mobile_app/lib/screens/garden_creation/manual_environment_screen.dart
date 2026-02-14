@@ -1,46 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ManualEnvironmentScreen extends StatefulWidget {
-  const ManualEnvironmentScreen({super.key});
+class GardenStrategyScreen extends StatefulWidget {
+  const GardenStrategyScreen({super.key});
 
   @override
-  State<ManualEnvironmentScreen> createState() => _ManualEnvironmentScreenState();
+  State<GardenStrategyScreen> createState() => _GardenStrategyScreenState();
 }
 
-class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
-  // State variables
-  String _selectedSoil = "Potting Mix";
-  double _sunlightValue = 50; 
-  String _wateringFrequency = "Daily";
-  bool _isWindy = false;
-
-  final List<Map<String, String>> _soilTypes = [
-    {"name": "Potting Mix", "desc": "High Nutrients, Balanced"},
-    {"name": "Red Soil", "desc": "Garden Soil, Acidic"},
-    {"name": "Sandy / Beach", "desc": "Low Nutrients, Drains Well"},
-    {"name": "Compost", "desc": "Organic, High Nitrogen"},
-  ];
-
-  final List<String> _wateringOptions = ["Daily", "Every 2 Days", "Weekly"];
-
-  Map<String, dynamic> _getSunlightInfo() {
-    if (_sunlightValue < 30) {
-      return {"label": "Shadow / Low Light", "icon": Icons.cloud};
-    } else if (_sunlightValue < 70) {
-      return {"label": "Partial Sun", "icon": Icons.wb_cloudy};
-    } else {
-      return {"label": "Direct Sunlight", "icon": Icons.wb_sunny};
-    }
-  }
+class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
+  // State Variables
+  String _containerSize = "Medium";
+  String _experienceLevel = "Beginner";
+  final List<String> _selectedCrops = [];
 
   @override
   Widget build(BuildContext context) {
+    // Theme Colors
     const bgColor = Color(0xFF121413);
-    const surfaceColor = Color(0xFF1E2220);
-    const neonGreen = Color(0xFF00E676);
-
-    final sunInfo = _getSunlightInfo();
     
     return Scaffold(
       backgroundColor: bgColor,
@@ -58,8 +35,9 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Text(
-                "Describe your\nEnvironment.",
+                "Final Details.",
                 style: GoogleFonts.poppins(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -69,194 +47,10 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                "Since you don't have a sensor, we need a few more details to calibrate the AI.",
+                "Customize your garden plan based on your space and goals.",
                 style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
               ),
               const SizedBox(height: 30),
-
-              // Question 1: Soil Source
-              Text(
-                "1. Soil Source",
-                style: GoogleFonts.poppins(
-                  color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 15),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _soilTypes.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.4,
-                ),
-                itemBuilder: (context, index) {
-                  final type = _soilTypes[index];
-                  final isSelected = _selectedSoil == type["name"];
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedSoil = type["name"]!),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: surfaceColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: isSelected
-                            ? Border.all(color: neonGreen, width: 2)
-                            : Border.all(color: Colors.transparent),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            type["name"]!,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            type["desc"]!,
-                            style: GoogleFonts.poppins(
-                              color: Colors.grey, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 30),
-
-              // Question 2: Sunlight
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "2. Typical Sunlight",
-                    style: GoogleFonts.poppins(
-                        color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-                  ),
-                  Icon(sunInfo["icon"], color: Colors.white, size: 24),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                sunInfo["label"],
-                style: GoogleFonts.poppins(
-                    color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: neonGreen,
-                  inactiveTrackColor: surfaceColor,
-                  thumbColor: Colors.white,
-                  overlayColor: neonGreen.withValues(alpha: 0.2),
-                  trackHeight: 6,
-                ),
-                child: Slider(
-                  value: _sunlightValue,
-                  min: 0, max: 100, divisions: 10,
-                  onChanged: (value) => setState(() => _sunlightValue = value),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Question 3: Watering Habits
-              Text(
-                "3. How often will you water?",
-                style: GoogleFonts.poppins(
-                    color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 15),
-              Wrap(
-                spacing: 10,
-                children: _wateringOptions.map((option) {
-                  final isSelected = _wateringFrequency == option;
-                  return ChoiceChip(
-                    label: Text(option),
-                    labelStyle: GoogleFonts.poppins(
-                      color: isSelected ? Colors.black : Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    selected: isSelected,
-                    selectedColor: neonGreen,
-                    backgroundColor: surfaceColor,
-                    onSelected: (selected) {
-                      setState(() => _wateringFrequency = option);
-                    },
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Question 4: Wind Exposure
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "High Wind Exposure?",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        Text(
-                          "Usually for balconies above 3rd floor",
-                          style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    Switch(
-                      value: _isWindy,
-                      activeColor: neonGreen,
-                      onChanged: (val) => setState(() => _isWindy = val),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Next Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Navigate to Strategy Screen
-                    print("Soil: $_selectedSoil, Sun: $_sunlightValue, Water: $_wateringFrequency, Windy: $_isWindy");
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: neonGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    "Next Step",
-                    style: GoogleFonts.poppins(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
