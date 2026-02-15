@@ -1,7 +1,6 @@
 import 'package:flutter/gestures.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
-
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 const Color fieldBg = Color(0xFF112A24);
 const Color primaryGreen = Color(0xFF00E676);
@@ -21,9 +20,16 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:  const Color(0xFF0A1F1A),
+      backgroundColor: const Color(0xFF0A1F1A),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -31,7 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-
               const Text(
                 "Login to your\naccount",
                 style: TextStyle(
@@ -40,24 +45,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 40),
 
-              // Email Field
-              _glowOnFocusTextField("Email", controller: _emailController),
+              _glowOnFocusTextField("Email",
+                  controller: _emailController),
 
               const SizedBox(height: 20),
 
-              // Password Field
               _glowOnFocusTextField(
                 "Password",
-                isPassword: true,
                 controller: _passwordController,
+                isPassword: true,
               ),
 
               const SizedBox(height: 10),
 
-              // Error message
               if (_errorMessage != null)
                 Text(
                   _errorMessage!,
@@ -66,7 +68,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 15),
 
-              // Login Button
               _primaryButton(context, "Login"),
 
               const SizedBox(height: 10),
@@ -79,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 40),
 
               const Center(
                 child: Text(
@@ -88,20 +89,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              _socialButton("Continue with Google", FontAwesomeIcons.google),
-              const SizedBox(height: 15),
-              _socialButton("Continue with Facebook", Icons.facebook_outlined),
+              _socialButton(
+                  "Continue with Google", FontAwesomeIcons.google),
 
-              const Spacer(),
+              const SizedBox(height: 18),
 
-              // Sign Up
+              _socialButton(
+                  "Continue with Facebook", Icons.facebook_outlined),
+
+              const SizedBox(height: 140),
+
               Center(
                 child: RichText(
                   text: TextSpan(
                     text: "Don't have an account? ",
-                    style: const TextStyle(color: Colors.white70),
+                    style:
+                    const TextStyle(color: Colors.white70),
                     children: [
                       TextSpan(
                         text: "Sign Up",
@@ -111,7 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
-                            Navigator.pushNamed(context, '/signup');
+                            Navigator.pushNamed(
+                                context, '/sign_up');
                           },
                       ),
                     ],
@@ -125,79 +131,84 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _glowOnFocusTextField(String hint,
-      {bool isPassword = false, required TextEditingController controller}) {
-    final FocusNode focusNode = FocusNode();
+  Widget _glowOnFocusTextField(
+      String hint, {
+        bool isPassword = false,
+        required TextEditingController controller,
+      }) {
+    return Focus(
+      child: Builder(
+        builder: (context) {
+          final hasFocus = Focus.of(context).hasFocus;
 
-    return StatefulBuilder(
-      builder: (context, setState) {
-        focusNode.addListener(() {
-          setState(() {}); // rebuild when focus changes
-        });
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: fieldBg,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: focusNode.hasFocus
-                ? [
-              BoxShadow(
-                color: glowGreen.withOpacity(0.6),
-                blurRadius: 15,
-                spreadRadius: 1,
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: fieldBg,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: hasFocus
+                  ? [
+                BoxShadow(
+                  color: glowGreen,
+                  blurRadius: 15,
+                  spreadRadius: 1,
+                ),
+              ]
+                  : [],
+              border: Border.all(
+                color: hasFocus
+                    ? glowGreen
+                    : Colors.transparent,
               ),
-            ]
-                : [],
-            border: Border.all(
-              color: focusNode.hasFocus ? glowGreen : Colors.transparent,
             ),
-          ),
-          child: TextField(
-            focusNode: focusNode,
-            controller: controller,
-            obscureText: isPassword,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: Colors.white54),
-              border: InputBorder.none,
-              contentPadding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: TextField(
+              controller: controller,
+              obscureText: isPassword,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle:
+                const TextStyle(color: Colors.white54),
+                border: InputBorder.none,
+                contentPadding:
+                const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 18),
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _primaryButton(BuildContext context, String text) {
+  Widget _primaryButton(
+      BuildContext context, String text) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
         onPressed: () {
           setState(() {
-
-
-
-            // Simple validation: replace with your real auth
-            if (_emailController.text != "test@example.com" ||
-                _passwordController.text != "123456") {
-              _errorMessage = "Email or password is incorrect";
+            if (_emailController.text !=
+                "test@example.com" ||
+                _passwordController.text !=
+                    "123456") {
+              _errorMessage =
+              "Email or password is incorrect";
             } else {
               _errorMessage = null;
-              Navigator.pushNamed(context, '/login');
+
+              Navigator.pushNamed(
+                  context, '/home'); // fixed route
             }
           });
-
-
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryGreen,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius:
+            BorderRadius.circular(30),
           ),
         ),
         child: Text(
@@ -212,13 +223,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialButton(String text, IconData icon) {
+  Widget _socialButton(
+      String text, IconData icon) {
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton.icon(
         onPressed: () {
-          Navigator.pushNamed(context, '/sign_up');
+          Navigator.pushNamed(
+              context, '/signup');
         },
         icon: Icon(icon, color: Colors.white),
         label: Text(
@@ -232,7 +245,8 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: fieldBg,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius:
+            BorderRadius.circular(30),
           ),
         ),
       ),
