@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/foundation.dart';
+
+import 'features/profile/screens/profile_screen.dart';
 
 void main() {
   runApp(const UrbanRootsApp());
@@ -13,14 +15,14 @@ class UrbanRootsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'UrbanRoots',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      home: const DashboardScreen(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(fontFamily: 'Poppins', useMaterial3: true),
+      home: const ProfileScreen(),
     );
   }
 }
+
+// ================= DASHBOARD SCREEN =================
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -32,19 +34,14 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String _serverMessage = "No data yet";
 
-  // Function to ask Backend for data
   Future<void> fetchBackendData() async {
     String url;
 
-    //URL SELECTION:
     if (kIsWeb) {
-      // Running on Chrome/Edge
       url = 'http://localhost:3000';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      // Running on Android Emulator
       url = 'http://10.0.2.2:3000';
     } else {
-      // Running on Windows Desktop
       url = 'http://localhost:3000';
     }
 
@@ -64,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _serverMessage = "Connection Failed! \nIs NestJS running?";
       });
-      print(e);
+      debugPrint(e.toString());
     }
   }
 
