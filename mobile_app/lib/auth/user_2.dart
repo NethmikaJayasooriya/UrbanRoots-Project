@@ -50,32 +50,34 @@ class _UserProfile2State extends State<UserProfile2> {
           style: TextStyle(color: Colors.white, fontSize: 24),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+      body: SafeArea(
+        child: Stack(
           children: [
-            // Progress Bar
-            Row(
-              children: List.generate(3, (index) {
-                return Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: index <= currentStep ? glowGreen : Colors.white12,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 30),
-
-            Expanded(
+            // Scrollable content
+            Padding(
+              padding: const EdgeInsets.only(bottom: 90), // leave space for button
               child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Progress Bar
+                    Row(
+                      children: List.generate(3, (index) {
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: index <= currentStep ? glowGreen : Colors.white12,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 20),
+
                     const Text(
                       "Tell us where and how you grow",
                       style: TextStyle(color: Colors.white, fontSize: 18),
@@ -87,75 +89,79 @@ class _UserProfile2State extends State<UserProfile2> {
                       "Land Size",
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 15),
                     _buildOptions(_landOptions, _landSize, (value) {
                       setState(() => _landSize = value);
                     }),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 25),
 
                     // Climate Exposure
                     const Text(
                       "Climate Exposure",
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 15),
                     _buildOptions(_climateOptions, _climateExposure, (value) {
                       setState(() => _climateExposure = value);
                     }),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 25),
 
                     // Time Spent
                     const Text(
                       "Time you can spend",
                       style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 15),
                     _buildOptions(_timeOptions, _timeSpent, (value) {
                       setState(() => _timeSpent = value);
                     }),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),
             ),
 
             // Next Step Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_landSize.isEmpty ||
-                      _climateExposure.isEmpty ||
-                      _timeSpent.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please fill all fields"),
-                        backgroundColor: Colors.redAccent,
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 0,
+              child: SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_landSize.isEmpty ||
+                        _climateExposure.isEmpty ||
+                        _timeSpent.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Please fill all fields"),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const Profile3Screen(),
                       ),
                     );
-                    return;
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const Profile3Screen(),
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: glowGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: glowGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
                   ),
-                ),
-                child: const Text(
-                  "Next Step",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                  child: const Text(
+                    "Next Step",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
