@@ -9,33 +9,54 @@ class UserProfile2 extends StatefulWidget {
 }
 
 class _UserProfile2State extends State<UserProfile2> {
+  final Color glowRed = Colors.redAccent;
   final Color glowGreen = const Color(0xFF00FF9D);
 
-  // Selected values
-  String _landSize = "";
-  String _climateExposure = "";
-  String _timeSpent = "";
+  bool _submitted = false;
 
-  // Options
-  final List<String> _landOptions = [
-    "Balcony/Pots",
-    "Small Garden",
-    "Medium Farm",
+  // Multi-select: Shopping Preferences
+  final List<String> _shoppingOptions = [
+    "Eco-friendly products",
+    "Organic products",
+    "Sustainable home items",
+    "Recycled products",
+    "Green technology",
+    "Local handmade products",
   ];
+  final Set<String> _selectedShopping = {};
 
-  final List<String> _climateOptions = [
-    "Full Sun",
-    "Partial Shade",
-    "Indoor",
+  // Single-selects
+  final List<String> _priceOptions = [
+    "Budget-friendly",
+    "Mid-range",
+    "Premium products",
+    "No preference"
   ];
+  String _selectedPrice = "";
 
-  final List<String> _timeOptions = [
-    "Daily",
-    "Few times a week",
-    "Weekends only",
+  final List<String> _discoveryOptions = [
+    "Trending products",
+    "New arrivals",
+    "Best rated",
+    "Nearby products",
+    "Personalized recommendations"
   ];
+  String _selectedDiscovery = "";
 
-  final int currentStep = 1;
+  final List<String> _deliveryOptions = [
+    "Local pickup",
+    "Standard delivery",
+    "Express delivery",
+    "No preference"
+  ];
+  String _selectedDelivery = "";
+
+  final List<String> _offersOptions = [
+    "Notify me about discounts",
+    "Only major sales",
+    "No promotional notifications"
+  ];
+  String _selectedOffers = "";
 
   @override
   Widget build(BuildContext context) {
@@ -46,101 +67,120 @@ class _UserProfile2State extends State<UserProfile2> {
         elevation: 0,
         leading: BackButton(color: glowGreen),
         title: const Text(
-          "Your Growing Environment",
-          style: TextStyle(color: Colors.white, fontSize: 24),
+          "Customize Your Marketplace Experience",
+          style: TextStyle(color: Colors.white, fontSize: 22),
         ),
       ),
       body: SafeArea(
-        child: Stack(
-          children: [
-            // Scrollable content
-            Padding(
-              padding: const EdgeInsets.only(bottom: 90), // leave space for button
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Progress Bar
-                    Row(
-                      children: List.generate(3, (index) {
-                        return Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: index <= currentStep ? glowGreen : Colors.white12,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        );
-                      }),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Progress Bar (Step 2 of 3)
+              Row(
+                children: List.generate(3, (index) {
+                  return Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: index <= 1 ? glowGreen : Colors.white12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                    const SizedBox(height: 20),
-
-                    const Text(
-                      "Tell us where and how you grow",
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Land Size
-                    const Text(
-                      "Land Size",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const SizedBox(height: 15),
-                    _buildOptions(_landOptions, _landSize, (value) {
-                      setState(() => _landSize = value);
-                    }),
-                    const SizedBox(height: 25),
-
-                    // Climate Exposure
-                    const Text(
-                      "Climate Exposure",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const SizedBox(height: 15),
-                    _buildOptions(_climateOptions, _climateExposure, (value) {
-                      setState(() => _climateExposure = value);
-                    }),
-                    const SizedBox(height: 25),
-
-                    // Time Spent
-                    const Text(
-                      "Time you can spend",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const SizedBox(height: 15),
-                    _buildOptions(_timeOptions, _timeSpent, (value) {
-                      setState(() => _timeSpent = value);
-                    }),
-                    const SizedBox(height: 80),
-                  ],
-                ),
+                  );
+                }),
               ),
-            ),
+              const SizedBox(height: 25),
 
-            // Next Step Button
-            Positioned(
-              left: 24,
-              right: 24,
-              bottom: 0,
-              child: SizedBox(
+              // Header
+              const Text(
+                "Tell us your preferences to personalize your shopping experience.",
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 30),
+
+              // Shopping Preferences (Multi-select)
+              const Text(
+                "🛍 Shopping Preferences (Select all that apply)",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              _buildMultiSelect(_shoppingOptions, _selectedShopping),
+              const SizedBox(height: 30),
+
+              // Price Preference (Single-select)
+              const Text(
+                "💰 Price Preference (Select one)",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              _buildSingleSelect(
+                _priceOptions,
+                _selectedPrice,
+                    (val) => _selectedPrice = val,
+                requiredField: true,
+              ),
+              const SizedBox(height: 30),
+
+              // Product Discovery Preference (Single-select)
+              const Text(
+                "🔍 Product Discovery Preference (Select one)",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              _buildSingleSelect(
+                _discoveryOptions,
+                _selectedDiscovery,
+                    (val) => _selectedDiscovery = val,
+                requiredField: true,
+              ),
+              const SizedBox(height: 30),
+
+              // Delivery Preference (Single-select)
+              const Text(
+                "🚚 Delivery Preference (Select one)",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              _buildSingleSelect(
+                _deliveryOptions,
+                _selectedDelivery,
+                    (val) => _selectedDelivery = val,
+                requiredField: true,
+              ),
+              const SizedBox(height: 30),
+
+              // Offers & Discounts (Single-select)
+              const Text(
+                "🎁 Offers & Discounts (Select one)",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 15),
+              _buildSingleSelect(
+                _offersOptions,
+                _selectedOffers,
+                    (val) => _selectedOffers = val,
+                requiredField: true,
+              ),
+              const SizedBox(height: 40),
+
+              // Next Step Button (scrolls with content)
+              SizedBox(
+                width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (_landSize.isEmpty ||
-                        _climateExposure.isEmpty ||
-                        _timeSpent.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Please fill all fields"),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
-                    }
+                    setState(() => _submitted = true);
+
+                    bool valid = _selectedShopping.isNotEmpty &&
+                        _selectedPrice.isNotEmpty &&
+                        _selectedDiscovery.isNotEmpty &&
+                        _selectedDelivery.isNotEmpty &&
+                        _selectedOffers.isNotEmpty;
+
+                    if (!valid) return;
 
                     Navigator.push(
                       context,
@@ -165,49 +205,90 @@ class _UserProfile2State extends State<UserProfile2> {
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Option buttons with glow effect
-  Widget _buildOptions(List<String> options, String selectedValue, ValueChanged<String> onSelected) {
+  // Multi-select
+  Widget _buildMultiSelect(List<String> options, Set<String> selectedValues) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: options.map((option) {
-        final bool isSelected = option == selectedValue;
+        final bool isSelected = selectedValues.contains(option);
+        final bool showRed = _submitted && selectedValues.isEmpty;
 
         return GestureDetector(
-          onTap: () => onSelected(option),
+          onTap: () => setState(() {
+            if (isSelected) {
+              selectedValues.remove(option);
+            } else {
+              selectedValues.add(option);
+            }
+          }),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: const Color(0xFF1A1D23),
               borderRadius: BorderRadius.circular(30),
-              boxShadow: isSelected
-                  ? [
-                BoxShadow(
-                  color: glowGreen,
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                )
-              ]
-                  : [],
               border: Border.all(
-                color: isSelected ? glowGreen : Colors.white12,
+                color: showRed ? glowRed : (isSelected ? glowGreen : Colors.white12),
                 width: 2,
               ),
+              boxShadow: isSelected
+                  ? [BoxShadow(color: glowGreen, blurRadius: 15, spreadRadius: 2)]
+                  : [],
             ),
             child: Text(
               option,
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.white54,
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // Single-select
+  Widget _buildSingleSelect(
+      List<String> options, String selectedValue, ValueChanged<String> onSelected,
+      {bool requiredField = false}) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: options.map((option) {
+        final bool isSelected = option == selectedValue;
+        final bool showRed = _submitted && requiredField && selectedValue.isEmpty;
+
+        return GestureDetector(
+          onTap: () => setState(() => onSelected(option)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1D23),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: showRed ? glowRed : (isSelected ? glowGreen : Colors.white12),
+                width: 2,
+              ),
+              boxShadow: isSelected
+                  ? [BoxShadow(color: glowGreen, blurRadius: 15, spreadRadius: 2)]
+                  : [],
+            ),
+            child: Text(
+              option,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white54,
+                fontSize: 16,
               ),
             ),
           ),
