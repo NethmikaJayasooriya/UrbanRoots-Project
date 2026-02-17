@@ -39,8 +39,8 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF121413);
-    const surfaceColor = Color(0xFF1E2220);
+    const bgColor = Color(0xFF07160F);
+    const surfaceColor = Color(0xFF16201B);
     const accentGreen = Color(0xFF00E676);
 
     return Scaffold(
