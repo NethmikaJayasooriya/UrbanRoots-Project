@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'user_2.dart';
 
+// Colors
+const Color screenBg = Color(0xFF0F1115);
+const Color fieldBg = Color(0xFF1A1D23);
+const Color glowRed = Colors.redAccent;
+const Color glowGreen = Color(0xFF00FF9D);
+
 class UserProfile1 extends StatefulWidget {
   const UserProfile1({super.key});
 
@@ -28,21 +34,33 @@ class Profile1Screen extends State<UserProfile1> {
   final FocusNode _ageFocus = FocusNode();
   final FocusNode _userTypeFocus = FocusNode();
 
-  // Glow colors
-  final Color glowRed = Colors.redAccent;
-
   // Dropdown values
   String _gender = "";
   String _userType = "";
-
   final List<String> _genderOptions = ["Male", "Female", "Other"];
   final List<String> _userTypeOptions = ["Personal", "Business"];
 
-  // Track invalid fields after Next Step is clicked
+  // Track if Next Step was clicked
   bool _submitted = false;
 
-  // Progress bar step (0-based)
+  // Progress bar step
   final int _currentStep = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger rebuild when field focuses change
+    [
+      _firstNameFocus,
+      _lastNameFocus,
+      _emailFocus,
+      _phoneFocus,
+      _cityFocus,
+      _ageFocus,
+      _genderFocus,
+      _userTypeFocus
+    ].forEach((f) => f.addListener(() => setState(() {})));
+  }
 
   @override
   void dispose() {
@@ -61,18 +79,17 @@ class Profile1Screen extends State<UserProfile1> {
     _genderFocus.dispose();
     _ageFocus.dispose();
     _userTypeFocus.dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
+      backgroundColor: screenBg,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: BackButton(color: Colors.greenAccent),
+        leading: BackButton(color: glowGreen),
         title: const Text(
           "Let's get started",
           style: TextStyle(color: Colors.white, fontSize: 24),
@@ -91,8 +108,7 @@ class Profile1Screen extends State<UserProfile1> {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     height: 4,
                     decoration: BoxDecoration(
-                      color: index <= _currentStep ? Colors.greenAccent : Colors
-                          .white12,
+                      color: index <= _currentStep ? glowGreen : Colors.white12,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -111,7 +127,7 @@ class Profile1Screen extends State<UserProfile1> {
             ),
             const SizedBox(height: 20),
 
-            // Header Text
+            // Header
             const Text(
               "Tell us a little about yourself.",
               style: TextStyle(
@@ -121,21 +137,27 @@ class Profile1Screen extends State<UserProfile1> {
             ),
             const SizedBox(height: 30),
 
-            // Name Row (First & Last)
+            // Name Row
             Row(
               children: [
                 Expanded(
-                  child: _buildTextField(
-                      _firstNameController, "First Name", _firstNameFocus,
-                      isInvalid: _submitted &&
-                          _firstNameController.text.isEmpty),
+                  child: _GlowTextField(
+                    hint: "First Name",
+                    controller: _firstNameController,
+                    focusNode: _firstNameFocus,
+                    submitted: _submitted,
+                    validator: (text) => text.isEmpty,
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
-                  child: _buildTextField(
-                      _lastNameController, "Last Name", _lastNameFocus,
-                      isInvalid: _submitted &&
-                          _lastNameController.text.isEmpty),
+                  child: _GlowTextField(
+                    hint: "Last Name",
+                    controller: _lastNameController,
+                    focusNode: _lastNameFocus,
+                    submitted: _submitted,
+                    validator: (text) => text.isEmpty,
+                  ),
                 ),
               ],
             ),
@@ -145,64 +167,89 @@ class Profile1Screen extends State<UserProfile1> {
             Row(
               children: [
                 Expanded(
-                  child: _buildTextField(_emailController, "Email", _emailFocus,
-                      isEmail: true,
-                      isInvalid: _submitted &&
-                          (!_emailController.text.contains("@") ||
-                              _emailController.text.isEmpty)),
+                  child: _GlowTextField(
+                    hint: "Email",
+                    controller: _emailController,
+                    focusNode: _emailFocus,
+                    submitted: _submitted,
+                    validator: (text) =>
+                    text.isEmpty || !text.contains("@"),
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
-                    child: _buildPhoneField(
-                        isInvalid: _submitted &&
-                            _phoneController.text.length != 10)),
+                  child: _GlowTextField(
+                    hint: "Phone Number",
+                    controller: _phoneController,
+                    focusNode: _phoneFocus,
+                    submitted: _submitted,
+                    isNumber: true,
+                    validator: (text) => text.length != 10,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 25),
 
-            // City / Location
-            _buildTextField(_cityController, "City / Location", _cityFocus,
-                isInvalid: _submitted && _cityController.text.isEmpty),
+            // City
+            _GlowTextField(
+              hint: "City / Location",
+              controller: _cityController,
+              focusNode: _cityFocus,
+              submitted: _submitted,
+              validator: (text) => text.isEmpty,
+            ),
             const SizedBox(height: 25),
 
             // Gender & Age
             Row(
               children: [
                 Expanded(
-                  child: _buildDropdown(_gender, _genderOptions, (value) {
-                    setState(() {
-                      _gender = value!;
-                    });
-                  }, _genderFocus,
-                      hint: "Gender", isInvalid: _submitted && _gender.isEmpty),
+                  child: _GlowDropdown(
+                    hint: "Gender",
+                    currentValue: _gender,
+                    options: _genderOptions,
+                    focusNode: _genderFocus,
+                    submitted: _submitted,
+                    validator: (text) => text.isEmpty,
+                    onChanged: (value) => setState(() => _gender = value!),
+                  ),
                 ),
                 const SizedBox(width: 15),
                 Expanded(
-                  child: _buildTextField(_ageController, "Age", _ageFocus,
-                      isNumber: true,
-                      isInvalid: _submitted && _ageController.text.isEmpty),
+                  child: _GlowTextField(
+                    hint: "Age",
+                    controller: _ageController,
+                    focusNode: _ageFocus,
+                    isNumber: true,
+                    submitted: _submitted,
+                    validator: (text) => text.isEmpty,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 25),
 
             // User Type
-            _buildDropdown(_userType, _userTypeOptions, (value) {
-              setState(() {
-                _userType = value!;
-              });
-            }, _userTypeFocus,
-                hint: "User Type", isInvalid: _submitted && _userType.isEmpty),
+            _GlowDropdown(
+              hint: "User Type",
+              currentValue: _userType,
+              options: _userTypeOptions,
+              focusNode: _userTypeFocus,
+              submitted: _submitted,
+              validator: (text) => text.isEmpty,
+              onChanged: (value) => setState(() => _userType = value!),
+            ),
             const SizedBox(height: 35),
 
-            // Next Step Button
+            // Next Step
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    _submitted = true; // Only after Next Step
+                    _submitted = true;
                   });
 
                   bool valid = _firstNameController.text.isNotEmpty &&
@@ -224,7 +271,7 @@ class Profile1Screen extends State<UserProfile1> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.greenAccent,
+                  backgroundColor: glowGreen,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -243,121 +290,160 @@ class Profile1Screen extends State<UserProfile1> {
       ),
     );
   }
+}
 
-  Widget _buildTextField(TextEditingController controller, String hint,
-      FocusNode focusNode,
-      {bool isNumber = false, bool isEmail = false, bool isInvalid = false}) {
+// Glow TextField Widget
+class _GlowTextField extends StatefulWidget {
+  final String hint;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool isNumber;
+  final bool submitted;
+  final bool Function(String) validator;
+
+  const _GlowTextField({
+    required this.hint,
+    required this.controller,
+    required this.focusNode,
+    required this.submitted,
+    required this.validator,
+    this.isNumber = false,
+  });
+
+  @override
+  State<_GlowTextField> createState() => _GlowTextFieldState();
+}
+
+class _GlowTextFieldState extends State<_GlowTextField> {
+  bool get _isFocused => widget.focusNode.hasFocus;
+
+  bool get _showRed =>
+      widget.submitted && widget.validator(widget.controller.text) && !_isFocused;
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
+        color: fieldBg,
         borderRadius: BorderRadius.circular(30),
+        boxShadow: _isFocused
+            ? [
+          BoxShadow(
+            color: glowGreen.withOpacity(0.5),
+            blurRadius: 15,
+            spreadRadius: 1,
+          ),
+        ]
+            : [],
         border: Border.all(
-          color: isInvalid ? glowRed : Colors.transparent,
+          color: _showRed
+              ? glowRed
+              : _isFocused
+              ? glowGreen
+              : Colors.transparent,
           width: 1.5,
         ),
       ),
       child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: isNumber
-            ? TextInputType.number
-            : (isEmail ? TextInputType.emailAddress : TextInputType.text),
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        keyboardType:
+        widget.isNumber ? TextInputType.number : TextInputType.text,
+        style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white54, fontSize: 16),
-          filled: true,
-          fillColor: const Color(0xFF1A1D23),
+          hintText: widget.hint,
+          hintStyle: const TextStyle(color: Colors.white54),
+          border: InputBorder.none,
           contentPadding:
           const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide.none),
         ),
       ),
     );
   }
+}
 
-  Widget _buildPhoneField({bool isInvalid = false}) {
+// Glow Dropdown Widget
+class _GlowDropdown extends StatefulWidget {
+  final String hint;
+  final String currentValue;
+  final List<String> options;
+  final FocusNode focusNode;
+  final bool submitted;
+  final bool Function(String) validator;
+  final ValueChanged<String?> onChanged;
+
+  const _GlowDropdown({
+    required this.hint,
+    required this.currentValue,
+    required this.options,
+    required this.focusNode,
+    required this.submitted,
+    required this.validator,
+    required this.onChanged,
+  });
+
+  @override
+  State<_GlowDropdown> createState() => _GlowDropdownState();
+}
+
+class _GlowDropdownState extends State<_GlowDropdown> {
+  bool get _isFocused => widget.focusNode.hasFocus;
+
+  bool get _showRed =>
+      widget.submitted && widget.validator(widget.currentValue) && !_isFocused;
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
+        color: fieldBg,
         borderRadius: BorderRadius.circular(30),
+        boxShadow: _isFocused
+            ? [
+          BoxShadow(
+            color: glowGreen.withOpacity(0.5),
+            blurRadius: 15,
+            spreadRadius: 1,
+          ),
+        ]
+            : [],
         border: Border.all(
-          color: isInvalid ? glowRed : Colors.transparent,
+          color: _showRed
+              ? glowRed
+              : _isFocused
+              ? glowGreen
+              : Colors.transparent,
           width: 1.5,
         ),
       ),
-      child: TextField(
-        controller: _phoneController,
-        focusNode: _phoneFocus,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(10)
-        ],
-        decoration: InputDecoration(
-          hintText: "Phone Number",
-          hintStyle: const TextStyle(color: Colors.white54, fontSize: 16),
-          filled: true,
-          fillColor: const Color(0xFF1A1D23),
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(30),
-              borderSide: BorderSide.none),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown(String currentValue, List<String> options,
-      ValueChanged<String?> onChanged, FocusNode focusNode,
-      {String hint = "Select", bool isInvalid = false}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isInvalid ? glowRed : Colors.transparent,
-          width: 1.5,
-        ),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1D23),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: DropdownButton<String>(
-          focusNode: focusNode,
-          value: currentValue.isNotEmpty ? currentValue : null,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF1A1D23),
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-          underline: const SizedBox(),
-          style: const TextStyle(color: Colors.white),
-          hint: Text(
-            hint,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DropdownButton<String>(
+        focusNode: widget.focusNode,
+        value: widget.currentValue.isNotEmpty ? widget.currentValue : null,
+        isExpanded: true,
+        dropdownColor: fieldBg,
+        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+        underline: const SizedBox(),
+        style: const TextStyle(color: Colors.white),
+        hint: Text(widget.hint,
+            style: const TextStyle(color: Colors.white54, fontSize: 16)),
+        onChanged: (value) {
+          widget.onChanged(value);
+          setState(() {});
+        },
+        items: widget.options
+            .map((e) => DropdownMenuItem(
+          value: e,
+          child: Text(
+            e,
             style: const TextStyle(color: Colors.white54, fontSize: 16),
           ),
-          onChanged: (value) {
-            onChanged(value);
-            setState(() {});
-          },
-          items: options
-              .map((e) =>
-              DropdownMenuItem(
-                value: e,
-                child: Text(
-                  e,
-                  style:
-                  const TextStyle(color: Colors.white54, fontSize: 16),
-                ),
-              ))
-              .toList(),
-        ),
+        ))
+            .toList(),
       ),
     );
   }
