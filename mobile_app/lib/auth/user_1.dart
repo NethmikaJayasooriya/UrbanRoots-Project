@@ -10,42 +10,58 @@ class UserProfile1 extends StatefulWidget {
 }
 
 class Profile1Screen extends State<UserProfile1> {
-  final TextEditingController _nameController = TextEditingController();
+  // Controllers
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
 
-  final FocusNode _nameFocus = FocusNode();
+  // FocusNodes
+  final FocusNode _firstNameFocus = FocusNode();
+  final FocusNode _lastNameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
   final FocusNode _phoneFocus = FocusNode();
-  final FocusNode _experienceFocus = FocusNode();
-  final FocusNode _sensorFocus = FocusNode();
+  final FocusNode _cityFocus = FocusNode();
+  final FocusNode _genderFocus = FocusNode();
+  final FocusNode _ageFocus = FocusNode();
+  final FocusNode _userTypeFocus = FocusNode();
 
-  // Glow Green
-  final Color glowGreen = const Color(0xFF00FF9D);
+  // Glow colors
+  final Color glowRed = Colors.redAccent;
 
-  String _experienceLevel = "";
-  String _smartSensor = "";
+  // Dropdown values
+  String _gender = "";
+  String _userType = "";
 
-  final List<String> _experienceOptions = [
-    "Beginner level",
-    "Intermediate level",
-    "Expert level"
-  ];
+  final List<String> _genderOptions = ["Male", "Female", "Other"];
+  final List<String> _userTypeOptions = ["Personal", "Business"];
 
-  final List<String> _sensorOptions = [
-    "Yes",
-    "No",
-    "Maybe later",
-  ];
+  // Track invalid fields after Next Step is clicked
+  bool _submitted = false;
 
+  // Progress bar step (0-based)
   final int _currentStep = 0;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
-    _nameFocus.dispose();
+    _cityController.dispose();
+    _ageController.dispose();
+
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _emailFocus.dispose();
     _phoneFocus.dispose();
-    _experienceFocus.dispose();
-    _sensorFocus.dispose();
+    _cityFocus.dispose();
+    _genderFocus.dispose();
+    _ageFocus.dispose();
+    _userTypeFocus.dispose();
+
     super.dispose();
   }
 
@@ -56,190 +72,221 @@ class Profile1Screen extends State<UserProfile1> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: BackButton(color: glowGreen),
+        leading: BackButton(color: Colors.greenAccent),
         title: const Text(
-          "Who are you?",
+          "Let's get started",
           style: TextStyle(color: Colors.white, fontSize: 24),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Progress Bar
-              Row(
-                children: List.generate(3, (index) {
-                  return Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: index <= _currentStep ? glowGreen : Colors.white12,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Progress Bar
+            Row(
+              children: List.generate(3, (index) {
+                return Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: index <= _currentStep ? Colors.greenAccent : Colors
+                          .white12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 20),
+
+            // Top Image
+            Center(
+              child: Image.asset(
+                'assets/user.png',
+                width: 180,
+                height: 180,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Header Text
+            const Text(
+              "Tell us a little about yourself.",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 30),
+
+            // Name Row (First & Last)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                      _firstNameController, "First Name", _firstNameFocus,
+                      isInvalid: _submitted &&
+                          _firstNameController.text.isEmpty),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: _buildTextField(
+                      _lastNameController, "Last Name", _lastNameFocus,
+                      isInvalid: _submitted &&
+                          _lastNameController.text.isEmpty),
+                ),
+              ],
+            ),
+            const SizedBox(height: 25),
+
+            // Email & Phone
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(_emailController, "Email", _emailFocus,
+                      isEmail: true,
+                      isInvalid: _submitted &&
+                          (!_emailController.text.contains("@") ||
+                              _emailController.text.isEmpty)),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                    child: _buildPhoneField(
+                        isInvalid: _submitted &&
+                            _phoneController.text.length != 10)),
+              ],
+            ),
+            const SizedBox(height: 25),
+
+            // City / Location
+            _buildTextField(_cityController, "City / Location", _cityFocus,
+                isInvalid: _submitted && _cityController.text.isEmpty),
+            const SizedBox(height: 25),
+
+            // Gender & Age
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDropdown(_gender, _genderOptions, (value) {
+                    setState(() {
+                      _gender = value!;
+                    });
+                  }, _genderFocus,
+                      hint: "Gender", isInvalid: _submitted && _gender.isEmpty),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: _buildTextField(_ageController, "Age", _ageFocus,
+                      isNumber: true,
+                      isInvalid: _submitted && _ageController.text.isEmpty),
+                ),
+              ],
+            ),
+            const SizedBox(height: 25),
+
+            // User Type
+            _buildDropdown(_userType, _userTypeOptions, (value) {
+              setState(() {
+                _userType = value!;
+              });
+            }, _userTypeFocus,
+                hint: "User Type", isInvalid: _submitted && _userType.isEmpty),
+            const SizedBox(height: 35),
+
+            // Next Step Button
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _submitted = true; // Only after Next Step
+                  });
+
+                  bool valid = _firstNameController.text.isNotEmpty &&
+                      _lastNameController.text.isNotEmpty &&
+                      _emailController.text.contains("@") &&
+                      _phoneController.text.length == 10 &&
+                      _cityController.text.isNotEmpty &&
+                      _ageController.text.isNotEmpty &&
+                      _gender.isNotEmpty &&
+                      _userType.isNotEmpty;
+
+                  if (!valid) return;
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UserProfile2(),
                     ),
                   );
-                }),
-              ),
-              const SizedBox(height: 10),
-
-              // Image
-              Center(
-                child: Image.asset(
-                  'assets/user.png',
-                  width: 200,
-                  height: 180,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Name
-              const Text(
-                "Name",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              _buildTextField(_nameController, "Enter your name", _nameFocus),
-              const SizedBox(height: 18),
-
-              // Phone
-              const Text(
-                "Phone Number",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              _buildPhoneField(),
-              const SizedBox(height: 18),
-
-              // Experience Dropdown
-              const Text(
-                "Experience Level",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              _buildDropdown(
-                  _experienceLevel, _experienceOptions, (value) {
-                setState(() {
-                  _experienceLevel = value!;
-                });
-              }, _experienceFocus),
-              const SizedBox(height: 18),
-
-              // Sensor Dropdown
-              const Text(
-                "Do you have our smart sensor?",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 6),
-              _buildDropdown(_smartSensor, _sensorOptions, (value) {
-                setState(() {
-                  _smartSensor = value!;
-                });
-              }, _sensorFocus),
-              const SizedBox(height: 90),
-
-              // Next Step Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (_nameController.text.isEmpty ||
-                        _phoneController.text.length != 10 ||
-                        _experienceLevel.isEmpty ||
-                        _smartSensor.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Please fill all fields correctly (phone must be 10 digits)"),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const UserProfile2(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: glowGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.greenAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                  child: const Text(
-                    "Next Step",
-                    style: TextStyle(
+                ),
+                child: const Text(
+                  "Next Step",
+                  style: TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                      fontSize: 16),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // Standard Glowing TextField
-  Widget _buildTextField(
-      TextEditingController controller, String hint, FocusNode focusNode) {
+  Widget _buildTextField(TextEditingController controller, String hint,
+      FocusNode focusNode,
+      {bool isNumber = false, bool isEmail = false, bool isInvalid = false}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: focusNode.hasFocus
-            ? [
-          BoxShadow(
-            color: glowGreen,
-            blurRadius: 15,
-            spreadRadius: 2,
-          )
-        ]
-            : [],
+        border: Border.all(
+          color: isInvalid ? glowRed : Colors.transparent,
+          width: 1.5,
+        ),
       ),
       child: TextField(
         controller: controller,
         focusNode: focusNode,
+        keyboardType: isNumber
+            ? TextInputType.number
+            : (isEmail ? TextInputType.emailAddress : TextInputType.text),
         style: const TextStyle(color: Colors.white, fontSize: 16),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.white54, fontSize: 16),
           filled: true,
           fillColor: const Color(0xFF1A1D23),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none),
         ),
-        onTap: () => setState(() {}),
       ),
     );
   }
 
-  // Phone Field (digits only, max 10)
-  Widget _buildPhoneField() {
+  Widget _buildPhoneField({bool isInvalid = false}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: _phoneFocus.hasFocus
-            ? [
-          BoxShadow(
-            color: glowGreen,
-            blurRadius: 15,
-            spreadRadius: 2,
-          )
-        ]
-            : [],
+        border: Border.all(
+          color: isInvalid ? glowRed : Colors.transparent,
+          width: 1.5,
+        ),
       ),
       child: TextField(
         controller: _phoneController,
@@ -248,40 +295,34 @@ class Profile1Screen extends State<UserProfile1> {
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(10),
+          LengthLimitingTextInputFormatter(10)
         ],
         decoration: InputDecoration(
-          hintText: "Enter your number",
+          hintText: "Phone Number",
           hintStyle: const TextStyle(color: Colors.white54, fontSize: 16),
           filled: true,
           fillColor: const Color(0xFF1A1D23),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
+              borderRadius: BorderRadius.circular(30),
+              borderSide: BorderSide.none),
         ),
-        onTap: () => setState(() {}),
       ),
     );
   }
 
-  // Glowing Dropdown
   Widget _buildDropdown(String currentValue, List<String> options,
-      ValueChanged<String?> onChanged, FocusNode focusNode) {
+      ValueChanged<String?> onChanged, FocusNode focusNode,
+      {String hint = "Select", bool isInvalid = false}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: focusNode.hasFocus
-            ? [
-          BoxShadow(
-            color: glowGreen,
-            blurRadius: 15,
-            spreadRadius: 2,
-          )
-        ]
-            : [],
+        border: Border.all(
+          color: isInvalid ? glowRed : Colors.transparent,
+          width: 1.5,
+        ),
       ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -297,24 +338,24 @@ class Profile1Screen extends State<UserProfile1> {
           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
           underline: const SizedBox(),
           style: const TextStyle(color: Colors.white),
+          hint: Text(
+            hint,
+            style: const TextStyle(color: Colors.white54, fontSize: 16),
+          ),
           onChanged: (value) {
             onChanged(value);
             setState(() {});
           },
-          hint: const Text(
-            "Select an option",
-            style: TextStyle(color: Colors.white54, fontSize: 16),
-          ),
           items: options
-              .map(
-                (e) => DropdownMenuItem(
-              value: e,
-              child: Text(
-                e,
-                style: const TextStyle(color: Colors.white54, fontSize: 16),
-              ),
-            ),
-          )
+              .map((e) =>
+              DropdownMenuItem(
+                value: e,
+                child: Text(
+                  e,
+                  style:
+                  const TextStyle(color: Colors.white54, fontSize: 16),
+                ),
+              ))
               .toList(),
         ),
       ),
