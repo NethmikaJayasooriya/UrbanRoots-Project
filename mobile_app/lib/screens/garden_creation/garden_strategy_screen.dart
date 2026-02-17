@@ -9,237 +9,196 @@ class GardenStrategyScreen extends StatefulWidget {
 }
 
 class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
-  // State Variables
   String _containerSize = "Medium";
   String _experienceLevel = "Beginner";
+  String _selectedGoal = "Maximum Yield";
   final List<String> _selectedCrops = [];
 
-  // Data Options
   final List<Map<String, dynamic>> _containerOptions = [
-    {"name": "Small", "size": "< 6 inches", "icon": Icons.local_florist},
-    {"name": "Medium", "size": "10-12 inches", "icon": Icons.grass},
-    {"name": "Large", "size": "Ground / Tubs", "icon": Icons.park},
+    {"name": "Small", "size": "< 6\"", "icon": Icons.local_florist},
+    {"name": "Medium", "size": "10-12\"", "icon": Icons.grass},
+    {"name": "Large", "size": "Ground", "icon": Icons.landscape},
   ];
 
   final List<String> _cropCategories = [
-    "Chillies 🌶️", "Tomatoes 🍅", "Leafy Greens 🥬", 
-    "Flowers 🌸", "Herbs 🌿", "Root Veg 🥕", "Fruits 🍓"
+    "Leafy Greens 🥬", "Vegetables 🍅", "Yams & Roots 🥕",
+    "Herbs & Spices 🌿", "Flowers 🌸", "Fruits 🍓", "Medicinal Plants 💊",
   ];
 
-  final List<String> _experienceOptions = ["Beginner", "Intermediate", "Pro"];
+  final List<Map<String, dynamic>> _goalOptions = [
+    {"name": "Maximum Yield", "icon": Icons.shopping_bag},
+    {"name": "Aesthetic", "icon": Icons.auto_awesome},
+    {"name": "Low Care", "icon": Icons.timer},
+  ];
 
-  // Helper to toggle crop selection
   void _toggleCrop(String crop) {
     setState(() {
-      if (_selectedCrops.contains(crop)) {
-        _selectedCrops.remove(crop);
-      } else {
-        _selectedCrops.add(crop);
-      }
+      _selectedCrops.contains(crop) ? _selectedCrops.remove(crop) : _selectedCrops.add(crop);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Theme Colors
     const bgColor = Color(0xFF121413);
     const surfaceColor = Color(0xFF1E2220);
-    const neonGreen = Color(0xFF00E676);
+    const accentGreen = Color(0xFF00E676);
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Text(
-                "Final Details.",
-                style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Customize your garden plan based on your space and goals.",
-                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14),
-              ),
-              const SizedBox(height: 30),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Strategy.", style: GoogleFonts.poppins(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+            Text("Refine your setup for optimal growth.", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 14)),
+            const SizedBox(height: 24),
 
-              // 1. Container Size Selection
-              Text(
-                "1. Container Size",
-                style: GoogleFonts.poppins(
-                  color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 15),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: _containerOptions.map((option) {
-                  final isSelected = _containerSize == option["name"];
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _containerSize = option["name"]),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: surfaceColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: isSelected
-                              ? Border.all(color: neonGreen, width: 2)
-                              : Border.all(color: Colors.transparent),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(option["icon"], 
-                                color: isSelected ? neonGreen : Colors.white70, 
-                                size: 28),
-                            const SizedBox(height: 8),
-                            Text(
-                              option["name"],
-                              style: GoogleFonts.poppins(
-                                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            Text(
-                              option["size"],
-                              style: GoogleFonts.poppins(
-                                color: Colors.grey, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 2. Crop Selection (Multi-select Chips)
-              Text(
-                "2. What do you want to grow?",
-                style: GoogleFonts.poppins(
-                  color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 15),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _cropCategories.map((crop) {
-                  final isSelected = _selectedCrops.contains(crop);
-                  return FilterChip(
-                    label: Text(crop),
-                    labelStyle: GoogleFonts.poppins(
-                      color: isSelected ? Colors.black : Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    selected: isSelected,
-                    selectedColor: neonGreen,
-                    backgroundColor: surfaceColor,
-                    checkmarkColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: isSelected ? neonGreen : surfaceColor),
-                    ),
-                    onSelected: (_) => _toggleCrop(crop),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 30),
-
-              // 3. Experience Level
-              Text(
-                "3. Gardening Experience",
-                style: GoogleFonts.poppins(
-                  color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              const SizedBox(height: 15),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: _experienceOptions.map((level) {
-                    final isSelected = _experienceLevel == level;
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _experienceLevel = level),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? neonGreen : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Text(
-                              level,
-                              style: GoogleFonts.poppins(
-                                color: isSelected ? Colors.black : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionHeader("1. Container Size", accentGreen),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: _containerOptions.map((opt) {
+                        bool isSelected = _containerSize == opt["name"];
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _containerSize = opt["name"]),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: isSelected ? accentGreen.withOpacity(0.05) : surfaceColor,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: isSelected ? accentGreen : Colors.transparent, width: 1.5),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(opt["icon"], color: isSelected ? accentGreen : Colors.white24, size: 24),
+                                  const SizedBox(height: 8),
+                                  Text(opt["name"], style: GoogleFonts.poppins(color: isSelected ? Colors.white : Colors.white60, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(opt["size"], style: GoogleFonts.poppins(color: isSelected ? accentGreen.withOpacity(0.7) : Colors.white24, fontSize: 10)),
+                                ],
                               ),
                             ),
                           ),
-                        ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    _sectionHeader("2. Target Crops", accentGreen),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8, runSpacing: 10,
+                      children: _cropCategories.map((crop) {
+                        bool isSelected = _selectedCrops.contains(crop);
+                        return GestureDetector(
+                          onTap: () => _toggleCrop(crop),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12), 
+                            decoration: BoxDecoration(color: isSelected ? accentGreen : surfaceColor, borderRadius: BorderRadius.circular(12)),
+                            child: Text(crop, style: GoogleFonts.poppins(color: isSelected ? Colors.black : Colors.white70, fontWeight: FontWeight.w600, fontSize: 12)),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    _sectionHeader("3. Gardening Goal", accentGreen),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: _goalOptions.map((goal) {
+                        bool isSelected = _selectedGoal == goal["name"];
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedGoal = goal["name"]),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected ? accentGreen.withOpacity(0.1) : surfaceColor,
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(color: isSelected ? accentGreen : Colors.transparent),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(goal["icon"], color: isSelected ? accentGreen : Colors.white24, size: 20),
+                                  const SizedBox(height: 4),
+                                  Text(goal["name"], style: GoogleFonts.poppins(color: isSelected ? Colors.white : Colors.white30, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    _sectionHeader("4. Experience Level", accentGreen),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(color: surfaceColor, borderRadius: BorderRadius.circular(15)),
+                      child: Row(
+                        children: ["Beginner", "Intermediate", "Pro"].map((lvl) {
+                          bool isSelected = _experienceLevel == lvl;
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _experienceLevel = lvl),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(color: isSelected ? accentGreen : Colors.transparent, borderRadius: BorderRadius.circular(11)),
+                                child: Center(
+                                  child: Text(lvl, style: GoogleFonts.poppins(color: isSelected ? Colors.black : Colors.white30, fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    const SizedBox(height: 40),
+                  ],
                 ),
               ),
+            ),
 
-              const SizedBox(height: 40),
-
-              // Final Action Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24.0, top: 10),
+              child: SizedBox(
+                width: double.infinity, height: 60,
                 child: ElevatedButton(
-                  onPressed: _selectedCrops.isNotEmpty
-                      ? () {
-                          // TODO: Navigate to Loading/AI Generation Screen
-                          print("Generating garden for: $_containerSize, $_selectedCrops");
-                        }
-                      : null, // Disable if no crops selected
+                  onPressed: _selectedCrops.isEmpty ? null : () {
+                    // Navigate to Analysis / Loading
+                    print("Generating for: $_containerSize, $_selectedGoal, $_selectedCrops");
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: neonGreen,
-                    disabledBackgroundColor: surfaceColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    backgroundColor: accentGreen, disabledBackgroundColor: surfaceColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
-                  child: Text(
-                    "Analyze & Build Garden 🚀",
-                    style: GoogleFonts.poppins(
-                      color: _selectedCrops.isNotEmpty ? Colors.black : Colors.grey,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+                  child: Text("Analyze & Build Garden ✨", style: GoogleFonts.poppins(color: _selectedCrops.isEmpty ? Colors.white24 : Colors.black, fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _sectionHeader(String title, Color color) {
+    return Text(title.toUpperCase(), style: GoogleFonts.poppins(color: color, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2));
   }
 }
