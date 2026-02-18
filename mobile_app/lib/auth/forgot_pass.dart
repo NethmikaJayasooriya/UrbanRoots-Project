@@ -29,7 +29,7 @@ class ForgotPasswordApp extends StatelessWidget {
               ),
               const SizedBox(height: 25),
 
-              /// Email TextField with Glow Effect
+              // Email TextField with Glow Effect
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
@@ -60,7 +60,7 @@ class ForgotPasswordApp extends StatelessWidget {
 
               const SizedBox(height: 25),
 
-              /// Send Code Button with Navigation
+              // Send Code Button with Navigation
               GestureDetector(
                 onTap: () {
                   // Navigate to verification page
@@ -76,7 +76,7 @@ class ForgotPasswordApp extends StatelessWidget {
 
               const SizedBox(height: 50),
 
-              /// Back to Login
+              //Back to Login
               TextButton.icon(
                 onPressed: () {
                   Navigator.pop(context); // Navigate back
@@ -101,7 +101,7 @@ class ForgotPasswordApp extends StatelessWidget {
     );
   }
 
-  /// Custom Button
+  // Custom Button
   Widget _button(String text) {
     return Container(
       width: double.infinity,

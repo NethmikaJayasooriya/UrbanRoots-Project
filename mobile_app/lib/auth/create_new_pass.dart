@@ -18,7 +18,7 @@ class CreateNewPass extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1115), // same dark background
+      backgroundColor: const Color(0xFF0F1115),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -82,7 +82,7 @@ class CreateNewPass extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Password reset successfully!"),
-          duration: Duration(seconds: 2), // how long it shows
+          duration: Duration(seconds: 1), // after the password reset msg is shown the page redirects back to the login page
         ),
       );
 

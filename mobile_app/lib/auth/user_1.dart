@@ -331,7 +331,7 @@ class _GlowTextFieldState extends State<_GlowTextField> {
         boxShadow: _isFocused
             ? [
           BoxShadow(
-            color: glowGreen.withOpacity(0.5),
+            color: glowGreen,
             blurRadius: 15,
             spreadRadius: 1,
           ),
@@ -405,7 +405,7 @@ class _GlowDropdownState extends State<_GlowDropdown> {
         boxShadow: _isFocused
             ? [
           BoxShadow(
-            color: glowGreen.withOpacity(0.5),
+            color: glowGreen,
             blurRadius: 15,
             spreadRadius: 1,
           ),

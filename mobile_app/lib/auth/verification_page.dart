@@ -30,7 +30,7 @@ class VerificationPage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              /// Code TextField
+              // Code TextField
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
@@ -67,15 +67,15 @@ class VerificationPage extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              /// Verify Button
+              // Verify Button
               _button(context, "Verify"),
 
               const SizedBox(height: 20),
 
-              /// Resend Code
+              // Resend Code
               TextButton(
                 onPressed: () {
-                  // TODO: Resend code logic
+                  //Resend code logic
                 },
                 child: const Text(
                   "Resend Code",
