@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
 
@@ -18,7 +19,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _agreedToTerms = false;
 
   void _handleSignUp() {
-    // Trigger validation
     if (_formKey.currentState!.validate()) {
       Navigator.pushReplacement(
         context, 
@@ -131,6 +131,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
 
                 const SizedBox(height: 30),
+                
+               
+                _buildDivider(),
+                const SizedBox(height: 30),
+                _buildSocialButton("Continue with Google", FontAwesomeIcons.google),
+                const SizedBox(height: 15),
+                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF),
+               
+
+                const SizedBox(height: 40),
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -141,6 +152,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -153,6 +165,51 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
       child: Text(text, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w500)),
+    );
+  }
+
+  // Divider Widget 
+  Widget _buildDivider() {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: Colors.white10)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text("Or continue with", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+        ),
+        const Expanded(child: Divider(color: Colors.white10)),
+      ],
+    );
+  }
+
+  // Social Button Widget
+  Widget _buildSocialButton(String text, IconData icon) {
+    return Container(
+      width: double.infinity,
+      height: 55,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border.all(color: Colors.white24),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 20, top: 0, bottom: 0,
+              child: Center(child: FaIcon(icon, color: Colors.white, size: 20)),
+            ),
+            Center(
+              child: Text(
+                text,
+                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -191,7 +248,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFF00E676)),
         ),
-        // Style for when the validator returns an error string
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Colors.redAccent, width: 2),
