@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'notifications_screen.dart';
+import 'settings_screen.dart';
+import 'rate_app_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -125,8 +128,14 @@ class ProfileScreen extends StatelessWidget {
                           _MenuItem(
                             icon: Icons.notifications_none,
                             title: "Notifications",
-                            onTap: () =>
-                                _toast(context, "Notifications tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationsScreen(),
+                                ),
+                              );
+                            },
                           ),
 
                           const _MenuDivider(),
@@ -134,15 +143,29 @@ class ProfileScreen extends StatelessWidget {
                           _MenuItem(
                             icon: Icons.settings_outlined,
                             title: "Settings",
-                            onTap: () => _toast(context, "Settings tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
+                            },
                           ),
 
                           const _MenuDivider(),
 
                           _MenuItem(
-                            icon: Icons.star_border,
+                            icon: Icons.star_outline,
                             title: "Rate App",
-                            onTap: () => _toast(context, "Rate App tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RateAppScreen(),
+                                ),
+                              );
+                            },
                           ),
 
                           const _MenuDivider(),
