@@ -1,0 +1,12 @@
+<!-- ─────────────────────────────────────────────────────────────── -->
+<!-- ADD THESE LINES inside <manifest> tag in                       -->
+<!-- android/app/src/main/AndroidManifest.xml                       -->
+<!-- BEFORE the <application> tag                                   -->
+<!-- ─────────────────────────────────────────────────────────────── -->
+
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.FLASHLIGHT" />
+<uses-feature android:name="android.hardware.camera" android:required="true" />
+
+<!-- Also update minSdkVersion in android/app/build.gradle:         -->
+<!-- minSdkVersion 21   (change from default 16 to 21)              -->
