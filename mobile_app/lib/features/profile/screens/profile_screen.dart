@@ -3,6 +3,7 @@ import '../../../shared/theme/app_colors.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'rate_app_screen.dart';
+import 'terms_conditions_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -72,18 +73,14 @@ class ProfileScreen extends StatelessWidget {
                             label: "PLANTS\nGROWING",
                           ),
                         ),
-
                         SizedBox(width: 12),
-
                         Expanded(
                           child: _StatCard(
                             value: "3",
                             label: "GARDENS\nMANAGED",
                           ),
                         ),
-
                         SizedBox(width: 12),
-
                         Expanded(
                           child: _StatCard(value: "15", label: "STREAK\nDAYS"),
                         ),
@@ -179,10 +176,18 @@ class ProfileScreen extends StatelessWidget {
 
                           const _MenuDivider(),
 
+                          // ✅ ADDED: Terms & Conditions
                           _MenuItem(
                             icon: Icons.description_outlined,
                             title: "Terms & Conditions",
-                            onTap: () => _toast(context, "Terms tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const TermsConditionsScreen(),
+                                ),
+                              );
+                            },
                           ),
 
                           const _MenuDivider(),
@@ -218,13 +223,11 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18),
-
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
-
       child: Column(
         children: [
           Text(
@@ -235,9 +238,7 @@ class _StatCard extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-
           const SizedBox(height: 6),
-
           Text(
             label,
             textAlign: TextAlign.center,
@@ -269,18 +270,13 @@ class _MenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-
       borderRadius: BorderRadius.circular(18),
-
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-
         child: Row(
           children: [
             Icon(icon, color: AppColors.accent),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Text(
                 title,
@@ -290,7 +286,6 @@ class _MenuItem extends StatelessWidget {
                 ),
               ),
             ),
-
             const Icon(Icons.chevron_right, color: AppColors.muted),
           ],
         ),

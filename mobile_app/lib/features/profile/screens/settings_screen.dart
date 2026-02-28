@@ -556,6 +556,9 @@ class _SheetDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(height: 1, color: AppColors.border.withOpacity(0.65));
+    return Container(
+      height: 1,
+      color: AppColors.border.withValues(alpha: 0.65),
+    );
   }
 }
