@@ -18,10 +18,10 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
   String _locationText = "Colombo, Sri Lanka";
 
   final List<Map<String, dynamic>> _spaceOptions = [
-    {'label': 'Indoor', 'image': 'assets/images/indoor.jpg'},
-    {'label': 'Balcony', 'image': 'assets/images/balcony.jpg'},
-    {'label': 'Rooftop', 'image': 'assets/images/rooftop.jpg'},
-    {'label': 'Outdoor', 'image': 'assets/images/outdoor.jpg'},
+    {'label': 'Indoor', 'image': 'assets/images/indoor.webp'},
+    {'label': 'Balcony', 'image': 'assets/images/balcony.webp'},
+    {'label': 'Rooftop', 'image': 'assets/images/rooftop.webp'},
+    {'label': 'Outdoor', 'image': 'assets/images/outdoor.webp'},
   ];
 
   @override
