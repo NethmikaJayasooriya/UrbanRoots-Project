@@ -1,33 +1,35 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'rate_app_screen.dart';
 import 'terms_conditions_screen.dart';
+import 'help_support_screen.dart';
+import 'subscriptions_billing_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  void _toast(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: Center(
+        child: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 30),
 
-                    // Profile image
+                    // 👤 Profile Avatar
                     Container(
                       width: 110,
                       height: 110,
@@ -37,34 +39,36 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       child: const Icon(
                         Icons.person,
-                        color: AppColors.muted,
                         size: 60,
+                        color: AppColors.muted,
                       ),
                     ),
 
                     const SizedBox(height: 18),
 
-                    // Name
                     const Text(
                       "Alex Rivers",
                       style: TextStyle(
                         color: AppColors.text,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
                       ),
-                      textAlign: TextAlign.center,
                     ),
 
                     const SizedBox(height: 6),
 
                     const Text(
                       "@alex_urbanroots",
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 22),
 
-                    // Stats row
+                    // 📊 Stats Row
                     Row(
                       children: const [
                         Expanded(
@@ -87,39 +91,37 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 26),
 
-                    // ACCOUNT title
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         "ACCOUNT",
                         style: TextStyle(
                           color: AppColors.muted,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
-                    // Menu card
+                    // 📦 Menu Card
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.card,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Column(
                         children: [
-                          // Sellers Hub
                           _MenuItem(
                             icon: Icons.storefront_outlined,
                             title: "Sellers Hub",
                             onTap: () {},
                           ),
-
                           const _MenuDivider(),
 
                           _MenuItem(
@@ -134,7 +136,6 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                           ),
-
                           const _MenuDivider(),
 
                           _MenuItem(
@@ -149,7 +150,6 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                           ),
-
                           const _MenuDivider(),
 
                           _MenuItem(
@@ -164,19 +164,23 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                           ),
-
                           const _MenuDivider(),
 
                           _MenuItem(
-                            icon: Icons.credit_card,
+                            icon: Icons.credit_card_outlined,
                             title: "Subscriptions & Billing",
-                            onTap: () =>
-                                _toast(context, "Subscriptions tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const SubscriptionsBillingScreen(),
+                                ),
+                              );
+                            },
                           ),
-
                           const _MenuDivider(),
 
-                          // ✅ ADDED: Terms & Conditions
                           _MenuItem(
                             icon: Icons.description_outlined,
                             title: "Terms & Conditions",
@@ -189,19 +193,25 @@ class ProfileScreen extends StatelessWidget {
                               );
                             },
                           ),
-
                           const _MenuDivider(),
 
                           _MenuItem(
                             icon: Icons.help_outline,
                             title: "Help & Support",
-                            onTap: () => _toast(context, "Help tapped"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const HelpSupportScreen(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -225,7 +235,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 18),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -234,7 +244,7 @@ class _StatCard extends StatelessWidget {
             value,
             style: const TextStyle(
               color: AppColors.accent,
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -270,23 +280,24 @@ class _MenuItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(22),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         child: Row(
           children: [
             Icon(icon, color: AppColors.accent),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
                 style: const TextStyle(
                   color: AppColors.text,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.muted),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
           ],
         ),
       ),
