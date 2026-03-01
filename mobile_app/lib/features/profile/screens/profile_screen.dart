@@ -7,6 +7,7 @@ import 'rate_app_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'help_support_screen.dart';
 import 'subscriptions_billing_screen.dart';
+import 'sellers_hub_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -120,7 +121,14 @@ class ProfileScreen extends StatelessWidget {
                           _MenuItem(
                             icon: Icons.storefront_outlined,
                             title: "Sellers Hub",
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SellersHubScreen(),
+                                ),
+                              );
+                            },
                           ),
                           const _MenuDivider(),
 
