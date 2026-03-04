@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'app_styles.dart';
+import 'scan_history_screen.dart'; 
 
 // ═══════════════════════════════════════════════
 // Flash Mode Enum
@@ -31,16 +32,16 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   FlashOption _flash = FlashOption.off;
 
   // ── Animations ─────────────────────────────
-  late AnimationController _pulseCtrl;   // shutter pulse
+  late AnimationController _pulseCtrl;
   late Animation<double>   _pulseAnim;
 
-  late AnimationController _rippleCtrl;  // capture ripple
+  late AnimationController _rippleCtrl;
   late Animation<double>   _rippleAnim;
 
-  late AnimationController _cornerCtrl;  // corner glow breathe
+  late AnimationController _cornerCtrl;
   late Animation<double>   _cornerAnim;
 
-  late AnimationController _flipCtrl;    // flip camera rotation
+  late AnimationController _flipCtrl;
   late Animation<double>   _flipAnim;
 
   // ── Flash helpers ──────────────────────────
@@ -71,26 +72,22 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   }
 
   void _initAnimations() {
-    // Shutter pulse
     _pulseCtrl = AnimationController(vsync: this, duration: AppDuration.pulse)
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.93, end: 1.0).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Capture ripple
     _rippleCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _rippleAnim = Tween<double>(begin: 1.0, end: 1.6).animate(
         CurvedAnimation(parent: _rippleCtrl, curve: Curves.easeOut));
 
-    // Corner glow breathe
     _cornerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1800))
       ..repeat(reverse: true);
     _cornerAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
         CurvedAnimation(parent: _cornerCtrl, curve: Curves.easeInOut));
 
-    // Flip rotation
     _flipCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 400));
     _flipAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -146,13 +143,9 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       _isFlipping  = true;
       _cameraReady = false;
     });
-
-    // Animate flip icon
     await _flipCtrl.forward(from: 0);
-
     _camIndex = (_camIndex + 1) % _cameras.length;
     await _initController(_camIndex);
-
     setState(() => _isFlipping = false);
   }
 
@@ -169,18 +162,35 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     });
   }
 
+  // ── Save to history ────────────────────────
+  //  Single reusable helper — called by both camera and gallery
+  Future<void> _saveToHistory(String imagePath) async {
+    await ScanHistoryService.saveScan(ScanRecord(
+      id:          DateTime.now().millisecondsSinceEpoch.toString(),
+      imagePath:   imagePath,
+      diseaseName: 'Leaf Curl Disease', // TODO: replace with real AI result
+      confidence:  0.98,                // TODO: replace with real AI result
+      severity:    'High',              // TODO: replace with real AI result
+      scannedAt:   DateTime.now(),
+      isHealthy:   false,               // TODO: replace with real AI result
+    ));
+  }
+
   // ── Gallery picker ─────────────────────────
   Future<void> _pickFromGallery() async {
     try {
-      final picker = ImagePicker();
-      final XFile? picked =
-          await picker.pickImage(source: ImageSource.gallery, imageQuality: 90);
+      final picker  = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+          source: ImageSource.gallery, imageQuality: 90);
       if (picked == null || !mounted) return;
 
       setState(() => _analyzing = true);
 
-      // ── Replace with your real AI API call ──
+      // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
+
+      //  Save to history using picked.path
+      await _saveToHistory(picked.path);
 
       if (!mounted) return;
       Navigator.push(
@@ -198,7 +208,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   Future<void> _capture() async {
     if (!_cameraReady || _camController == null || _analyzing) return;
 
-    // Ripple animation feedback
     _rippleCtrl.forward(from: 0);
     setState(() => _analyzing = true);
 
@@ -209,12 +218,15 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       await _camController!.setFlashMode(FlashMode.off);
       setState(() => _flash = FlashOption.off);
 
-      // ── Replace with your real AI API call ──
+      // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
 
+      //  Save to history using photo.path
+      await _saveToHistory(photo.path);
+
       if (!mounted) return;
-      Navigator.push(context,
-          _slideRoute(DiseaseResultScreen(imagePath: photo.path)));
+      Navigator.push(
+          context, _slideRoute(DiseaseResultScreen(imagePath: photo.path)));
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
@@ -222,10 +234,10 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     }
   }
 
-  // ── Slide up route transition ──────────────
+  // ── Slide up route ─────────────────────────
   Route _slideRoute(Widget page) {
     return PageRouteBuilder(
-      pageBuilder:       (_, __, ___) => page,
+      pageBuilder:        (_, __, ___) => page,
       transitionDuration: const Duration(milliseconds: 420),
       transitionsBuilder: (_, a, __, child) => SlideTransition(
         position: Tween<Offset>(
@@ -244,34 +256,23 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Layer 1 — Camera preview
           _buildCameraPreview(),
-
-          // Layer 2 — Vignette
           _buildVignette(),
-
-          // Layer 3 — Top & bottom gradients
-          Positioned(top: 0, left: 0, right: 0, height: 160,
+          Positioned(
+              top: 0, left: 0, right: 0, height: 160,
               child: Container(decoration: AppStyles.topGradient)),
-          Positioned(bottom: 0, left: 0, right: 0, height: 210,
+          Positioned(
+              bottom: 0, left: 0, right: 0, height: 210,
               child: Container(decoration: AppStyles.bottomGradient)),
-
-          // Layer 4 — Top bar
           _buildTopBar(),
-
-          // Layer 5 — Center scan frame
           _buildScanFrame(),
-
-          // Layer 6 — Bottom controls
           _buildBottomBar(),
         ],
       ),
     );
   }
 
-  // ───────────────────────────────────────────
-  // Camera Preview
-  // ───────────────────────────────────────────
+  // ── Camera Preview ─────────────────────────
   Widget _buildCameraPreview() {
     if (!_cameraReady || _camController == null) {
       return Container(
@@ -292,7 +293,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
         ),
       );
     }
-
     return AnimatedOpacity(
       opacity:  _cameraReady ? 1.0 : 0.0,
       duration: AppDuration.normal,
@@ -309,9 +309,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ───────────────────────────────────────────
-  // Vignette
-  // ───────────────────────────────────────────
+  // ── Vignette ───────────────────────────────
   Widget _buildVignette() {
     return Container(
       decoration: BoxDecoration(
@@ -324,19 +322,14 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ───────────────────────────────────────────
-  // Top Bar
-  // ───────────────────────────────────────────
+  // ── Top Bar ────────────────────────────────
   Widget _buildTopBar() {
-    // MediaQuery gives us the real status bar height per device
     final statusBarHeight = MediaQuery.of(context).padding.top;
     return Positioned(
-      top:   0,
-      left:  0,
-      right: 0,
+      top: 0, left: 0, right: 0,
       child: Container(
         padding: EdgeInsets.only(
-          top:    statusBarHeight + 8, // sit just below status bar
+          top:    statusBarHeight + 8,
           left:   14,
           right:  14,
           bottom: 8,
@@ -344,18 +337,15 @@ class _LeafScanScreenState extends State<LeafScanScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Back button
             _iconBtn(
               icon:  Icons.arrow_back_ios_new_rounded,
               onTap: () => Navigator.maybePop(context),
             ),
-
-            // Title pill
             Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.overlay(0.5),
+                color:        AppColors.overlay(0.5),
                 borderRadius: AppRadius.pillBR,
                 border: Border.all(
                     color: Colors.white.withOpacity(0.1), width: 1),
@@ -370,8 +360,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                 ],
               ),
             ),
-
-            // Flash button
             GestureDetector(
               onTap: _cycleFlash,
               child: AnimatedContainer(
@@ -389,14 +377,12 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                   children: [
                     Icon(_flashIcon, color: _flashColor, size: 17),
                     const SizedBox(width: 5),
-                    Text(
-                      _flashLabel,
-                      style: TextStyle(
-                        color:      _flashColor,
-                        fontSize:   12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                    Text(_flashLabel,
+                        style: TextStyle(
+                          color:      _flashColor,
+                          fontSize:   12,
+                          fontWeight: FontWeight.w700,
+                        )),
                   ],
                 ),
               ),
@@ -407,23 +393,18 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ───────────────────────────────────────────
-  // Scan Frame  ← main improvement
-  // ───────────────────────────────────────────
+  // ── Scan Frame ─────────────────────────────
   Widget _buildScanFrame() {
     const frameSize = 270.0;
-
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width:  frameSize,
-            height: frameSize,
+            width: frameSize, height: frameSize,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // ── Semi-transparent inner fill ──
                 Positioned.fill(
                   child: Container(
                     decoration: BoxDecoration(
@@ -432,21 +413,16 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                     ),
                   ),
                 ),
-
-                // ── Animated corner accents ──────
                 AnimatedBuilder(
                   animation: _cornerAnim,
-                  builder: (_, __) => Stack(
-                    children: [
-                      _corner(top: -1,    left: -1,  opacity: _cornerAnim.value),
-                      _corner(top: -1,    right: -1, opacity: _cornerAnim.value),
-                      _corner(bottom: -1, left: -1,  opacity: _cornerAnim.value),
-                      _corner(bottom: -1, right: -1, opacity: _cornerAnim.value),
-                    ],
-                  ),
+                  builder: (_, __) => Stack(children: [
+                    _corner(top: -1,    left: -1,  opacity: _cornerAnim.value),
+                    _corner(top: -1,    right: -1, opacity: _cornerAnim.value),
+                    _corner(bottom: -1, left: -1,  opacity: _cornerAnim.value),
+                    _corner(bottom: -1, right: -1, opacity: _cornerAnim.value),
+                  ]),
                 ),
-
-                // ── Ripple ring on capture ───────
+                // Ripple 1
                 AnimatedBuilder(
                   animation: _rippleAnim,
                   builder: (_, __) {
@@ -469,8 +445,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                     );
                   },
                 ),
-
-                // ── Second ripple ring (delayed) ─
+                // Ripple 2
                 AnimatedBuilder(
                   animation: _rippleAnim,
                   builder: (_, __) {
@@ -495,11 +470,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                     );
                   },
                 ),
-
-                // ── Scan line (while analyzing) ──
                 if (_analyzing) _ScanLine(frameSize: frameSize),
-
-                // ── Center crosshair ─────────────
                 if (!_analyzing)
                   Center(
                     child: Container(
@@ -525,10 +496,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
               ],
             ),
           ),
-
           const SizedBox(height: 22),
-
-          // ── Status pill ──────────────────────
           AnimatedSwitcher(
             duration: AppDuration.fast,
             transitionBuilder: (child, anim) => FadeTransition(
@@ -542,16 +510,16 @@ class _LeafScanScreenState extends State<LeafScanScreen>
             ),
             child: _analyzing
                 ? _statusPill(
-                    key:   const ValueKey('analyzing'),
-                    icon:  null,
-                    text:  'Analyzing Tissue...',
-                    color: AppColors.neonGreen,
+                    key:         const ValueKey('analyzing'),
+                    icon:        null,
+                    text:        'Analyzing Tissue...',
+                    color:       AppColors.neonGreen,
                     showSpinner: true,
                   )
                 : _statusPill(
-                    key:  const ValueKey('hint'),
-                    icon: Icons.center_focus_strong_rounded,
-                    text: 'Center the leaf in the frame',
+                    key:   const ValueKey('hint'),
+                    icon:  Icons.center_focus_strong_rounded,
+                    text:  'Center the leaf in the frame',
                     color: Colors.white.withOpacity(0.6),
                   ),
           ),
@@ -560,9 +528,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ───────────────────────────────────────────
-  // Bottom Bar
-  // ───────────────────────────────────────────
+  // ── Bottom Bar ─────────────────────────────
   Widget _buildBottomBar() {
     return Align(
       alignment: Alignment.bottomCenter,
@@ -572,50 +538,40 @@ class _LeafScanScreenState extends State<LeafScanScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Tips row
               if (!_analyzing)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _tipChip(Icons.wb_sunny_outlined,           'Good light'),
+                      _tipChip(Icons.wb_sunny_outlined,          'Good light'),
                       const SizedBox(width: 8),
-                      _tipChip(Icons.straighten_rounded,          '10–15 cm'),
+                      _tipChip(Icons.straighten_rounded,         '10–15 cm'),
                       const SizedBox(width: 8),
-                      _tipChip(Icons.motion_photos_off_outlined,  'Hold still'),
+                      _tipChip(Icons.motion_photos_off_outlined, 'Hold still'),
                     ],
                   ),
                 ),
-
-              // Controls row
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment:  MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Gallery button
                   _labeledIconBtn(
                     icon:    Icons.photo_library_rounded,
                     label:   'Gallery',
                     onTap:   _analyzing ? null : _pickFromGallery,
                     enabled: !_analyzing,
                   ),
-
                   const SizedBox(width: 32),
-
-                  // Shutter
                   _buildShutterButton(),
-
                   const SizedBox(width: 32),
-
-                  // Flip camera button
                   _labeledIconBtn(
-                    icon:    Icons.flip_camera_ios_rounded,
-                    label:   'Flip',
-                    onTap:   (_analyzing || _isFlipping || _cameras.length < 2)
+                    icon:       Icons.flip_camera_ios_rounded,
+                    label:      'Flip',
+                    onTap:      (_analyzing || _isFlipping || _cameras.length < 2)
                         ? null
                         : _flipCamera,
-                    enabled: !_analyzing && !_isFlipping &&
+                    enabled:    !_analyzing && !_isFlipping &&
                         _cameras.length >= 2,
                     rotateAnim: _flipAnim,
                   ),
@@ -645,9 +601,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                 child: SizedBox(
                   width: 28, height: 28,
                   child: CircularProgressIndicator(
-                    color:       AppColors.neonGreen,
-                    strokeWidth: 2.5,
-                  ),
+                      color: AppColors.neonGreen, strokeWidth: 2.5),
                 ),
               ),
             )
@@ -660,8 +614,8 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                   border: Border.all(color: AppColors.neonGreen, width: 3),
                   boxShadow: [
                     BoxShadow(
-                      color:       AppColors.neonGreen.withOpacity(0.3),
-                      blurRadius:  22,
+                      color:        AppColors.neonGreen.withOpacity(0.3),
+                      blurRadius:   22,
                       spreadRadius: 2,
                     ),
                   ],
@@ -673,11 +627,8 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                       shape: BoxShape.circle,
                       color: AppColors.neonGreen,
                     ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      color: Colors.black,
-                      size: 28,
-                    ),
+                    child: const Icon(Icons.camera_alt_rounded,
+                        color: Colors.black, size: 28),
                   ),
                 ),
               ),
@@ -687,7 +638,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 
   // ── Helpers ────────────────────────────────
   Widget _iconBtn({
-    required IconData icon,
+    required IconData     icon,
     required VoidCallback onTap,
     double size = 46,
   }) {
@@ -702,14 +653,14 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   }
 
   Widget _labeledIconBtn({
-    required IconData       icon,
-    required String         label,
-    required VoidCallback?  onTap,
-    required bool           enabled,
-    Animation<double>?      rotateAnim,
+    required IconData      icon,
+    required String        label,
+    required VoidCallback? onTap,
+    required bool          enabled,
+    Animation<double>?     rotateAnim,
     double size = 52,
   }) {
-    final btn = GestureDetector(
+    return GestureDetector(
       onTap: onTap,
       child: AnimatedOpacity(
         opacity:  enabled ? 1.0 : 0.35,
@@ -738,14 +689,10 @@ class _LeafScanScreenState extends State<LeafScanScreen>
         ),
       ),
     );
-    return btn;
   }
 
   Widget _corner({
-    double? top,
-    double? bottom,
-    double? left,
-    double? right,
+    double? top, double? bottom, double? left, double? right,
     double opacity = 1.0,
   }) {
     return Positioned(
@@ -783,8 +730,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       decoration: BoxDecoration(
         color:        AppColors.overlay(0.55),
         borderRadius: AppRadius.pillBR,
-        border: Border.all(
-            color: color.withOpacity(0.35), width: 1),
+        border: Border.all(color: color.withOpacity(0.35), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -792,8 +738,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
           if (showSpinner)
             SizedBox(
               width: 13, height: 13,
-              child: CircularProgressIndicator(
-                  color: color, strokeWidth: 2),
+              child: CircularProgressIndicator(color: color, strokeWidth: 2),
             )
           else if (icon != null)
             Icon(icon, color: color, size: 15),
@@ -826,7 +771,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 }
 
 // ═══════════════════════════════════════════════
-// Animated Scan Line
+// Scan Line Animation
 // ═══════════════════════════════════════════════
 class _ScanLine extends StatefulWidget {
   final double frameSize;
@@ -846,8 +791,7 @@ class _ScanLineState extends State<_ScanLine>
     super.initState();
     _ctrl = AnimationController(vsync: this, duration: AppDuration.scan)
       ..repeat(reverse: true);
-    _anim =
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
   @override
@@ -930,7 +874,7 @@ class _CornerPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════
-// SCREEN 2 — Disease Result Screen (unchanged)
+// SCREEN 2 — Disease Result Screen
 // ═══════════════════════════════════════════════
 class DiseaseResultScreen extends StatefulWidget {
   final String imagePath;
@@ -967,16 +911,18 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(File(widget.imagePath),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Container(color: AppColors.bgColor)),
+          Image.file(
+            File(widget.imagePath),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                Container(color: AppColors.bgColor),
+          ),
           Container(color: AppColors.overlay(0.35)),
-
-          Positioned(top: 0, left: 0, right: 0, height: 150,
+          Positioned(
+              top: 0, left: 0, right: 0, height: 150,
               child: Container(decoration: AppStyles.topGradient)),
 
-          // Back + title
+          // Back + title bar
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(
@@ -1039,23 +985,20 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: AppStyles.dangerBadge,
                       child: const Text('⚠  Disease Detected',
                           style: TextStyle(
-                            color: AppColors.danger,
-                            fontSize: 11,
+                            color:      AppColors.danger,
+                            fontSize:   11,
                             fontWeight: FontWeight.w700,
                           )),
                     ),
                     const SizedBox(height: 10),
-
                     Text('Leaf Curl Disease', style: AppText.heading),
                     const SizedBox(height: 18),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1078,22 +1021,17 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-
                     Divider(color: Colors.white.withOpacity(0.07)),
                     const SizedBox(height: AppSpacing.lg),
-
                     Text('Recommended Treatment Plan',
                         style: AppText.subheading),
                     const SizedBox(height: 12),
-
                     ...[
                       'Isolate the plant to prevent spread',
                       'Remove and destroy all affected leaves',
                       'Apply organic neem oil solution weekly',
                     ].asMap().entries.map((e) => _checkItem(e.key, e.value)),
-
                     const SizedBox(height: AppSpacing.lg),
-
                     Container(
                       padding: AppSpacing.cardPadding,
                       decoration: AppStyles.card,
@@ -1127,8 +1065,8 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                               decoration: AppStyles.viewButton,
                               child: Text('View',
                                   style: TextStyle(
-                                    color: AppColors.neonGreen,
-                                    fontSize: 12,
+                                    color:      AppColors.neonGreen,
+                                    fontSize:   12,
                                     fontWeight: FontWeight.w700,
                                   )),
                             ),
@@ -1137,7 +1075,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-
                     Row(
                       children: [
                         Expanded(
@@ -1147,12 +1084,13 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                                 size: 18, color: AppColors.neonGreen),
                             label: Text('Scan Again',
                                 style: TextStyle(
-                                    color: AppColors.neonGreen,
+                                    color:      AppColors.neonGreen,
                                     fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               padding: AppSpacing.buttonPadding,
                               side: BorderSide(
-                                  color: AppColors.neonGreen.withOpacity(0.4)),
+                                  color:
+                                      AppColors.neonGreen.withOpacity(0.4)),
                               shape: RoundedRectangleBorder(
                                   borderRadius: AppRadius.xxlBR),
                             ),

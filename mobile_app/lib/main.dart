@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'leaf_disease_screen.dart'; // 👈 ADD THIS IMPORT
+import 'leaf_disease_screen.dart';
+import 'scan_history_screen.dart';
 
 void main() {
   runApp(const UrbanRootsApp());
@@ -85,13 +86,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Text(_serverMessage, textAlign: TextAlign.center),
             ),
             const SizedBox(height: 20),
+
+            // Test connection button
             ElevatedButton(
               onPressed: fetchBackendData,
               child: const Text("Test Connection"),
             ),
             const SizedBox(height: 12),
 
-            // 👇 ADD THIS BUTTON — Opens the Leaf Disease Scanner
+            // Scan Leaf button
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
@@ -106,8 +109,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 14),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Scan History button
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ScanHistoryScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.history_rounded),
+              label: const Text("Scan History"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade800,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 14),
               ),
             ),
           ],
