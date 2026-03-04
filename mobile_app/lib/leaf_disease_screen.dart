@@ -126,10 +126,15 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       );
       await ctrl.initialize();
       if (!mounted) return;
+
+      //  Always force flash OFF when camera starts or flips
+      await ctrl.setFlashMode(FlashMode.off);
+
       await _camController?.dispose();
       setState(() {
         _camController = ctrl;
         _cameraReady   = true;
+        _flash         = FlashOption.off; // Reset UI flash state too
       });
     } catch (e) {
       debugPrint('Camera init error: $e');
@@ -150,20 +155,20 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   }
 
   // ── Flash cycle ────────────────────────────
+  // Flash only fires DURING photo capture — never stays on continuously
   Future<void> _cycleFlash() async {
     if (_camController == null || !_cameraReady) return;
     final next =
         FlashOption.values[(_flash.index + 1) % FlashOption.values.length];
     setState(() => _flash = next);
-    await _camController!.setFlashMode(switch (next) {
-      FlashOption.off  => FlashMode.off,
-      FlashOption.on   => FlashMode.torch,
-      FlashOption.auto => FlashMode.auto,
-    });
+
+    // Always keep hardware flash OFF between shots
+    // The correct flash mode is applied only at capture time
+    await _camController!.setFlashMode(FlashMode.off);
   }
 
   // ── Save to history ────────────────────────
-  //  Single reusable helper — called by both camera and gallery
+  // Single reusable helper — called by both camera and gallery
   Future<void> _saveToHistory(String imagePath) async {
     await ScanHistoryService.saveScan(ScanRecord(
       id:          DateTime.now().millisecondsSinceEpoch.toString(),
@@ -189,7 +194,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
 
-      //  Save to history using picked.path
+      // Save to history using picked.path
       await _saveToHistory(picked.path);
 
       if (!mounted) return;
@@ -211,17 +216,29 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     _rippleCtrl.forward(from: 0);
     setState(() => _analyzing = true);
 
+    XFile? photo;
     try {
-      final XFile photo = await _camController!.takePicture();
+      // Manually control flash:
+      // Turn torch ON right before capture (if On or Auto mode)
+      if (_flash == FlashOption.on) {
+        await _camController!.setFlashMode(FlashMode.torch);
+      } else if (_flash == FlashOption.auto) {
+        await _camController!.setFlashMode(FlashMode.torch);
+      }
+      // Small delay so torch is fully on before shutter
+      if (_flash != FlashOption.off) {
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
 
-      // Turn flash off after capture
+      photo = await _camController!.takePicture();
+
+      // Turn flash OFF immediately after shutter — no delay
       await _camController!.setFlashMode(FlashMode.off);
-      setState(() => _flash = FlashOption.off);
 
       // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
 
-      //  Save to history using photo.path
+      // Save to history using photo.path
       await _saveToHistory(photo.path);
 
       if (!mounted) return;
@@ -230,6 +247,10 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
+      //  Safety net — force flash OFF even if anything above failed
+      try {
+        await _camController?.setFlashMode(FlashMode.off);
+      } catch (_) {}
       if (mounted) setState(() => _analyzing = false);
     }
   }
