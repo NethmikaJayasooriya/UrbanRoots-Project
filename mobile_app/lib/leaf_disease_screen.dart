@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'app_styles.dart';
-import 'scan_history_screen.dart'; 
+import 'scan_history_screen.dart'; // TOP OF FILE — correct position
 
 // ═══════════════════════════════════════════════
 // Flash Mode Enum
@@ -28,7 +28,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   int  _camIndex    = 0;
   bool _cameraReady = false;
   bool _analyzing   = false;
-  bool _isFlipping  = false;
+  bool _torchOn     = false; // manual torch for lighting up the leaf
   FlashOption _flash = FlashOption.off;
 
   // ── Animations ─────────────────────────────
@@ -41,8 +41,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   late AnimationController _cornerCtrl;
   late Animation<double>   _cornerAnim;
 
-  late AnimationController _flipCtrl;
-  late Animation<double>   _flipAnim;
 
   // ── Flash helpers ──────────────────────────
   IconData get _flashIcon => switch (_flash) {
@@ -88,10 +86,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     _cornerAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
         CurvedAnimation(parent: _cornerCtrl, curve: Curves.easeInOut));
 
-    _flipCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _flipAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _flipCtrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -99,7 +93,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     _pulseCtrl.dispose();
     _rippleCtrl.dispose();
     _cornerCtrl.dispose();
-    _flipCtrl.dispose();
     _camController?.setFlashMode(FlashMode.off);
     _camController?.dispose();
     super.dispose();
@@ -127,7 +120,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       await ctrl.initialize();
       if (!mounted) return;
 
-      //  Always force flash OFF when camera starts or flips
+      // FIX 1: Always force flash OFF when camera starts or flips
       await ctrl.setFlashMode(FlashMode.off);
 
       await _camController?.dispose();
@@ -135,23 +128,11 @@ class _LeafScanScreenState extends State<LeafScanScreen>
         _camController = ctrl;
         _cameraReady   = true;
         _flash         = FlashOption.off; // Reset UI flash state too
+        _torchOn       = false;           // Reset torch state too
       });
     } catch (e) {
       debugPrint('Camera init error: $e');
     }
-  }
-
-  // ── Flip camera ────────────────────────────
-  Future<void> _flipCamera() async {
-    if (_cameras.length < 2 || _isFlipping) return;
-    setState(() {
-      _isFlipping  = true;
-      _cameraReady = false;
-    });
-    await _flipCtrl.forward(from: 0);
-    _camIndex = (_camIndex + 1) % _cameras.length;
-    await _initController(_camIndex);
-    setState(() => _isFlipping = false);
   }
 
   // ── Flash cycle ────────────────────────────
@@ -165,6 +146,15 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     // Always keep hardware flash OFF between shots
     // The correct flash mode is applied only at capture time
     await _camController!.setFlashMode(FlashMode.off);
+  }
+
+  // ── Torch toggle (manual light for dark areas) ───
+  Future<void> _toggleTorch() async {
+    if (_camController == null || !_cameraReady) return;
+    final next = !_torchOn;
+    await _camController!.setFlashMode(
+        next ? FlashMode.torch : FlashMode.off);
+    setState(() => _torchOn = next);
   }
 
   // ── Save to history ────────────────────────
@@ -247,11 +237,14 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
-      //  Safety net — force flash OFF even if anything above failed
+      // Safety net — force flash OFF even if anything above failed
       try {
         await _camController?.setFlashMode(FlashMode.off);
       } catch (_) {}
-      if (mounted) setState(() => _analyzing = false);
+      if (mounted) setState(() {
+        _analyzing = false;
+        _torchOn   = false; // ✅ reset torch UI state too
+      });
     }
   }
 
@@ -587,14 +580,12 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                   _buildShutterButton(),
                   const SizedBox(width: 32),
                   _labeledIconBtn(
-                    icon:       Icons.flip_camera_ios_rounded,
-                    label:      'Flip',
-                    onTap:      (_analyzing || _isFlipping || _cameras.length < 2)
-                        ? null
-                        : _flipCamera,
-                    enabled:    !_analyzing && !_isFlipping &&
-                        _cameras.length >= 2,
-                    rotateAnim: _flipAnim,
+                    icon:    _torchOn
+                        ? Icons.flashlight_on_rounded
+                        : Icons.flashlight_off_rounded,
+                    label:   'Light',
+                    onTap:   _analyzing ? null : _toggleTorch,
+                    enabled: !_analyzing,
                   ),
                 ],
               ),
@@ -943,14 +934,32 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
               top: 0, left: 0, right: 0, height: 150,
               child: Container(decoration: AppStyles.topGradient)),
 
-          // Back + title bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 8),
+          // Fixed top bar — always pinned to top using Positioned + MediaQuery
+          Positioned(
+            top:   0,
+            left:  0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.only(
+                top:    MediaQuery.of(context).padding.top + 8,
+                left:   14,
+                right:  14,
+                bottom: 10,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end:   Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.6),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -960,15 +969,29 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                           color: Colors.white, size: 18),
                     ),
                   ),
+
+                  // Title — always visible at top
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppColors.overlay(0.5),
+                      color:        AppColors.overlay(0.5),
                       borderRadius: AppRadius.pillBR,
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.1), width: 1),
                     ),
-                    child: Text('Scan Result', style: AppText.title),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.eco_rounded,
+                            color: AppColors.neonGreen, size: 14),
+                        const SizedBox(width: 6),
+                        Text('Scan Result', style: AppText.title),
+                      ],
+                    ),
                   ),
+
+                  // Share button
                   GestureDetector(
                     onTap: () {},
                     child: Container(
