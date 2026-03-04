@@ -1,7 +1,12 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'app_styles.dart';
 import 'scan_history_screen.dart'; // TOP OF FILE — correct position
 
@@ -243,7 +248,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       } catch (_) {}
       if (mounted) setState(() {
         _analyzing = false;
-        _torchOn   = false; // ✅ reset torch UI state too
+        _torchOn   = false; // reset torch UI state too
       });
     }
   }
@@ -898,7 +903,8 @@ class DiseaseResultScreen extends StatefulWidget {
 
 class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     with SingleTickerProviderStateMixin {
-  final List<bool> _checked = [false, false, false];
+  final List<bool> _checked  = [false, false, false];
+  final GlobalKey  _resultKey = GlobalKey(); // for screenshot capture
   late AnimationController _barCtrl;
   late Animation<double>   _barAnim;
 
@@ -914,6 +920,175 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
   void dispose() {
     _barCtrl.dispose();
     super.dispose();
+  }
+
+  // ── Share popup ───────────────────────────
+  void _showShareOptions() {
+    showModalBottomSheet(
+      context:       context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+        decoration: BoxDecoration(
+          color:        AppColors.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+              color: AppColors.neonGreen.withOpacity(0.2), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color:        Colors.white.withOpacity(0.2),
+                  borderRadius: AppRadius.pillBR,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text('Share Scan Result', style: AppText.subheading),
+            const SizedBox(height: 6),
+            Text('Choose how to share your result',
+                style: AppText.caption),
+            const SizedBox(height: 20),
+
+            // Share as text
+            _shareOptionTile(
+              icon:     Icons.text_fields_rounded,
+              color:    AppColors.neonGreen,
+              title:    'Share as Text',
+              subtitle: 'Send via WhatsApp, SMS, Email...',
+              onTap: () {
+                Navigator.pop(context);
+                _shareAsText();
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Share as image
+            _shareOptionTile(
+              icon:     Icons.image_rounded,
+              color:    const Color(0xFF69B4FF),
+              title:    'Share as Image',
+              subtitle: 'Capture result card and share',
+              onTap: () {
+                Navigator.pop(context);
+                _shareAsImage();
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Cancel
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel',
+                    style: TextStyle(color: Colors.white38)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Share option tile ──────────────────────
+  Widget _shareOptionTile({
+    required IconData     icon,
+    required Color        color,
+    required String       title,
+    required String       subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: AppSpacing.cardPadding,
+        decoration: AppStyles.card,
+        child: Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                color:        color.withOpacity(0.12),
+                borderRadius: AppRadius.smBR,
+                border: Border.all(color: color.withOpacity(0.3)),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,   style: AppText.subheading.copyWith(fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: AppText.caption),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: Colors.white24, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Share as text ──────────────────────────
+  void _shareAsText() {
+    const text = '''
+🌿 UrbanRoots — Scan Result
+
+🦠 Disease: Leaf Curl Disease
+📊 Confidence: 98%
+⚠️ Severity: High
+
+💊 Treatment Plan:
+  1. Isolate the plant to prevent spread
+  2. Remove and destroy all affected leaves
+  3. Apply organic neem oil solution weekly
+
+🛒 Recommended Remedy: Organic Neem Oil
+
+Scanned with UrbanRoots 🌱
+''';
+    Share.share(text.trim(), subject: 'Leaf Scan Result — Leaf Curl Disease');
+  }
+
+  // ── Share as image (screenshot) ───────────
+  Future<void> _shareAsImage() async {
+    try {
+      // Capture the result panel as image
+      final boundary = _resultKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      final bytes = byteData.buffer.asUint8List();
+
+      // Save to temp file
+      final dir  = await getTemporaryDirectory();
+      final file = File('${dir.path}/scan_result.png');
+      await file.writeAsBytes(bytes);
+
+      // Share the image file
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text:    'My leaf scan result from UrbanRoots 🌿',
+        subject: 'Leaf Scan Result',
+      );
+    } catch (e) {
+      debugPrint('Share image error: \$e');
+    }
   }
 
   @override
@@ -991,9 +1166,9 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                     ),
                   ),
 
-                  // Share button
+                  // Share button  now functional
                   GestureDetector(
-                    onTap: () {},
+                    onTap: _showShareOptions,
                     child: Container(
                       width: 42, height: 42,
                       decoration: AppStyles.iconCircle,
@@ -1013,7 +1188,9 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
             maxChildSize:     0.94,
             builder: (_, sc) => Container(
               decoration: AppStyles.bottomSheet,
-              child: SingleChildScrollView(
+              child: RepaintBoundary(
+                key: _resultKey,
+                child: SingleChildScrollView(
                 controller: sc,
                 padding: AppSpacing.screenPadding,
                 child: Column(
@@ -1164,6 +1341,7 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                   ],
                 ),
               ),
+              ),  // RepaintBoundary
             ),
           ),
         ],

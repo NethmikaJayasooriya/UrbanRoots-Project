@@ -15,7 +15,7 @@ class UrbanRootsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'UrbanRoots',
-      debugShowCheckedModeBanner: false, // removes the debug banner
+      debugShowCheckedModeBanner: false, 
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
