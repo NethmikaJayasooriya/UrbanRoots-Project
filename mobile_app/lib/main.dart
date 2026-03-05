@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import "package:firebase_core/firebase_core.dart";
+import 'firebase_options.dart';
 // Auth Screens
 import 'package:splashscreen/screens/auth/splash_screen.dart';
 import 'package:splashscreen/screens/auth/welcome_screen.dart';
@@ -8,7 +10,12 @@ import 'package:splashscreen/screens/auth/forgot_password_screen.dart';
 import 'package:splashscreen/screens/auth/setup_profile_screen.dart';
 
 
-void main() {
+void main()async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -33,9 +40,9 @@ class MyApp extends StatelessWidget {
         '/': (context) => const SplashScreen(),
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
-        // '/sign_up': (context) => const SignUpScreen(),
-        // '/forgot_password': (context) => const ForgotPasswordScreen(),
-        // '/setup_profile': (context) => const SetupProfileScreen(),
+         '/sign_up': (context) => const SignUpScreen(),
+         '/forgot_password': (context) => const ForgotPasswordScreen(),
+         '/setup_profile': (context) => const SetupProfileScreen(),
       },
     );
   }

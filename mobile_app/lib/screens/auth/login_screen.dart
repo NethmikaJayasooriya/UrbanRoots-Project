@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:splashscreen/screens/auth/setup_profile_screen.dart';
+import 'package:splashscreen/services/auth_service.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -17,14 +20,64 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
+  bool _isGoogleLoading = false;
 
-  void _handleLogin() {
-    // Check if inputs are valid before proceeding
-    if (_formKey.currentState!.validate()) {
-      // Logic to go to the main dashboard
-      Navigator.pushReplacementNamed(context, '/garden_basics'); 
+  /// Handles Google Sign-In via AuthService
+  void _handleGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final userCredential = await AuthService.signInWithGoogle();
+      if (userCredential == null) {
+        // User cancelled the Google sign-in
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+      print("Google sign-in user: ${userCredential.user?.email}");
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+      );
+    } catch (e) {
+      print("Google sign-in error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Google sign-in failed. Please try again.")),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
+
+  // UPDATED _handleLogin TO USE FIREBASE AUTH
+  void _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      try {
+        final userCredential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+
+        print("Logged in user: ${userCredential.user?.email}");
+
+        // Navigate to next screen after successful login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+        );
+      } on FirebaseAuthException catch (e) {
+        print("Firebase Auth Error: ${e.code} - ${e.message}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.message}")),
+        );
+      } catch (e) {
+        print("Unknown error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Something went wrong.")),
+        );
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -131,9 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 _buildDivider(),
                 const SizedBox(height: 30),
 
-                _buildSocialButton("Continue with Google", FontAwesomeIcons.google),
+                _buildSocialButton("Continue with Google", FontAwesomeIcons.google, onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
                 const SizedBox(height: 15),
-                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF),
+                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF, onTap: () {}),
 
                 const SizedBox(height: 40),
                 Center(
@@ -225,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton(String text, IconData icon) {
+  Widget _buildSocialButton(String text, IconData icon, {VoidCallback? onTap, bool isLoading = false}) {
     return Container(
       width: double.infinity,
       height: 55,
@@ -235,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
-        onTap: () {},
+        onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
@@ -244,10 +297,19 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Center(child: FaIcon(icon, color: Colors.white, size: 20)),
             ),
             Center(
-              child: Text(
-                text,
-                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      text,
+                      style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
             ),
           ],
         ),

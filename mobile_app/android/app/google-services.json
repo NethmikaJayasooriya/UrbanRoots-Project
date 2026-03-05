@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "459040907750",
+    "firebase_url": "https://signup-page-urbanroots-default-rtdb.firebaseio.com",
+    "project_id": "signup-page-urbanroots",
+    "storage_bucket": "signup-page-urbanroots.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459040907750:android:5864ce949b4eb7bedab627",
+        "android_client_info": {
+          "package_name": "com.example.mobile_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNlruXK8t3AZuqlmdQxdSQdxORkNIQ-qc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "459040907750-41mtpf1ueos76udevd464gr8dvk8mh5d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.mobileApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
