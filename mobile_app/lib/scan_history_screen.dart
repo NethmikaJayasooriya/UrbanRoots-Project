@@ -115,9 +115,14 @@ class ScanHistoryScreen extends StatefulWidget {
 
 class _ScanHistoryScreenState extends State<ScanHistoryScreen>
     with SingleTickerProviderStateMixin {
-  List<ScanRecord> _history   = [];
-  bool             _isLoading = true;
-  String           _filter    = 'All'; // All | Disease | Healthy
+  List<ScanRecord> _history    = [];
+  bool             _isLoading  = true;
+  String           _filter     = 'All';   // All | Disease | Healthy
+  String           _searchQuery = '';     // search text
+  String           _sortBy      = 'Date'; // Date | Severity | Confidence
+  bool             _searchActive = false; // show/hide search bar
+
+  final TextEditingController _searchCtrl = TextEditingController();
 
   late AnimationController _fadeCtrl;
   late Animation<double>   _fadeAnim;
@@ -136,6 +141,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
   @override
   void dispose() {
     _fadeCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -149,13 +155,37 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
     });
   }
 
-  // Filtered list based on selected tab
+  // Filtered + searched + sorted list
   List<ScanRecord> get _filtered {
-    switch (_filter) {
-      case 'Disease': return _history.where((r) => !r.isHealthy).toList();
-      case 'Healthy': return _history.where((r) =>  r.isHealthy).toList();
-      default:        return _history;
+    // Step 1 — filter by tab
+    List<ScanRecord> list = switch (_filter) {
+      'Disease' => _history.where((r) => !r.isHealthy).toList(),
+      'Healthy' => _history.where((r) =>  r.isHealthy).toList(),
+      _         => List.from(_history),
+    };
+
+    // Step 2 — filter by search query
+    if (_searchQuery.isNotEmpty) {
+      list = list.where((r) =>
+        r.diseaseName.toLowerCase().contains(_searchQuery.toLowerCase())
+      ).toList();
     }
+
+    // Step 3 — sort
+    switch (_sortBy) {
+      case 'Severity':
+        const order = {'High': 0, 'Medium': 1, 'Low': 2};
+        list.sort((a, b) =>
+            (order[a.severity] ?? 3).compareTo(order[b.severity] ?? 3));
+        break;
+      case 'Confidence':
+        list.sort((a, b) => b.confidence.compareTo(a.confidence));
+        break;
+      default: // Date — newest first (already default)
+        list.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+    }
+
+    return list;
   }
 
   // Delete with confirmation
@@ -229,7 +259,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
         children: [
           _buildTopBar(),
           _buildStatsRow(),
-          _buildFilterTabs(),
+          if (_searchActive) _buildSearchBar(),
+          _buildFilterAndSortRow(),
           Expanded(child: _buildBody()),
         ],
       ),
@@ -364,45 +395,222 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
       );
 
   // ── Filter tabs ────────────────────────────
-  Widget _buildFilterTabs() {
+  // ── Search bar ────────────────────────────
+  Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: AnimatedContainer(
+        duration: AppDuration.fast,
+        decoration: BoxDecoration(
+          color:        AppColors.surfaceColor,
+          borderRadius: AppRadius.mdBR,
+          border: Border.all(
+              color: AppColors.neonGreen.withOpacity(0.3), width: 1),
+        ),
+        child: TextField(
+          controller:   _searchCtrl,
+          autofocus:    true,
+          style:        const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+            hintText:      'Search disease name...',
+            hintStyle:     TextStyle(color: Colors.white38, fontSize: 14),
+            prefixIcon:    Icon(Icons.search_rounded,
+                color: AppColors.neonGreen, size: 20),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    child: Icon(Icons.close_rounded,
+                        color: Colors.white38, size: 18),
+                  )
+                : null,
+            border:         InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 14),
+          ),
+          onChanged: (val) => setState(() => _searchQuery = val),
+        ),
+      ),
+    );
+  }
+
+  // ── Filter tabs + sort button ──────────────
+  Widget _buildFilterAndSortRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
-        children: ['All', 'Disease', 'Healthy'].map((tab) {
-          final isActive = _filter == tab;
-          return GestureDetector(
-            onTap: () => setState(() => _filter = tab),
+        children: [
+          // Filter tabs
+          Expanded(
+            child: Row(
+              children: ['All', 'Disease', 'Healthy'].map((tab) {
+                final isActive = _filter == tab;
+                return GestureDetector(
+                  onTap: () => setState(() => _filter = tab),
+                  child: AnimatedContainer(
+                    duration: AppDuration.fast,
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.neonGreen.withOpacity(0.15)
+                          : AppColors.surfaceColor,
+                      borderRadius: AppRadius.pillBR,
+                      border: Border.all(
+                        color: isActive
+                            ? AppColors.neonGreen.withOpacity(0.5)
+                            : Colors.white.withOpacity(0.08),
+                      ),
+                    ),
+                    child: Text(tab,
+                        style: TextStyle(
+                          color: isActive
+                              ? AppColors.neonGreen
+                              : Colors.white54,
+                          fontSize:   13,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.normal,
+                        )),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // Sort button
+          GestureDetector(
+            onTap: _showSortOptions,
             child: AnimatedContainer(
               duration: AppDuration.fast,
-              margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
+                  horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color: isActive
+                color: _sortBy != 'Date'
                     ? AppColors.neonGreen.withOpacity(0.15)
                     : AppColors.surfaceColor,
                 borderRadius: AppRadius.pillBR,
                 border: Border.all(
-                  color: isActive
+                  color: _sortBy != 'Date'
                       ? AppColors.neonGreen.withOpacity(0.5)
                       : Colors.white.withOpacity(0.08),
                 ),
               ),
-              child: Text(
-                tab,
-                style: TextStyle(
-                  color: isActive
-                      ? AppColors.neonGreen
-                      : Colors.white54,
-                  fontSize:   13,
-                  fontWeight: isActive
-                      ? FontWeight.w700
-                      : FontWeight.normal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.sort_rounded,
+                      color: _sortBy != 'Date'
+                          ? AppColors.neonGreen
+                          : Colors.white54,
+                      size: 16),
+                  const SizedBox(width: 5),
+                  Text(_sortBy,
+                      style: TextStyle(
+                        color: _sortBy != 'Date'
+                            ? AppColors.neonGreen
+                            : Colors.white54,
+                        fontSize:   12,
+                        fontWeight: FontWeight.w600,
+                      )),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Sort bottom sheet ──────────────────────
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context:         context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+        decoration: BoxDecoration(
+          color:        AppColors.surfaceColor,
+          borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24)),
+          border: Border.all(
+              color: AppColors.neonGreen.withOpacity(0.2), width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color:        Colors.white.withOpacity(0.2),
+                  borderRadius: AppRadius.pillBR,
                 ),
               ),
             ),
-          );
-        }).toList(),
+            const SizedBox(height: 18),
+            Text('Sort By', style: AppText.subheading),
+            const SizedBox(height: 16),
+
+            ...['Date', 'Severity', 'Confidence'].map((option) {
+              final isActive = _sortBy == option;
+              final icon = switch (option) {
+                'Severity'   => Icons.warning_amber_rounded,
+                'Confidence' => Icons.percent_rounded,
+                _            => Icons.calendar_today_rounded,
+              };
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _sortBy = option);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: AppSpacing.cardPadding,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppColors.neonGreen.withOpacity(0.1)
+                        : AppColors.bgColor,
+                    borderRadius: AppRadius.mdBR,
+                    border: Border.all(
+                      color: isActive
+                          ? AppColors.neonGreen.withOpacity(0.4)
+                          : Colors.white.withOpacity(0.06),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(icon,
+                          color: isActive
+                              ? AppColors.neonGreen
+                              : Colors.white54,
+                          size: 20),
+                      const SizedBox(width: 12),
+                      Text(option,
+                          style: TextStyle(
+                            color: isActive
+                                ? AppColors.neonGreen
+                                : Colors.white70,
+                            fontSize:   14,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.normal,
+                          )),
+                      const Spacer(),
+                      if (isActive)
+                        Icon(Icons.check_rounded,
+                            color: AppColors.neonGreen, size: 18),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
