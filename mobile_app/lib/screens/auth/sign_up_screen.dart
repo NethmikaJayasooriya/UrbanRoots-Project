@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-<<<<<<< HEAD
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:splashscreen/services/auth_service.dart';
-=======
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; 
->>>>>>> c7edd34747efcb32c4f51805a4c852ea4458ec94
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+// Ensure this matches your project's folder structure
+import 'package:splashscreen/services/auth_service.dart'; 
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // <-- Added Firebase Auth import
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -18,78 +16,121 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final _formKey = GlobalKey<FormState>(); 
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
+  
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
   bool _isGoogleLoading = false;
+  bool _isFacebookLoading = false; 
+  bool _isEmailLoading = false;
 
-<<<<<<< HEAD
-  /// Handles Google Sign-In via AuthService
+  /// Handlers for Email/Password Sign Up
+  void _handleSignUp() async {
+    if (_formKey.currentState!.validate()) {
+      if (!_agreedToTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please agree to the terms first.")),
+        );
+        return;
+      }
+
+      setState(() => _isEmailLoading = true);
+
+      try {
+        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passController.text.trim(),
+        );
+
+        debugPrint("User created: ${userCredential.user?.email}");
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: ${e.message}")),
+        );
+      } finally {
+        if (mounted) setState(() => _isEmailLoading = false);
+      }
+    }
+  }
+
+  /// Handlers for Google Sign-In with your Web Client ID
   void _handleGoogleSignIn() async {
+    debugPrint("DEBUG: Google Sign-In button pressed");
     setState(() => _isGoogleLoading = true);
     try {
-      final userCredential = await AuthService.signInWithGoogle();
-      if (userCredential == null) {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
         setState(() => _isGoogleLoading = false);
         return;
       }
-      print("Google sign-in user: ${userCredential.user?.email}");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      debugPrint("Google Login Success: ${userCredential.user?.email}");
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+        );
+      }
     } catch (e) {
-      print("Google sign-in error: $e");
+      debugPrint("Google Login Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Google sign-in failed. Please try again.")),
+        SnackBar(content: Text("Google login failed: $e")),
       );
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
-  // UPDATED _handleSignUp TO CALL FIREBASE
-  void _handleSignUp() async {
-    // Trigger validation
-=======
-  void _handleSignUp() {
->>>>>>> c7edd34747efcb32c4f51805a4c852ea4458ec94
-    if (_formKey.currentState!.validate()) {
-      if (!_agreedToTerms) return;
-
-      try {
-        final userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passController.text.trim(),
-        );
-
-        print("User created: ${userCredential.user?.email}");
-
-        // Navigate to SetupProfileScreen after successful signup
-        Navigator.pushReplacement(
+  /// Handler for Facebook Sign-In
+  void _handleFacebookSignIn() async {
+    debugPrint("DEBUG: Facebook Sign-In button pressed");
+    setState(() => _isFacebookLoading = true);
+    try {
+      final userCredential = await AuthService.signInWithFacebook();
+      
+      if (userCredential != null) {
+        debugPrint("Facebook Login Success: ${userCredential.user?.email}");
+        if (mounted) {
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const SetupProfileScreen())
-        );
-      } on FirebaseAuthException catch (e) {
-        print("Firebase Auth Error: ${e.code} - ${e.message}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${e.message}")),
-        );
-      } catch (e) {
-        print("Unknown error: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Something went wrong.")),
-        );
+            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+          );
+        }
       }
+    } catch (e) {
+      debugPrint("Facebook Login Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Facebook login failed. Check popup settings.")),
+      );
+    } finally {
+      if (mounted) setState(() => _isFacebookLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF07160F);
+    const bgColor = Color(0xFF07160F); 
     const neonGreen = Color(0xFF00E676);
 
     return Scaffold(
@@ -109,30 +150,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   alignment: Alignment.centerLeft,
                 ),
                 const SizedBox(height: 20),
-                
                 Row(
                   children: [
-                    Text("Create Account", style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text("Create Account",
+                        style: GoogleFonts.poppins(
+                            fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
                     const SizedBox(width: 10),
                     const Icon(Icons.spa, color: neonGreen, size: 28),
                   ],
                 ),
-                Text("Join the green revolution today.", style: GoogleFonts.poppins(fontSize: 14, color: Colors.white54)),
+                Text("Join the green revolution today.",
+                    style: GoogleFonts.poppins(fontSize: 14, color: Colors.white54)),
                 const SizedBox(height: 40),
 
                 _buildLabel("Email"),
                 _buildTextField(
-                  controller: _emailController, 
-                  hint: "Enter your email", 
+                  controller: _emailController,
+                  hint: "Enter your email",
                   icon: Icons.email_outlined,
                   validator: (value) {
                     if (value == null || value.isEmpty) return "Email is required";
-                    if (!value.contains('@')) return "Please enter a valid email";
+                    if (!value.contains('@')) return "Enter a valid email";
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
-                
+
                 _buildLabel("Password"),
                 _buildTextField(
                   controller: _passController,
@@ -149,7 +192,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
 
                 const SizedBox(height: 20),
-                
                 Row(
                   children: [
                     Checkbox(
@@ -165,7 +207,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           text: "I agree to the ",
                           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
                           children: [
-                            TextSpan(text: "Terms of Service", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.bold)),
+                            TextSpan(text: "Terms", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.bold)),
                             const TextSpan(text: " and "),
                             TextSpan(text: "Privacy Policy", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.bold)),
                           ],
@@ -174,58 +216,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 30),
 
+                const SizedBox(height: 30),
                 SizedBox(
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    onPressed: _agreedToTerms ? _handleSignUp : null,
+                    onPressed: _agreedToTerms && !_isEmailLoading ? _handleSignUp : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: neonGreen,
                       disabledBackgroundColor: Colors.white10,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    child: Text("Sign Up", style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: _agreedToTerms ? Colors.black : Colors.white24)),
+                    child: _isEmailLoading
+                        ? const CircularProgressIndicator(color: Colors.black)
+                        : Text("Sign Up", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black)),
                   ),
                 ),
 
                 const SizedBox(height: 30),
-                
-               
                 _buildDivider(),
                 const SizedBox(height: 30),
-                _buildSocialButton("Continue with Google", FontAwesomeIcons.google),
+
+                _buildSocialButton("Continue with Google", FontAwesomeIcons.google, 
+                    onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
+                
                 const SizedBox(height: 15),
-                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF),
-               
+                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF, 
+                    onTap: _handleFacebookSignIn, isLoading: _isFacebookLoading),
 
                 const SizedBox(height: 40),
-                
-                Row(
-                  children: [
-                    const Expanded(child: Divider(color: Colors.white10)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text("Or continue with", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+                Center(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                    child: RichText(
+                      text: TextSpan(
+                        text: "Already have an account? ",
+                        style: GoogleFonts.poppins(color: Colors.white54),
+                        children: [
+                          TextSpan(text: "Log In", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
-                    const Expanded(child: Divider(color: Colors.white10)),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _buildSocialButton("Continue with Google", FontAwesomeIcons.google, onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("Already have an account? ", style: GoogleFonts.poppins(color: Colors.white54)),
-                    GestureDetector(
-                      onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                      child: Text("Log In", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -234,6 +268,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  // UI Helpers
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
@@ -241,96 +276,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // Divider Widget 
   Widget _buildDivider() {
     return Row(
       children: [
         const Expanded(child: Divider(color: Colors.white10)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text("Or continue with", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+          child: Text("Or", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
         ),
         const Expanded(child: Divider(color: Colors.white10)),
       ],
-    );
-  }
-
-  // Social Button Widget
-  Widget _buildSocialButton(String text, IconData icon) {
-    return Container(
-      width: double.infinity,
-      height: 55,
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border.all(color: Colors.white24),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 20, top: 0, bottom: 0,
-              child: Center(child: FaIcon(icon, color: Colors.white, size: 20)),
-            ),
-            Center(
-              child: Text(
-                text,
-                style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller, 
-    required String hint, 
-    required IconData icon, 
-    bool isPassword = false, 
-    bool isPasswordVisible = false,
-    String? Function(String?)? validator,
-    VoidCallback? onVisibilityToggle
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword && !isPasswordVisible,
-      validator: validator,
-      style: GoogleFonts.poppins(color: Colors.white),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFF16201B),
-        prefixIcon: Icon(icon, color: Colors.white54, size: 20),
-        suffixIcon: isPassword 
-          ? IconButton(
-              icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white54, size: 20),
-              onPressed: onVisibilityToggle,
-            ) 
-          : null,
-        hintText: hint,
-        hintStyle: GoogleFonts.poppins(color: Colors.white30),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.white10),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00E676)),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        errorStyle: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
-      ),
     );
   }
 
@@ -339,36 +294,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
       width: double.infinity,
       height: 55,
       decoration: BoxDecoration(
-        color: Colors.transparent,
         border: Border.all(color: Colors.white24),
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
         onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 20, top: 0, bottom: 0,
-              child: Center(child: FaIcon(icon, color: Colors.white, size: 20)),
-            ),
-            Center(
-              child: isLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      text,
-                      style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-            ),
-          ],
+        child: Center(
+          child: isLoading 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FaIcon(icon, color: Colors.white, size: 18),
+                  const SizedBox(width: 12),
+                  Text(text, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                ],
+              ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    bool isPasswordVisible = false,
+    String? Function(String?)? validator,
+    VoidCallback? onVisibilityToggle,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword && !isPasswordVisible,
+      validator: validator,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: const Color(0xFF16201B),
+        prefixIcon: Icon(icon, color: Colors.white54, size: 20),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white54),
+                onPressed: onVisibilityToggle)
+            : null,
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white30),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       ),
     );
   }

@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
   bool _isGoogleLoading = false;
+  bool _isFacebookLoading = false; // Added Facebook loading state
 
   /// Handles Google Sign-In via AuthService
   void _handleGoogleSignIn() async {
@@ -28,17 +29,18 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await AuthService.signInWithGoogle();
       if (userCredential == null) {
-        // User cancelled the Google sign-in
         setState(() => _isGoogleLoading = false);
         return;
       }
-      print("Google sign-in user: ${userCredential.user?.email}");
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
-      );
+      debugPrint("Google sign-in user: ${userCredential.user?.email}");
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+        );
+      }
     } catch (e) {
-      print("Google sign-in error: $e");
+      debugPrint("Google sign-in error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Google sign-in failed. Please try again.")),
       );
@@ -47,7 +49,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // UPDATED _handleLogin TO USE FIREBASE AUTH
+  /// Handles Facebook Sign-In via AuthService
+  void _handleFacebookSignIn() async {
+    setState(() => _isFacebookLoading = true);
+    try {
+      final userCredential = await AuthService.signInWithFacebook();
+      if (userCredential != null) {
+        debugPrint("Facebook Login Success: ${userCredential.user?.email}");
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Facebook login error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Facebook login failed. Check popup settings.")),
+      );
+    } finally {
+      if (mounted) setState(() => _isFacebookLoading = false);
+    }
+  }
+
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final email = _emailController.text.trim();
@@ -57,27 +82,25 @@ class _LoginScreenState extends State<LoginScreen> {
         final userCredential = await FirebaseAuth.instance
             .signInWithEmailAndPassword(email: email, password: password);
 
-        print("Logged in user: ${userCredential.user?.email}");
+        debugPrint("Logged in user: ${userCredential.user?.email}");
 
-        // Navigate to next screen after successful login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
-        );
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+          );
+        }
       } on FirebaseAuthException catch (e) {
-        print("Firebase Auth Error: ${e.code} - ${e.message}");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: ${e.message}")),
         );
       } catch (e) {
-        print("Unknown error: $e");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Something went wrong.")),
         );
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 _buildSocialButton("Continue with Google", FontAwesomeIcons.google, onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
                 const SizedBox(height: 15),
-                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF, onTap: () {}),
+                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF, onTap: _handleFacebookSignIn, isLoading: _isFacebookLoading),
 
                 const SizedBox(height: 40),
                 Center(
@@ -250,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00E676)),
+          borderSide: const BorderSide(color: const Color(0xFF00E676)),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

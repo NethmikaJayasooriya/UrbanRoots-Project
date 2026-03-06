@@ -17,8 +17,10 @@ dependencies:
   firebase_auth: ^6.1.4
   firebase_auth_web: ^6.1.2
   google_sign_in: ^6.2.2
+  flutter_facebook_auth: ^6.1.0
+  js: ^0.6.7
   _flutterfire_internals: ^1.3.66
-  js: ^0.7.2
+  
 
 dev_dependencies:
   flutter_test:
