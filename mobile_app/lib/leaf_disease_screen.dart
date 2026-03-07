@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -604,7 +605,13 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   // ── Shutter button ─────────────────────────
   Widget _buildShutterButton() {
     return GestureDetector(
-      onTap: _capture,
+      onTap: () async {
+        // Try heavy impact for stronger feedback
+        await HapticFeedback.heavyImpact();
+        // Fallback: try vibrate if available (for Android)
+        await HapticFeedback.vibrate();
+        _capture();
+      },
       child: _analyzing
           ? Container(
               width: 84, height: 84,
