@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'Garden/my_Garden.dart';
+import 'garden/my_Garden.dart';
+import 'package:mobile_app/core/theme/app_colors.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -11,9 +12,11 @@ class MainNavigationWrapper extends StatefulWidget {
 
 class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with SingleTickerProviderStateMixin {
+  
+  // Default to Garden tab
   int _currentIndex = 1;
 
-  // Pulse animation 
+  // Animation controller for the scanner button pulse effect
   AnimationController? _pulseController;
   Animation<double>? _pulseAnim;
 
@@ -24,6 +27,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
+    
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.12).animate(
       CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
     );
@@ -37,11 +41,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF07160F);
-    const surfaceColor = Color(0xFF16201B);
-    const neonGreen = Color(0xFF00E676);
     final bool scannerActive = _currentIndex == 2;
 
+    // Full list of screens to preserve state using IndexedStack
     final List<Widget> screens = [
       const Center(child: Text("Home Feed (Digital Pet)", style: TextStyle(color: Colors.white))),
       const MyGardenScreen(),
@@ -51,14 +53,14 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     ];
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: AppColors.backgroundColor,
       extendBody: false,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
 
-      //LEAF SCAN FAB
+      // Floating Action Button for the Global Leaf Scanner
       floatingActionButton: GestureDetector(
         onTap: () => setState(() => _currentIndex = 2),
         child: AnimatedBuilder(
@@ -80,12 +82,12 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
                   : const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
+                      colors: [AppColors.primaryGreen, Color(0xFF00BFA5)],
                     ),
-              color: scannerActive ? neonGreen : null,
+              color: scannerActive ? AppColors.primaryGreen : null,
               boxShadow: [
                 BoxShadow(
-                  color: neonGreen.withOpacity(scannerActive ? 0.7 : 0.4),
+                  color: AppColors.primaryGreen.withOpacity(scannerActive ? 0.7 : 0.4),
                   blurRadius: scannerActive ? 20 : 14,
                   spreadRadius: scannerActive ? 4 : 1,
                 ),
@@ -94,7 +96,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.energy_savings_leaf_rounded,
                   color: Colors.black,
                   size: 26,
@@ -115,9 +117,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // BOTTOM APP BAR
+      // The Bottom Navigation Bar with the central notch
       bottomNavigationBar: BottomAppBar(
-        color: surfaceColor,
+        color: AppColors.surfaceColor,
         shape: const CircularNotchedRectangle(),
         notchMargin: 10.0,
         child: SizedBox(
@@ -125,11 +127,11 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home_rounded, "Home", 0, neonGreen),
-              _buildNavItem(Icons.yard_rounded, "Garden", 1, neonGreen),
-              const SizedBox(width: 56), 
-              _buildNavItem(Icons.storefront_rounded, "Market", 3, neonGreen),
-              _buildNavItem(Icons.person_outline_rounded, "Profile", 4, neonGreen),
+              _buildNavItem(Icons.home_rounded, "Home", 0),
+              _buildNavItem(Icons.yard_rounded, "Garden", 1),
+              const SizedBox(width: 56), // Gap for the scanner button
+              _buildNavItem(Icons.storefront_rounded, "Market", 3),
+              _buildNavItem(Icons.person_outline_rounded, "Profile", 4),
             ],
           ),
         ),
@@ -137,7 +139,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index, Color activeColor) {
+  // Helper method to build individual navigation tabs
+  Widget _buildNavItem(IconData icon, String label, int index) {
     final bool isSelected = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
@@ -146,7 +149,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primaryGreen.withOpacity(0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -154,7 +157,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
           children: [
             Icon(
               icon,
-              color: isSelected ? activeColor : Colors.white30,
+              color: isSelected ? AppColors.primaryGreen : Colors.white30,
               size: 24,
             ),
             const SizedBox(height: 3),
@@ -163,7 +166,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
               style: GoogleFonts.poppins(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? activeColor : Colors.white30,
+                color: isSelected ? AppColors.primaryGreen : Colors.white30,
               ),
             ),
           ],

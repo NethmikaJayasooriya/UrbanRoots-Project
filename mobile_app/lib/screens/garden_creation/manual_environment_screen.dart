@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'garden_strategy_screen.dart';
+import 'package:mobile_app/core/theme/app_colors.dart';
 
 class ManualEnvironmentScreen extends StatefulWidget {
   const ManualEnvironmentScreen({super.key});
@@ -26,7 +27,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
 
   final List<String> _wateringOptions = ["Daily", "Every 2 Days", "Weekly"];
 
-  // Changes the sunlight icon and text based on slider position
+  // Dynamically changes the sunlight icon and text based on slider position
   Map<String, dynamic> _getSunlightInfo() {
     if (_sunlightValue < 30) return {"label": "Shadow / Low Light", "icon": Icons.cloud};
     if (_sunlightValue < 70) return {"label": "Partial Sun", "icon": Icons.wb_cloudy};
@@ -35,13 +36,10 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF07160F);
-    const surfaceColor = Color(0xFF16201B);
-    const neonGreen = Color(0xFF00E676);
     final sunInfo = _getSunlightInfo();
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -53,30 +51,31 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("Describe your\nEnvironment.", 
-                style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2)
+                style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textMain, height: 1.2)
               ),
               const SizedBox(height: 10),
               
-              // RED WARNING NOTICE
+              // RED WARNING NOTICE to push users toward IoT devices eventually
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
+                  color: AppColors.danger.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.danger.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+                    const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                       "Note: Manual input may reduce the accuracy of the app's AI features compared to real-time data from IoT sensors.",
-                        style: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500),
+                        style: GoogleFonts.poppins(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
@@ -85,10 +84,10 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               
               const SizedBox(height: 30),
 
-              _sectionTitle("1. Soil Source", neonGreen),
+              _sectionTitle("1. Soil Source"),
               const SizedBox(height: 15),
               
-              // Grid for selecting soil types
+              // Soil Types Grid
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -109,16 +108,16 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: surfaceColor,
+                            color: AppColors.surfaceColor,
                             borderRadius: BorderRadius.circular(12),
-                            border: isSelected ? Border.all(color: neonGreen, width: 2) : null,
+                            border: isSelected ? Border.all(color: AppColors.primaryGreen, width: 2) : null,
                           ),
                           child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(type["name"]!, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text(type["name"]!, style: GoogleFonts.poppins(color: AppColors.textMain, fontWeight: FontWeight.bold, fontSize: 14)),
                                 const SizedBox(height: 4),
                                 Text(type["desc"]!, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
                               ],
@@ -129,7 +128,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                           Positioned(
                             top: 8, right: 8,
                             child: Container(
-                              decoration: const BoxDecoration(shape: BoxShape.circle, color: neonGreen),
+                              decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.primaryGreen),
                               padding: const EdgeInsets.all(2),
                               child: const Icon(Icons.check, size: 12, color: Colors.black),
                             ),
@@ -141,19 +140,19 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Sunlight Slider section
+              // Sunlight Slider Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween, 
                 children: [
-                  _sectionTitle("2. Typical Sunlight", neonGreen), 
-                  Icon(sunInfo["icon"], color: Colors.white, size: 24)
+                  _sectionTitle("2. Typical Sunlight"), 
+                  Icon(sunInfo["icon"], color: AppColors.textMain, size: 24)
                 ]
               ),
-              Text(sunInfo["label"], style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(sunInfo["label"], style: GoogleFonts.poppins(color: AppColors.textMain, fontSize: 20, fontWeight: FontWeight.bold)),
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: neonGreen, 
-                  inactiveTrackColor: surfaceColor, 
+                  activeTrackColor: AppColors.primaryGreen, 
+                  inactiveTrackColor: AppColors.surfaceColor, 
                   thumbColor: Colors.white
                 ),
                 child: Slider(
@@ -166,16 +165,13 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 30),
 
-              _sectionTitle("3. Watering Frequency", neonGreen),
+              _sectionTitle("3. Watering Frequency"),
               const SizedBox(height: 15),
               
               // Segmented selection for watering habits
               Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: _wateringOptions.map((opt) {
                     bool isSelected = _wateringFrequency == opt;
@@ -186,7 +182,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: isSelected ? neonGreen : Colors.transparent,
+                            color: isSelected ? AppColors.primaryGreen : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Center(
@@ -211,31 +207,31 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               // Toggle for wind exposure
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: surfaceColor, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("High Wind Exposure?", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                        Text("High Wind Exposure?", style: GoogleFonts.poppins(color: AppColors.textMain, fontWeight: FontWeight.bold, fontSize: 15)),
                         Text("Usually for balconies above 3rd floor", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 11)),
                       ],
                     ),
-                    Switch(value: _isWindy, activeColor: neonGreen, onChanged: (v) => setState(() => _isWindy = v)),
+                    Switch(value: _isWindy, activeColor: AppColors.primaryGreen, onChanged: (v) => setState(() => _isWindy = v)),
                   ],
                 ),
               ),
               const SizedBox(height: 40),
 
-              // Button to move to the next screen
+              // Button to move to the Strategy screen
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GardenStrategyScreen())),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: neonGreen, 
+                    backgroundColor: AppColors.primaryGreen, 
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
                   ),
                   child: Text("Next Step", style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
@@ -249,8 +245,7 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
     );
   }
 
-  // Simple helper for titles
-  Widget _sectionTitle(String text, Color color) {
-    return Text(text, style: GoogleFonts.poppins(color: color, fontWeight: FontWeight.w600, fontSize: 16));
+  Widget _sectionTitle(String text) {
+    return Text(text, style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.w600, fontSize: 16));
   }
 }

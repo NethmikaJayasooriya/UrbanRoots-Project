@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'garden_basics_screen.dart';
+import 'package:mobile_app/core/theme/app_colors.dart';
 
 class GardenIntroScreen extends StatelessWidget {
   const GardenIntroScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF07160F);
-    const accentGreen = Color(0xFF00E676);
-
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -28,17 +26,17 @@ class GardenIntroScreen extends StatelessWidget {
                     height: 64,
                     width: 64,
                     decoration: BoxDecoration(
-                      color: accentGreen.withOpacity(0.12),
+                      color: AppColors.primaryGreen.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: accentGreen.withOpacity(0.35),
+                        color: AppColors.primaryGreen.withOpacity(0.35),
                         width: 1.5,
                       ),
                     ),
                     child: const Center(
                       child: Icon(
                         Icons.eco_rounded,
-                        color: accentGreen,
+                        color: AppColors.primaryGreen,
                         size: 32,
                       ),
                     ),
@@ -51,9 +49,9 @@ class GardenIntroScreen extends StatelessWidget {
                       width: 14,
                       height: 14,
                       decoration: BoxDecoration(
-                        color: accentGreen,
+                        color: AppColors.primaryGreen,
                         shape: BoxShape.circle,
-                        border: Border.all(color: bgColor, width: 2),
+                        border: Border.all(color: AppColors.backgroundColor, width: 2),
                       ),
                     ),
                   ),
@@ -67,7 +65,7 @@ class GardenIntroScreen extends StatelessWidget {
                 style: GoogleFonts.poppins(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: AppColors.textMain,
                   height: 1.15,
                   letterSpacing: -0.5,
                 ),
@@ -77,32 +75,30 @@ class GardenIntroScreen extends StatelessWidget {
               Text(
                 "We need a few details to optimize your growth.",
                 style: GoogleFonts.poppins(
-                  color: Colors.white38,
+                  color: AppColors.textDim,
                   fontSize: 15,
                 ),
               ),
 
               const SizedBox(height: 40),
 
+              // Value Propositions for the user
               _buildReasonRow(
                 Icons.psychology_outlined,
                 "AI Calibration",
                 "Tailors growth algorithms to your specific environment.",
-                accentGreen,
               ),
               const SizedBox(height: 24),
               _buildReasonRow(
                 Icons.timer_outlined,
                 "Smart Scheduling",
                 "Calculates watering needs based on real-time data.",
-                accentGreen,
               ),
               const SizedBox(height: 24),
               _buildReasonRow(
                 Icons.grass,
                 "Live Companion",
                 "Syncs your digital plant's mood with its health.",
-                accentGreen,
               ),
 
               // Decorative plant illustration fills the gap naturally
@@ -131,7 +127,7 @@ class GardenIntroScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: accentGreen,
+                    backgroundColor: AppColors.primaryGreen,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -150,15 +146,11 @@ class GardenIntroScreen extends StatelessWidget {
 
               const SizedBox(height: 12),
 
+              // Secondary escape hatch action
               Center(
                 child: TextButton(
                   onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => PlaceholderMainScreen()),
-                      (route) => false,
-                    );
+                    Navigator.pop(context); // Go back to the dashboard if they abort
                   },
                   child: Text(
                     "Setup later",
@@ -179,12 +171,11 @@ class GardenIntroScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReasonRow(
-      IconData icon, String title, String desc, Color color) {
+  Widget _buildReasonRow(IconData icon, String title, String desc) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: color, size: 26),
+        Icon(icon, color: AppColors.primaryGreen, size: 26),
         const SizedBox(width: 20),
         Expanded(
           child: Column(
@@ -193,7 +184,7 @@ class GardenIntroScreen extends StatelessWidget {
               Text(
                 title,
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
+                  color: AppColors.textMain,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -202,7 +193,7 @@ class GardenIntroScreen extends StatelessWidget {
               Text(
                 desc,
                 style: GoogleFonts.poppins(
-                  color: Colors.white38,
+                  color: AppColors.textDim,
                   fontSize: 13,
                   height: 1.4,
                 ),
@@ -215,11 +206,12 @@ class GardenIntroScreen extends StatelessWidget {
   }
 }
 
-// Decorative plant illustration painter
+// Custom painter for the procedural plant illustration
 class _PlantIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    const accentGreen = Color(0xFF00E676);
+    // We fetch colors directly from our theme for consistency
+    final accentGreen = AppColors.primaryGreen;
     const dimGreen = Color(0xFF1A3D28);
     const midGreen = Color(0xFF0D4A22);
 
@@ -338,22 +330,4 @@ class _PlantIllustrationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// Placeholder Screen
-class PlaceholderMainScreen extends StatelessWidget {
-  const PlaceholderMainScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF07160F),
-      body: Center(
-        child: Text(
-          "Main Dashboard Coming Soon",
-          style: GoogleFonts.poppins(color: Colors.white54),
-        ),
-      ),
-    );
-  }
 }

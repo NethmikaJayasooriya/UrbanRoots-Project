@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'plant_detail_screen.dart';
+import 'package:mobile_app/core/theme/app_colors.dart';
 
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
@@ -13,15 +14,17 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
   String _selectedGarden = "Indoor Garden";
   String? assignedPlantId = "3";
 
-  final List<String> myGardens = ["Indoor Garden", "Home Balcony", "Rooftop"];
+  // Garden categories
+  final List<String> myGardens = const ["Indoor Garden", "Home Balcony", "Rooftop"];
 
+  // Static plant data for SDGP prototype
   final List<Map<String, dynamic>> plants = [
     {
       "id": "1",
       "name": "Tomato",
       "status": "Healthy",
       "image": "https://images.unsplash.com/photo-1518977676601-b53f02bad6d5?q=80&w=500&auto=format&fit=crop",
-      "statusColor": const Color(0xFF00E676),
+      "statusColor": AppColors.primaryGreen,
     },
     {
       "id": "2",
@@ -34,36 +37,32 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bgColor = Color(0xFF07160F);
-    const neonGreen = Color(0xFF00E676);
-    const surfaceColor = Color(0xFF16201B);
-
-    // Small breathing room at bottom — Scaffold handles navbar clearance automatically
+    // Calculates safe padding so the bottom nav bar doesn't cover content
     final double bottomPadding = 24 + MediaQuery.of(context).padding.bottom;
 
     return Material(
-      color: bgColor,
+      color: AppColors.backgroundColor,
       child: SafeArea(
-        bottom: false, // we handle bottom manually via bottomPadding below
+        bottom: false, 
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // TITLE (replaces AppBar)
+              // Screen Title
               Padding(
                 padding: const EdgeInsets.only(top: 10, bottom: 20),
                 child: Text(
                   "My Garden",
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: AppColors.textMain,
                     fontSize: 24,
                   ),
                 ),
               ),
 
-              // GARDEN SWITCHER
+              // Horizontal Garden Location Switcher
               SizedBox(
                 height: 42,
                 child: ListView.builder(
@@ -77,14 +76,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                         margin: const EdgeInsets.only(right: 12),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
-                          color: isSelected ? neonGreen : surfaceColor,
+                          color: isSelected ? AppColors.primaryGreen : AppColors.surfaceColor,
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Center(
                           child: Text(
                             myGardens[index],
                             style: GoogleFonts.poppins(
-                              color: isSelected ? Colors.black : Colors.white38,
+                              color: isSelected ? Colors.black : AppColors.textDim,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -96,12 +95,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+              
               Text(
                 "Active Crops",
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
+                style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textDim),
               ),
               const SizedBox(height: 15),
 
+              // The grid displaying user's plants
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -121,14 +122,16 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
               const SizedBox(height: 16),
               const Divider(color: Colors.white10),
               const SizedBox(height: 12),
+              
+              // Action card to create a brand new location
               _buildLargeActionCard(
                 "Add New Garden Location",
                 "Setup a new indoor space, balcony, or rooftop.",
                 Icons.add_home_work_rounded,
-                neonGreen,
-                surfaceColor,
               ),
-              const SizedBox(height: 16),
+              
+              // Extra space to ensure the card isn't clipped by the notch
+              const SizedBox(height: 80), 
             ],
           ),
         ),
@@ -136,10 +139,9 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
     );
   }
 
+  // Generates individual plant cards with image loading fallbacks
   Widget _buildPlantCard(Map<String, dynamic> plant) {
     bool isAssigned = assignedPlantId == plant['id'];
-    const neonGreen = Color(0xFF00E676);
-    const surfaceColor = Color(0xFF16201B);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -148,10 +150,10 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
       ),
       child: Container(
         decoration: BoxDecoration(
-          color: surfaceColor, // ✅ FIXED: fallback color so card is visible even if image fails
+          color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isAssigned ? neonGreen : Colors.white10,
+            color: isAssigned ? AppColors.primaryGreen : Colors.white10,
             width: isAssigned ? 2 : 1,
           ),
         ),
@@ -160,17 +162,16 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ✅ FIXED: Image.network with error/loading builder so blank cards don't appear
               Image.network(
                 plant['image'],
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
                   return Container(
-                    color: surfaceColor,
+                    color: AppColors.surfaceColor,
                     child: const Center(
                       child: CircularProgressIndicator(
-                        color: Color(0xFF00E676),
+                        color: AppColors.primaryGreen,
                         strokeWidth: 2,
                       ),
                     ),
@@ -178,14 +179,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    color: surfaceColor,
+                    color: AppColors.surfaceColor,
                     child: const Center(
-                      child: Icon(Icons.yard_rounded, color: Color(0xFF00E676), size: 40),
+                      child: Icon(Icons.yard_rounded, color: AppColors.primaryGreen, size: 40),
                     ),
                   );
                 },
               ),
-              // Dark overlay
+              // Gradient for text readability
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -198,7 +199,7 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                   ),
                 ),
               ),
-              // Content
+              // Card textual content
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -207,14 +208,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                     if (isAssigned)
                       const Align(
                         alignment: Alignment.topRight,
-                        child: Icon(Icons.pets, color: neonGreen, size: 18),
+                        child: Icon(Icons.pets, color: AppColors.primaryGreen, size: 18),
                       ),
                     const Spacer(),
                     Text(
                       plant['name'],
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppColors.textMain,
                         fontSize: 18,
                       ),
                     ),
@@ -234,6 +235,7 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
     );
   }
 
+  // Small toggle to link the plant to the user's digital pet
   Widget _buildLinkToggle(String id, bool isAssigned) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -247,14 +249,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
         children: [
           Text(
             "Link Pet",
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 10),
+            style: GoogleFonts.poppins(color: AppColors.textMain, fontSize: 10),
           ),
           Transform.scale(
             scale: 0.65,
             child: Switch(
               value: isAssigned,
-              activeColor: const Color(0xFF00E676),
-              onChanged: (val) => setState(() => assignedPlantId = id),
+              activeColor: AppColors.primaryGreen,
+              onChanged: (val) => setState(() => assignedPlantId = val ? id : null),
             ),
           ),
         ],
@@ -262,36 +264,32 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
     );
   }
 
+  // Card UI for adding a new crop to the grid
   Widget _buildAddCard() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF16201B),
+        color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white10),
       ),
       child: const Center(
-        child: Icon(Icons.add_circle_outline, color: Color(0xFF00E676), size: 40),
+        child: Icon(Icons.add_circle_outline, color: AppColors.primaryGreen, size: 40),
       ),
     );
   }
 
-  Widget _buildLargeActionCard(
-    String title,
-    String sub,
-    IconData icon,
-    Color green,
-    Color surface,
-  ) {
+  // Card UI for creating a completely new garden (e.g., Rooftop)
+  Widget _buildLargeActionCard(String title, String sub, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: surface,
+        color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white10),
       ),
       child: Row(
         children: [
-          Icon(icon, color: green, size: 30),
+          Icon(icon, color: AppColors.primaryGreen, size: 30),
           const SizedBox(width: 20),
           Expanded(
             child: Column(
@@ -300,14 +298,14 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                 Text(
                   title,
                   style: GoogleFonts.poppins(
-                    color: Colors.white,
+                    color: AppColors.textMain,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 Text(
                   sub,
-                  style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12),
+                  style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 12),
                 ),
               ],
             ),
