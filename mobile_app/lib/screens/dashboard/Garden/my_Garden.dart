@@ -38,8 +38,8 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
     const neonGreen = Color(0xFF00E676);
     const surfaceColor = Color(0xFF16201B);
 
-    // ✅ Reserve space for the navbar (65px) + system bottom inset
-    final double bottomPadding = 65 + MediaQuery.of(context).padding.bottom;
+    // Small breathing room at bottom — Scaffold handles navbar clearance automatically
+    final double bottomPadding = 24 + MediaQuery.of(context).padding.bottom;
 
     return Material(
       color: bgColor,
@@ -118,9 +118,9 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                 },
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 16),
               const Divider(color: Colors.white10),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               _buildLargeActionCard(
                 "Add New Garden Location",
                 "Setup a new indoor space, balcony, or rooftop.",
@@ -128,7 +128,7 @@ class _MyGardenScreenState extends State<MyGardenScreen> {
                 neonGreen,
                 surfaceColor,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
             ],
           ),
         ),
