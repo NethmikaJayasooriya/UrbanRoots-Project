@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// 1. IMPORT YOUR NAV BAR WRAPPER HERE
 import 'screens/dashboard/nav_bar.dart'; 
 
 void main() {
@@ -16,10 +15,10 @@ class MyApp extends StatelessWidget {
       title: 'Urban Roots',
       theme: ThemeData(
         brightness: Brightness.dark, 
-        primaryColor: const Color(0xFF00E676), // Use your Neon Green
-        scaffoldBackgroundColor: const Color(0xFF07160F), // Use your bgColor
+        primaryColor: const Color(0xFF00E676),
+        scaffoldBackgroundColor: const Color(0xFF07160F), 
       ),
-      // 2. CHANGE THIS: Start with the Wrapper, not the Garden screen
+      
       home: const MainNavigationWrapper(), 
     );
   }
