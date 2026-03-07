@@ -60,4 +60,39 @@ class MarketplaceScreen1 extends StatelessWidget {
     );
   }
 
+    Widget _buildProductCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              ),
+              child: const Center(child: Icon(Icons.eco, size: 50, color: Colors.green)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Green Chilli Seeds', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Kitchen Essentials', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 5),
+                const Text('Rs. 150.00', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
 }
