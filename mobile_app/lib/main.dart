@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/garden_creation/garden_intro_screen.dart'; 
+// 1. IMPORT YOUR NAV BAR WRAPPER HERE
+import 'screens/dashboard/nav_bar.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -14,12 +15,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Urban Roots',
       theme: ThemeData(
-  
         brightness: Brightness.dark, 
-        primaryColor: const Color(0xFF2ECC71),
-        scaffoldBackgroundColor: const Color(0xFF121413),
+        primaryColor: const Color(0xFF00E676), // Use your Neon Green
+        scaffoldBackgroundColor: const Color(0xFF07160F), // Use your bgColor
       ),
-      home: const GardenIntroScreen(), 
+      // 2. CHANGE THIS: Start with the Wrapper, not the Garden screen
+      home: const MainNavigationWrapper(), 
     );
   }
 }
