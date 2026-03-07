@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'plant_detail_screen.dart';
 
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
@@ -9,132 +10,310 @@ class MyGardenScreen extends StatefulWidget {
 }
 
 class _MyGardenScreenState extends State<MyGardenScreen> {
-  // Track which plant ID is currently linked to the digital pet
-  String? assignedPlantId = "1"; 
+  String _selectedGarden = "Indoor Garden";
+  String? assignedPlantId = "3";
 
-  void _handleToggle(String plantId) {
-    setState(() {
-      // If clicking the already assigned one, it stays assigned (logic for 1-to-1)
-      // Otherwise, switch the assignment to the new plant
-      assignedPlantId = plantId;
-    });
-    // TODO: Update Firestore with the new assignedPlantId for this user
-  }
+  final List<String> myGardens = ["Indoor Garden", "Home Balcony", "Rooftop"];
+
+  final List<Map<String, dynamic>> plants = [
+    {
+      "id": "1",
+      "name": "Tomato",
+      "status": "Healthy",
+      "image": "https://images.unsplash.com/photo-1518977676601-b53f02bad6d5?q=80&w=500&auto=format&fit=crop",
+      "statusColor": const Color(0xFF00E676),
+    },
+    {
+      "id": "2",
+      "name": "Lettuce",
+      "status": "Check Needed",
+      "image": "https://images.unsplash.com/photo-1622206141540-5844544d3db5?q=80&w=500&auto=format&fit=crop",
+      "statusColor": Colors.orangeAccent,
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
     const bgColor = Color(0xFF07160F);
     const neonGreen = Color(0xFF00E676);
-    const cardColor = Color(0xFF16201B);
+    const surfaceColor = Color(0xFF16201B);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text("My Garden", 
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Manage Your Crops",
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white54)),
-            const SizedBox(height: 25),
-            
-            // Plant Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 15,
-              mainAxisSpacing: 15,
-              childAspectRatio: 0.75, // Adjusted to fit the toggle
-              children: [
-                _buildPlantCard("1", "Tomato", "Healthy", neonGreen, cardColor),
-                _buildPlantCard("2", "Lettuce", "Thirsty", Colors.orangeAccent, cardColor),
-                _buildPlantCard("3", "Spinach", "Healthy", neonGreen, cardColor),
-                // Add Plant Placeholder
-                _buildAddCard(cardColor),
-              ],
-            ),
-          ],
+    // ✅ Reserve space for the navbar (65px) + system bottom inset
+    final double bottomPadding = 65 + MediaQuery.of(context).padding.bottom;
+
+    return Material(
+      color: bgColor,
+      child: SafeArea(
+        bottom: false, // we handle bottom manually via bottomPadding below
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TITLE (replaces AppBar)
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 20),
+                child: Text(
+                  "My Garden",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+
+              // GARDEN SWITCHER
+              SizedBox(
+                height: 42,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: myGardens.length,
+                  itemBuilder: (context, index) {
+                    bool isSelected = _selectedGarden == myGardens[index];
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedGarden = myGardens[index]),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: isSelected ? neonGreen : surfaceColor,
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Center(
+                          child: Text(
+                            myGardens[index],
+                            style: GoogleFonts.poppins(
+                              color: isSelected ? Colors.black : Colors.white38,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                "Active Crops",
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white38),
+              ),
+              const SizedBox(height: 15),
+
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.72,
+                ),
+                itemCount: plants.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == plants.length) return _buildAddCard();
+                  return _buildPlantCard(plants[index]);
+                },
+              ),
+
+              const SizedBox(height: 40),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 20),
+              _buildLargeActionCard(
+                "Add New Garden Location",
+                "Setup a new indoor space, balcony, or rooftop.",
+                Icons.add_home_work_rounded,
+                neonGreen,
+                surfaceColor,
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPlantCard(String id, String name, String status, Color statusColor, Color cardColor) {
-    bool isAssigned = assignedPlantId == id;
+  Widget _buildPlantCard(Map<String, dynamic> plant) {
+    bool isAssigned = assignedPlantId == plant['id'];
     const neonGreen = Color(0xFF00E676);
+    const surfaceColor = Color(0xFF16201B);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isAssigned ? neonGreen.withOpacity(0.5) : Colors.white10, width: 2),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PlantDetailScreen(plant: plant)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(Icons.eco_outlined, color: neonGreen, size: 24),
-              if (isAssigned)
-                const Icon(Icons.pets, color: neonGreen, size: 18),
-            ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceColor, // ✅ FIXED: fallback color so card is visible even if image fails
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isAssigned ? neonGreen : Colors.white10,
+            width: isAssigned ? 2 : 1,
           ),
-          const SizedBox(height: 12),
-          Text(name, 
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16)),
-          Text(status, 
-            style: GoogleFonts.poppins(color: statusColor, fontSize: 12)),
-          
-          const Spacer(),
-          
-          const Divider(color: Colors.white10),
-          
-          // Toggle Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              Expanded(
-                child: Text("Link Pet", 
-                  style: GoogleFonts.poppins(color: Colors.white54, fontSize: 10)),
+              // ✅ FIXED: Image.network with error/loading builder so blank cards don't appear
+              Image.network(
+                plant['image'],
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    color: surfaceColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF00E676),
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: surfaceColor,
+                    child: const Center(
+                      child: Icon(Icons.yard_rounded, color: Color(0xFF00E676), size: 40),
+                    ),
+                  );
+                },
               ),
-              Transform.scale(
-                scale: 0.7,
-                child: Switch(
-                  value: isAssigned,
-                  activeColor: neonGreen,
-                  inactiveTrackColor: Colors.white10,
-                  onChanged: (val) => _handleToggle(id),
+              // Dark overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.75),
+                    ],
+                  ),
+                ),
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isAssigned)
+                      const Align(
+                        alignment: Alignment.topRight,
+                        child: Icon(Icons.pets, color: neonGreen, size: 18),
+                      ),
+                    const Spacer(),
+                    Text(
+                      plant['name'],
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      plant['status'],
+                      style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildLinkToggle(plant['id'], isAssigned),
+                  ],
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLinkToggle(String id, bool isAssigned) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black45,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Link Pet",
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 10),
+          ),
+          Transform.scale(
+            scale: 0.65,
+            child: Switch(
+              value: isAssigned,
+              activeColor: const Color(0xFF00E676),
+              onChanged: (val) => setState(() => assignedPlantId = id),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAddCard(Color cardColor) {
+  Widget _buildAddCard() {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10, style: BorderStyle.solid),
+        color: const Color(0xFF16201B),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
       ),
       child: const Center(
-        child: Icon(Icons.add_circle_outline, color: Colors.white24, size: 40),
+        child: Icon(Icons.add_circle_outline, color: Color(0xFF00E676), size: 40),
+      ),
+    );
+  }
+
+  Widget _buildLargeActionCard(
+    String title,
+    String sub,
+    IconData icon,
+    Color green,
+    Color surface,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: green, size: 30),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  sub,
+                  style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 16),
+        ],
       ),
     );
   }
