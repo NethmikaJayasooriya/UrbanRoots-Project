@@ -608,7 +608,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       onTap: () async {
         // Try heavy impact for stronger feedback
         await HapticFeedback.heavyImpact();
-        // Fallback: try vibrate if available (for Android)
+        // Fallback: try vibrate if available (for Androi)
         await HapticFeedback.vibrate();
         _capture();
       },
