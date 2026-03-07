@@ -23,7 +23,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    // create pulse animation
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -39,7 +38,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
   }
 
   void _startScan() async {
-    // fake scanning delay
     await Future.delayed(const Duration(seconds: 3));
     if (mounted) {
       setState(() => _isScanning = false);
@@ -49,15 +47,102 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
 
   void _connectDevice() async {
     setState(() => _isConnecting = true);
-    // fake connection delay
     await Future.delayed(const Duration(seconds: 2));
+    
     if (mounted) {
       setState(() => _isConnecting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Connected Successfully! 🌱"), backgroundColor: Color(0xFF00E676), behavior: SnackBarBehavior.floating),
-      );
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const GardenStrategyScreen()));
+      _showWindConfigDialog(context);
     }
+  }
+
+  // UPDATED DIALOG: Fixes the "tight" look by adding proper padding and spacing
+  void _showWindConfigDialog(BuildContext context) {
+    bool localWindState = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          const neonGreen = Color(0xFF00E676);
+          const surfaceColor = Color(0xFF16201B);
+          const boxColor = Color(0xFF1F2924); // Slightly lighter for contrast
+
+          return AlertDialog(
+            backgroundColor: surfaceColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            title: Text("Extra Detail", 
+              style: GoogleFonts.poppins(
+                color: Colors.white, 
+                fontWeight: FontWeight.bold, 
+                fontSize: 22
+              )),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Your sensor handles soil and light, but the AI needs to know about wind for 100% accuracy.",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54, 
+                    fontSize: 13, 
+                    height: 1.5
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // FIXED BOX: Increased internal padding
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), 
+                  decoration: BoxDecoration(
+                    color: boxColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero, 
+                    title: Text("High Wind Exposure?", 
+                      style: GoogleFonts.poppins(
+                        color: Colors.white, 
+                        fontSize: 14, 
+                        fontWeight: FontWeight.w600
+                      )),
+                    subtitle: Text("Usually for balconies above 3rd floor", 
+                      style: GoogleFonts.poppins(
+                        color: Colors.white30, 
+                        fontSize: 11
+                      )),
+                    value: localWindState,
+                    activeColor: neonGreen,
+                    onChanged: (val) => setDialogState(() => localWindState = val),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); 
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => const GardenStrategyScreen())
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8, bottom: 8),
+                  child: Text("Next", 
+                    style: GoogleFonts.poppins(
+                      color: neonGreen, 
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 16
+                    )),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -71,19 +156,28 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white), 
+          onPressed: () => Navigator.pop(context)
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
             Text("Connect your\nSmart Sensor.",
-                style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2), textAlign: TextAlign.center),
+                style: GoogleFonts.poppins(
+                  fontSize: 32, 
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.white, 
+                  height: 1.2
+                ), 
+                textAlign: TextAlign.center),
             const SizedBox(height: 10),
-            Text("Turn on your device and bring it close.", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
+            Text("Turn on your device and bring it close.", 
+                style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             const SizedBox(height: 40),
 
-            // pulsing radar UI
             Center(
               child: AnimatedBuilder(
                 animation: _animationController,
@@ -93,9 +187,16 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: surfaceColor,
-                      border: Border.all(color: _isScanning ? neonGreen.withOpacity(0.5) : Colors.transparent, width: 2),
+                      border: Border.all(
+                        color: _isScanning ? neonGreen.withOpacity(0.5) : Colors.transparent, 
+                        width: 2
+                      ),
                       boxShadow: _isScanning 
-                        ? [BoxShadow(color: neonGreen.withOpacity(0.2), blurRadius: 30 * _animationController.value, spreadRadius: 10 * _animationController.value)] 
+                        ? [BoxShadow(
+                            color: neonGreen.withOpacity(0.2), 
+                            blurRadius: 30 * _animationController.value, 
+                            spreadRadius: 10 * _animationController.value
+                          )] 
                         : [],
                     ),
                     child: Center(
@@ -108,10 +209,14 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
               ),
             ),
             const SizedBox(height: 20),
-            Text(_isScanning ? "Scanning..." : "Devices Found", style: GoogleFonts.poppins(color: neonGreen, fontWeight: FontWeight.w600, fontSize: 16)),
+            Text(_isScanning ? "Scanning..." : "Devices Found", 
+                style: GoogleFonts.poppins(
+                  color: neonGreen, 
+                  fontWeight: FontWeight.w600, 
+                  fontSize: 16
+                )),
             const SizedBox(height: 30),
 
-            // device list
             Expanded(
               child: _isScanning
                   ? const SizedBox()
@@ -127,14 +232,19 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                             decoration: BoxDecoration(
                               color: surfaceColor,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16), // Matching the squircle theme
                               border: isSelected ? Border.all(color: neonGreen, width: 2) : null,
                             ),
                             child: Row(
                               children: [
                                 const Icon(Icons.devices, color: Colors.white70),
                                 const SizedBox(width: 15),
-                                Text(deviceName, style: GoogleFonts.poppins(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500)),
+                                Text(deviceName, 
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white, 
+                                    fontSize: 15, 
+                                    fontWeight: FontWeight.w500
+                                  )),
                                 const Spacer(),
                                 if (isSelected) const Icon(Icons.check_circle, color: neonGreen, size: 20),
                               ],
@@ -145,25 +255,36 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                     ),
             ),
 
-            // connect button
             SizedBox(
               width: double.infinity,
-              height: 55,
+              height: 56,
               child: ElevatedButton(
                 onPressed: (_selectedDevice != null && !_isConnecting) ? _connectDevice : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: neonGreen,
                   disabledBackgroundColor: surfaceColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: _isConnecting
-                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3))
-                    : Text("Connect Device", style: GoogleFonts.poppins(color: _selectedDevice != null ? Colors.black : Colors.grey, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ? const SizedBox(
+                        height: 24, 
+                        width: 24, 
+                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3)
+                      )
+                    : Text("Connect Device", 
+                        style: GoogleFonts.poppins(
+                          color: _selectedDevice != null ? Colors.black : Colors.grey, 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 16
+                        )),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManualEnvironmentScreen())),
+              onPressed: () => Navigator.push(
+                context, 
+                MaterialPageRoute(builder: (context) => const ManualEnvironmentScreen())
+              ),
               child: Text("Skip for now", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             ),
           ],
