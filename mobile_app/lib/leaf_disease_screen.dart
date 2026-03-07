@@ -9,7 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'app_styles.dart';
-import 'scan_history_screen.dart'; // TOP OF FILE — correct position
+import 'scan_history_screen.dart';
+import 'disease_detail_screen.dart';
 
 // ═══════════════════════════════════════════════
 // Flash Mode Enum
@@ -36,6 +37,13 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   bool _analyzing   = false;
   bool _torchOn     = false; // manual torch for lighting up the leaf
   FlashOption _flash = FlashOption.off;
+
+  // ── Zoom state ─────────────────────────────
+  double _currentZoom   = 1.0;
+  double _baseZoom      = 1.0;
+  double _minZoom       = 1.0;
+  double _maxZoom       = 8.0;
+  bool   _showZoomBadge = false;
 
   // ── Animations ─────────────────────────────
   late AnimationController _pulseCtrl;
@@ -126,15 +134,23 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       await ctrl.initialize();
       if (!mounted) return;
 
-      // FIX 1: Always force flash OFF when camera starts or flips
+      // Always force flash OFF when camera starts or flips
       await ctrl.setFlashMode(FlashMode.off);
+
+      // Load zoom limits from device
+      final minZoom = await ctrl.getMinZoomLevel();
+      final maxZoom = await ctrl.getMaxZoomLevel();
 
       await _camController?.dispose();
       setState(() {
         _camController = ctrl;
         _cameraReady   = true;
-        _flash         = FlashOption.off; // Reset UI flash state too
-        _torchOn       = false;           // Reset torch state too
+        _flash         = FlashOption.off;
+        _torchOn       = false;
+        _minZoom       = minZoom;
+        _maxZoom       = maxZoom;
+        _currentZoom   = minZoom;
+        _baseZoom      = minZoom;
       });
     } catch (e) {
       debugPrint('Camera init error: $e');
@@ -161,6 +177,27 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     await _camController!.setFlashMode(
         next ? FlashMode.torch : FlashMode.off);
     setState(() => _torchOn = next);
+  }
+
+  // ── Zoom helpers ───────────────────────────
+  Future<void> _setZoom(double zoom) async {
+    if (_camController == null || !_cameraReady) return;
+    final clamped = zoom.clamp(_minZoom, _maxZoom);
+    await _camController!.setZoomLevel(clamped);
+    setState(() => _currentZoom = clamped);
+  }
+
+  void _onScaleStart(ScaleStartDetails d) {
+    _baseZoom = _currentZoom;
+  }
+
+  Future<void> _onScaleUpdate(ScaleUpdateDetails d) async {
+    if (d.pointerCount < 2) return;
+    await _setZoom(_baseZoom * d.scale);
+    setState(() => _showZoomBadge = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showZoomBadge = false);
+    });
   }
 
   // ── Save to history ────────────────────────
@@ -316,14 +353,59 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     return AnimatedOpacity(
       opacity:  _cameraReady ? 1.0 : 0.0,
       duration: AppDuration.normal,
-      child: SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width:  _camController!.value.previewSize!.height,
-            height: _camController!.value.previewSize!.width,
-            child:  CameraPreview(_camController!),
-          ),
+      child: GestureDetector(
+        onScaleStart:  _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width:  _camController!.value.previewSize!.height,
+                  height: _camController!.value.previewSize!.width,
+                  child:  CameraPreview(_camController!),
+                ),
+              ),
+            ),
+            // Zoom badge
+            Positioned(
+              top: 100, left: 0, right: 0,
+              child: AnimatedOpacity(
+                opacity:  _showZoomBadge ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color:        Colors.black.withOpacity(0.55),
+                      borderRadius: AppRadius.pillBR,
+                      border: Border.all(
+                          color: AppColors.neonGreen.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.zoom_in_rounded,
+                            color: AppColors.neonGreen, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_currentZoom.toStringAsFixed(1)}x',
+                          style: TextStyle(
+                            color:      AppColors.neonGreen,
+                            fontSize:   14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1225,7 +1307,48 @@ Scanned with UrbanRoots 🌱
                           )),
                     ),
                     const SizedBox(height: 10),
-                    Text('Leaf Curl Disease', style: AppText.heading),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DiseaseDetailScreen(
+                              diseaseName: 'Leaf Curl Disease'),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text('Leaf Curl Disease',
+                                style: AppText.heading),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.neonGreen.withOpacity(0.1),
+                              borderRadius: AppRadius.pillBR,
+                              border: Border.all(
+                                  color: AppColors.neonGreen.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Details',
+                                    style: TextStyle(
+                                      color:      AppColors.neonGreen,
+                                      fontSize:   11,
+                                      fontWeight: FontWeight.w600,
+                                    )),
+                                const SizedBox(width: 3),
+                                Icon(Icons.arrow_forward_ios_rounded,
+                                    color: AppColors.neonGreen, size: 10),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
