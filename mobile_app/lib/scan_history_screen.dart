@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_styles.dart';
 import 'leaf_disease_screen.dart';
@@ -215,6 +216,8 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
     );
 
     if (confirm == true) {
+      debugPrint('Haptic: deleteScan');
+      await HapticFeedback.vibrate();
       await ScanHistoryService.deleteScan(record.id);
       _loadHistory();
     }
@@ -270,7 +273,13 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const LeafScanScreen()),
-        ).then((_) => _loadHistory()),
+        ).then((result) async {
+          if (result == 'scan_complete') {
+            debugPrint('Haptic: scan-finish');
+            await HapticFeedback.vibrate();
+          }
+          _loadHistory();
+        }),
         backgroundColor: AppColors.neonGreen,
         icon: const Icon(Icons.camera_alt_rounded, color: Colors.black),
         label: Text('Scan Now',
@@ -694,11 +703,13 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
           child: const Icon(Icons.delete_rounded,
               color: AppColors.danger, size: 24),
         ),
-        onDismissed: (_) => ScanHistoryService.deleteScan(record.id)
-            .then((_) => _loadHistory()),
+        onDismissed: (_) => _deleteScan(record),
         confirmDismiss: (_) async {
+          // ✅ Haptic feedback on swipe to delete
+          debugPrint('Haptic: swipe-to-delete');
+          await HapticFeedback.vibrate();
           await _deleteScan(record);
-          return false; // we handle reload ourselves
+          return false;
         },
         child: GestureDetector(
           onTap: () => Navigator.push(

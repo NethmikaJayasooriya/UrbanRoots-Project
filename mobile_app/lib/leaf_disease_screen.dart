@@ -12,6 +12,11 @@ import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
 
+// ── Vibration helper (removed vibration package) ─────────────
+Future<void> _vibrate(List<int> pattern) async {
+  await HapticFeedback.vibrate();
+}
+
 // ═══════════════════════════════════════════════
 // Flash Mode Enum
 // ═══════════════════════════════════════════════
@@ -230,6 +235,9 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // Save to history using picked.path
       await _saveToHistory(picked.path);
 
+      // ✅ Double vibrate — scan complete success feedback
+      await _vibrate([0, 80, 150, 80]);
+
       if (!mounted) return;
       Navigator.push(
         context,
@@ -271,12 +279,19 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
 
-      // Save to history using photo.path
-      await _saveToHistory(photo.path);
+        // Save to history using photo.path
+        await _saveToHistory(photo.path);
 
-      if (!mounted) return;
-      Navigator.push(
-          context, _slideRoute(DiseaseResultScreen(imagePath: photo.path)));
+        // ✅ Double vibrate — scan complete success feedback
+        await _vibrate([0, 80, 150, 80]);
+
+        if (!mounted) return;
+        // Show result screen, then pop to scan history
+        await Navigator.push(
+          context,
+          _slideRoute(DiseaseResultScreen(imagePath: photo.path)),
+        );
+        Navigator.pop(context, 'scan_complete');
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
@@ -689,9 +704,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     return GestureDetector(
       onTap: () async {
         // Try heavy impact for stronger feedback
-        await HapticFeedback.heavyImpact();
-        // Fallback: try vibrate if available (for Androi)
-        await HapticFeedback.vibrate();
+        await _vibrate([0, 60]);
         _capture();
       },
       child: _analyzing
