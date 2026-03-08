@@ -23,7 +23,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
   bool _isGoogleLoading = false;
-  bool _isFacebookLoading = false; 
   bool _isEmailLoading = false;
 
   void _handleSignUp() async {
@@ -97,31 +96,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
-
-  void _handleFacebookSignIn() async {
-    debugPrint("DEBUG: Facebook Sign-In button pressed");
-    setState(() => _isFacebookLoading = true);
-    try {
-      final userCredential = await AuthService.signInWithFacebook();
-      
-      if (userCredential != null) {
-        debugPrint("Facebook Login Success: ${userCredential.user?.email}");
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint("Facebook Login Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Facebook login failed. Check popup settings.")),
-      );
-    } finally {
-      if (mounted) setState(() => _isFacebookLoading = false);
     }
   }
 
@@ -234,10 +208,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 _buildSocialButton("Continue with Google", FontAwesomeIcons.google, 
                     onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
-                
-                const SizedBox(height: 15),
-                _buildSocialButton("Continue with Facebook", FontAwesomeIcons.facebookF, 
-                    onTap: _handleFacebookSignIn, isLoading: _isFacebookLoading),
 
                 const SizedBox(height: 40),
                 Center(
