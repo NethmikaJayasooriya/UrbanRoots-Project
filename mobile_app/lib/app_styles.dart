@@ -342,6 +342,48 @@ class AppStyles {
 }
 
 // ───────────────────────────────────────────────────────────
+//  SEVERITY HELPERS  —  single source of truth
+// ───────────────────────────────────────────────────────────
+class AppSeverity {
+  AppSeverity._();
+
+  // ── Color by severity string ───────────────────────────
+  static Color color(String severity) => switch (severity.toLowerCase()) {
+    'high'   => AppColors.danger,
+    'medium' => AppColors.warning,
+    'low'    => AppColors.neonGreen,
+    _        => AppColors.textMuted,
+  };
+
+  // ── Icon by severity string ────────────────────────────
+  static IconData icon(String severity) => switch (severity.toLowerCase()) {
+    'high'   => Icons.warning_rounded,
+    'medium' => Icons.info_rounded,
+    'low'    => Icons.check_circle_rounded,
+    _        => Icons.help_outline_rounded,
+  };
+
+  // ── Badge decoration by severity ──────────────────────
+  static BoxDecoration badge(String severity) {
+    final c = color(severity);
+    return BoxDecoration(
+      color:        c.withOpacity(0.12),
+      borderRadius: AppRadius.pillBR,
+      border:       Border.all(color: c.withOpacity(0.4)),
+    );
+  }
+
+  // ── Glow box shadow by severity ───────────────────────
+  static List<BoxShadow> glow(String severity) => [
+    BoxShadow(
+      color:        color(severity).withOpacity(0.35),
+      blurRadius:   12,
+      spreadRadius: 1,
+    ),
+  ];
+}
+
+// ───────────────────────────────────────────────────────────
 //  DURATIONS
 // ───────────────────────────────────────────────────────────
 class AppDuration {

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -12,9 +13,12 @@ import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
 
-// ── Vibration helper (removed vibration package) ─────────────
+// ── Vibration helper ──────────────────────────
 Future<void> _vibrate(List<int> pattern) async {
-  await HapticFeedback.vibrate();
+  final hasVibrator = await Vibration.hasVibrator() ?? false;
+  if (!hasVibrator) return;
+  // pattern: [delay, vibrate, delay, vibrate...]
+  Vibration.vibrate(pattern: pattern);
 }
 
 // ═══════════════════════════════════════════════
@@ -53,6 +57,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   // ── Animations ─────────────────────────────
   late AnimationController _pulseCtrl;
   late Animation<double>   _pulseAnim;
+  late Animation<double>   _glowAnim;  // ✅ pulsing glow for shutter
 
   late AnimationController _rippleCtrl;
   late Animation<double>   _rippleAnim;
@@ -92,6 +97,9 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     _pulseCtrl = AnimationController(vsync: this, duration: AppDuration.pulse)
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.93, end: 1.0).animate(
+        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    // ✅ Glow pulses between low and high opacity in sync with scale
+    _glowAnim = Tween<double>(begin: 0.15, end: 0.55).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _rippleCtrl = AnimationController(
@@ -279,19 +287,15 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // TODO: replace with real AI API call
       await Future.delayed(const Duration(seconds: 2));
 
-        // Save to history using photo.path
-        await _saveToHistory(photo.path);
+      // Save to history using photo.path
+      await _saveToHistory(photo.path);
 
-        // ✅ Double vibrate — scan complete success feedback
-        await _vibrate([0, 80, 150, 80]);
+      // ✅ Double vibrate — scan complete success feedback
+      await _vibrate([0, 80, 150, 80]);
 
-        if (!mounted) return;
-        // Show result screen, then pop to scan history
-        await Navigator.push(
-          context,
-          _slideRoute(DiseaseResultScreen(imagePath: photo.path)),
-        );
-        Navigator.pop(context, 'scan_complete');
+      if (!mounted) return;
+      Navigator.push(
+          context, _slideRoute(DiseaseResultScreen(imagePath: photo.path)));
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
@@ -724,30 +728,41 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                 ),
               ),
             )
-          : ScaleTransition(
-              scale: _pulseAnim,
-              child: Container(
-                width: 84, height: 84,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.neonGreen, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color:        AppColors.neonGreen.withOpacity(0.3),
-                      blurRadius:   22,
-                      spreadRadius: 2,
+          : AnimatedBuilder(
+              animation: _pulseCtrl,
+              builder: (_, child) => ScaleTransition(
+                scale: _pulseAnim,
+                child: Container(
+                  width: 84, height: 84,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.neonGreen, width: 3),
+                    // ✅ Glow opacity pulses in sync with scale
+                    boxShadow: [
+                      BoxShadow(
+                        color:        AppColors.neonGreen.withOpacity(
+                            _glowAnim.value),
+                        blurRadius:   28,
+                        spreadRadius: 4,
+                      ),
+                      BoxShadow(
+                        color:        AppColors.neonGreen.withOpacity(
+                            _glowAnim.value * 0.5),
+                        blurRadius:   50,
+                        spreadRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 62, height: 62,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.neonGreen,
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded,
+                          color: Colors.black, size: 28),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Container(
-                    width: 62, height: 62,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.neonGreen,
-                    ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        color: Colors.black, size: 28),
                   ),
                 ),
               ),

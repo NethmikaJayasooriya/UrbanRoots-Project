@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_styles.dart';
 import 'leaf_disease_screen.dart';
@@ -50,15 +51,8 @@ class ScanRecord {
         isHealthy:   json['isHealthy'] ?? false,
       );
 
-  // Severity color
-  Color get severityColor {
-    switch (severity.toLowerCase()) {
-      case 'high':   return AppColors.danger;
-      case 'medium': return AppColors.warning;
-      case 'low':    return const Color(0xFF69F0AE);
-      default:       return AppColors.neonGreen;
-    }
-  }
+  // ✅ Severity color via AppSeverity helper
+  Color get severityColor => AppSeverity.color(severity);
 }
 
 // ═══════════════════════════════════════════════
@@ -216,8 +210,6 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
     );
 
     if (confirm == true) {
-      debugPrint('Haptic: deleteScan');
-      await HapticFeedback.vibrate();
       await ScanHistoryService.deleteScan(record.id);
       _loadHistory();
     }
@@ -273,13 +265,7 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const LeafScanScreen()),
-        ).then((result) async {
-          if (result == 'scan_complete') {
-            debugPrint('Haptic: scan-finish');
-            await HapticFeedback.vibrate();
-          }
-          _loadHistory();
-        }),
+        ).then((_) => _loadHistory()),
         backgroundColor: AppColors.neonGreen,
         icon: const Icon(Icons.camera_alt_rounded, color: Colors.black),
         label: Text('Scan Now',
@@ -703,11 +689,12 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
           child: const Icon(Icons.delete_rounded,
               color: AppColors.danger, size: 24),
         ),
-        onDismissed: (_) => _deleteScan(record),
+        onDismissed: (_) => ScanHistoryService.deleteScan(record.id)
+            .then((_) => _loadHistory()),
         confirmDismiss: (_) async {
-          // ✅ Haptic feedback on swipe to delete
-          debugPrint('Haptic: swipe-to-delete');
-          await HapticFeedback.vibrate();
+          // ✅ Vibrate on swipe to delete
+          final hasVibrator = await Vibration.hasVibrator() ?? false;
+          if (hasVibrator) Vibration.vibrate(duration: 60);
           await _deleteScan(record);
           return false;
         },

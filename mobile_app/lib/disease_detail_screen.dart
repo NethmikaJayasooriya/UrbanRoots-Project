@@ -280,11 +280,8 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
 
   // ── Hero card ──────────────────────────────
   Widget _buildHeroCard(DiseaseInfo info) {
-    final severityColor = switch (info.severity) {
-      'High'   => AppColors.danger,
-      'Medium' => AppColors.warning,
-      _        => AppColors.neonGreen,
-    };
+    // ✅ Using AppSeverity helper — single source of truth
+    final severityColor = AppSeverity.color(info.severity);
 
     return Container(
       margin: const EdgeInsets.all(16),
