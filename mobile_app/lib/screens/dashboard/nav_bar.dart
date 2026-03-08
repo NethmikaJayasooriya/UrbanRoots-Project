@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'garden/my_Garden.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
+
+// Your local imports based on the screenshot
+import 'Home.dart'; 
+import 'garden/my_Garden.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -13,8 +16,8 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with SingleTickerProviderStateMixin {
   
-  // Default to Garden tab
-  int _currentIndex = 1;
+  // CHANGED: Default to 0 so the user lands on the Digital Pet Home Screen first!
+  int _currentIndex = 0;
 
   // Animation controller for the scanner button pulse effect
   AnimationController? _pulseController;
@@ -43,9 +46,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
   Widget build(BuildContext context) {
     final bool scannerActive = _currentIndex == 2;
 
-    // Full list of screens to preserve state using IndexedStack
+    // CHANGED: Plugged in the real HomeScreen() at index 0
     final List<Widget> screens = [
-      const Center(child: Text("Home Feed (Digital Pet)", style: TextStyle(color: Colors.white))),
+      const HomeScreen(), // The Digital Pet screen!
       const MyGardenScreen(),
       const Center(child: Text("Global Leaf Health Scanner", style: TextStyle(color: Colors.white))),
       const Center(child: Text("Marketplace", style: TextStyle(color: Colors.white))),

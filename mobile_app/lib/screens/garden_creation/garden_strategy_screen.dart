@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
+import 'package:mobile_app/services/api_service.dart';
 
 class GardenStrategyScreen extends StatefulWidget {
   const GardenStrategyScreen({super.key});
@@ -13,7 +14,7 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
   // Default selections
   String _containerSize = "Medium";
   String _experienceLevel = "Beginner";
-  String _selectedGoal = "Maximum Yield";
+  String _selectedGoal = "Max Yield"; // Matched with your goalOptions array
   final List<String> _selectedCrops = [];
 
   // Container sizing data mapping
@@ -212,9 +213,52 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
               child: SizedBox(
                 width: double.infinity, height: 60,
                 child: ElevatedButton(
-                  onPressed: _selectedCrops.isEmpty ? null : () {
-                    // Navigate to the dashboard or trigger the backend API
-                    print("Generating for: $_containerSize, $_selectedGoal, $_selectedCrops");
+                  onPressed: _selectedCrops.isEmpty ? null : () async {
+                    // 1. Show a loading indicator
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Saving garden to database...'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+
+                    // 2. Trigger the backend API call with hardcoded previous screen data for testing
+                    bool success = await ApiService.saveGarden(
+                      userId: "test_firebase_uid_123", // Will be replaced with FirebaseAuth UID later
+                      gardenName: "Test SDGP Garden",
+                      location: "Colombo, Sri Lanka",
+                      environment: "Balcony",
+                      isIotConnected: false,
+                      soilType: "Potting Mix",
+                      sunlightLevel: 80,
+                      wateringFrequency: "Daily",
+                      isWindy: true,
+                      containerSize: _containerSize, // Captures from this screen
+                      gardeningGoal: _selectedGoal,  // Captures from this screen
+                      targetCrops: _selectedCrops,   // Captures from this screen
+                      experienceLevel: _experienceLevel, // Captures from this screen
+                    );
+
+                    // 3. Handle success or failure
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('✅ Garden created successfully!'),
+                            backgroundColor: AppColors.primaryGreen,
+                          ),
+                        );
+                        // TODO: Navigate to the Dashboard after saving
+                        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('❌ Failed to create garden. Please try again.'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen, 

@@ -26,6 +26,7 @@ dependencies:
   firebase_auth: ^6.1.4
   google_sign_in: ^6.2.2
   image_picker: ^1.2.1
+  lottie: ^3.3.2
 
 dev_dependencies:
   flutter_test:
@@ -37,6 +38,9 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/animations/pet_idle.json
+    - assets/animations/pet_happy.json
+    - assets/animations/pet_sad.json
    
   fonts:
     - family: FiraSans
