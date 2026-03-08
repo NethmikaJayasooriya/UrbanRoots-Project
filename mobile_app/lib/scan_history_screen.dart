@@ -2,6 +2,11 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:vibration/vibration.dart';
+import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_styles.dart';
@@ -276,6 +281,249 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
   }
 
   // ── Top bar ────────────────────────────────
+  // ── Export PDF ────────────────────────────
+  Future<void> _exportPdf() async {
+    if (_history.isEmpty) return;
+
+    final pdf = pw.Document();
+    final records = _filtered.isEmpty ? _history : _filtered;
+    final now = DateTime.now();
+    final dateStr =
+        '${now.day}/${now.month}/${now.year}';
+
+    // Stats
+    final total    = records.length;
+    final diseased = records.where((r) => !r.isHealthy).length;
+    final healthy  = records.where((r) =>  r.isHealthy).length;
+    final highRisk = records
+        .where((r) => r.severity.toLowerCase() == 'high')
+        .length;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat:  PdfPageFormat.a4,
+        margin:      const pw.EdgeInsets.all(32),
+        header:      (_) => pw.Container(
+          padding: const pw.EdgeInsets.only(bottom: 12),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+              bottom: pw.BorderSide(
+                  color: PdfColor.fromInt(0xFF00E676), width: 1.5),
+            ),
+          ),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('UrbanRoots',
+                      style: pw.TextStyle(
+                        fontSize:   20,
+                        fontWeight: pw.FontWeight.bold,
+                        color:      PdfColor.fromInt(0xFF00E676),
+                      )),
+                  pw.Text('Scan History Report',
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        color:    PdfColors.grey500,
+                      )),
+                ],
+              ),
+              pw.Text('Generated: $dateStr',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color:    PdfColors.grey500,
+                  )),
+            ],
+          ),
+        ),
+        build: (_) => [
+          pw.SizedBox(height: 20),
+
+          // ── Summary stats ───────────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.all(16),
+            decoration: pw.BoxDecoration(
+              color:        PdfColor.fromInt(0xFF16201B),
+              borderRadius: pw.BorderRadius.circular(10),
+              border: pw.Border.all(
+                  color: PdfColor.fromInt(0xFF00E676).shade(0.3),
+                  width: 1),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              children: [
+                _pdfStat('Total',    '$total',    PdfColors.white),
+                _pdfStatDivider(),
+                _pdfStat('Diseased', '$diseased', PdfColor.fromInt(0xFFFF3B3B)),
+                _pdfStatDivider(),
+                _pdfStat('Healthy',  '$healthy',  PdfColor.fromInt(0xFF00E676)),
+                _pdfStatDivider(),
+                _pdfStat('High Risk','$highRisk', PdfColor.fromInt(0xFFFFD700)),
+              ],
+            ),
+          ),
+
+          pw.SizedBox(height: 24),
+
+          // ── Table header ─────────────────────
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(
+                horizontal: 12, vertical: 8),
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF00E676),
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Row(
+              children: [
+                pw.Expanded(flex: 3,
+                    child: pw.Text('Disease',
+                        style: pw.TextStyle(
+                          color:      PdfColors.black,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize:   11,
+                        ))),
+                pw.Expanded(flex: 2,
+                    child: pw.Text('Confidence',
+                        style: pw.TextStyle(
+                          color:      PdfColors.black,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize:   11,
+                        ))),
+                pw.Expanded(flex: 1,
+                    child: pw.Text('Severity',
+                        style: pw.TextStyle(
+                          color:      PdfColors.black,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize:   11,
+                        ))),
+                pw.Expanded(flex: 2,
+                    child: pw.Text('Date',
+                        style: pw.TextStyle(
+                          color:      PdfColors.black,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize:   11,
+                        ))),
+              ],
+            ),
+          ),
+
+          pw.SizedBox(height: 6),
+
+          // ── Table rows ───────────────────────
+          ...records.asMap().entries.map((e) {
+            final r       = e.value;
+            final isEven  = e.key % 2 == 0;
+            final sevColor = switch (r.severity.toLowerCase()) {
+              'high'   => PdfColor.fromInt(0xFFFF3B3B),
+              'medium' => PdfColor.fromInt(0xFFFFD700),
+              _        => PdfColor.fromInt(0xFF00E676),
+            };
+            final scanned =
+                '${r.scannedAt.day}/${r.scannedAt.month}/${r.scannedAt.year}';
+
+            return pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
+              decoration: pw.BoxDecoration(
+                color: isEven
+                    ? PdfColor.fromInt(0xFF16201B)
+                    : PdfColor.fromInt(0xFF0F1A13),
+                border: pw.Border(
+                  bottom: pw.BorderSide(
+                      color: PdfColors.white, width: 0.5),
+                ),
+              ),
+              child: pw.Row(
+                children: [
+                  pw.Expanded(flex: 3,
+                      child: pw.Text(
+                        r.isHealthy ? 'Healthy ✓' : r.diseaseName,
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color:    r.isHealthy
+                              ? PdfColor.fromInt(0xFF00E676)
+                              : PdfColors.white,
+                        ),
+                      )),
+                  pw.Expanded(flex: 2,
+                      child: pw.Text(
+                        '${(r.confidence * 100).toStringAsFixed(1)}%',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color:    PdfColors.white,
+                        ),
+                      )),
+                  pw.Expanded(flex: 1,
+                      child: pw.Text(
+                        r.severity,
+                        style: pw.TextStyle(
+                          fontSize:   10,
+                          color:      sevColor,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      )),
+                  pw.Expanded(flex: 2,
+                      child: pw.Text(
+                        scanned,
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color:    PdfColors.grey400,
+                        ),
+                      )),
+                ],
+              ),
+            );
+          }),
+
+          pw.SizedBox(height: 32),
+
+          // ── Footer note ──────────────────────
+          pw.Text(
+            'Report generated by UrbanRoots — Total of $total scan(s)',
+            style: pw.TextStyle(
+              fontSize: 9,
+              color:    PdfColors.grey500,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Share/print the PDF
+    await Printing.sharePdf(
+      bytes:    await pdf.save(),
+      filename: 'urbanroots_scan_history_$dateStr.pdf'
+          .replaceAll('/', '-'),
+    );
+  }
+
+  // ── PDF stat widget helper ─────────────────
+  pw.Widget _pdfStat(String label, String value, PdfColor color) {
+    return pw.Column(
+      children: [
+        pw.Text(value,
+            style: pw.TextStyle(
+              color:      color,
+              fontSize:   18,
+              fontWeight: pw.FontWeight.bold,
+            )),
+        pw.SizedBox(height: 2),
+        pw.Text(label,
+            style: pw.TextStyle(
+              color:   PdfColors.grey400,
+              fontSize: 9,
+            )),
+      ],
+    );
+  }
+
+  pw.Widget _pdfStatDivider() => pw.Container(
+    width: 1, height: 30,
+    color: PdfColors.white,
+  );
+
   Widget _buildTopBar() {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     return Container(
@@ -315,19 +563,44 @@ class _ScanHistoryScreenState extends State<ScanHistoryScreen>
             ],
           ),
 
-          // Clear all
-          GestureDetector(
-            onTap: _history.isEmpty ? null : _clearAll,
-            child: AnimatedOpacity(
-              opacity:  _history.isEmpty ? 0.3 : 1.0,
-              duration: AppDuration.fast,
-              child: Container(
-                width: 40, height: 40,
-                decoration: AppStyles.iconCircle,
-                child: const Icon(Icons.delete_sweep_rounded,
-                    color: Colors.white, size: 20),
+          // Action buttons
+          Row(
+            children: [
+              // Export PDF
+              GestureDetector(
+                onTap: _history.isEmpty ? null : _exportPdf,
+                child: AnimatedOpacity(
+                  opacity:  _history.isEmpty ? 0.3 : 1.0,
+                  duration: AppDuration.fast,
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.neonGreen.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: AppColors.neonGreen.withOpacity(0.3)),
+                    ),
+                    child: Icon(Icons.picture_as_pdf_rounded,
+                        color: AppColors.neonGreen, size: 20),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              // Clear all
+              GestureDetector(
+                onTap: _history.isEmpty ? null : _clearAll,
+                child: AnimatedOpacity(
+                  opacity:  _history.isEmpty ? 0.3 : 1.0,
+                  duration: AppDuration.fast,
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: AppStyles.iconCircle,
+                    child: const Icon(Icons.delete_sweep_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
