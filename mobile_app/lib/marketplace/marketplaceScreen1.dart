@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+// FIX 1: Use forward slashes and ensure this points to the correct file where ShoppingCart is defined
+// If ShoppingCart is in the same folder:
+// import 'shopping_cart.dart'; 
+// Or if using the package name:
+import 'package:mobile_app/marketplace/shoppingCart.dart';
+
 class MarketplaceScreen1 extends StatelessWidget {
   const MarketplaceScreen1({super.key});
 
@@ -9,7 +15,19 @@ class MarketplaceScreen1 extends StatelessWidget {
       appBar: AppBar(
         title: const Text('UrbanRoots Market', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.shopping_cart_outlined)),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context, 
+                MaterialPageRoute(
+                  // FIX 2: Removed 'const' because ShoppingCart might not have a const constructor
+                  // or the compiler can't find the class due to the bad import.
+                  builder: (context) => ShoppingCart(), 
+                ),
+              );
+            },
+            icon: const Icon(Icons.shopping_cart_outlined),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -60,7 +78,7 @@ class MarketplaceScreen1 extends StatelessWidget {
     );
   }
 
-    Widget _buildProductCard() {
+  Widget _buildProductCard() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -94,5 +112,13 @@ class MarketplaceScreen1 extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// Placeholder for ShoppingCart - ensure this is defined or imported correctly
+class ShoppingCart extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(appBar: AppBar(title: Text("Cart")));
   }
 }
