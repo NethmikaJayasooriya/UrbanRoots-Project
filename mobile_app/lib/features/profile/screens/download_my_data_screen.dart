@@ -25,7 +25,7 @@ class _DownloadMyDataScreenState extends State<DownloadMyDataScreen> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 30),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -144,7 +144,6 @@ class _DownloadMyDataScreenState extends State<DownloadMyDataScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: const _BottomNavBar(),
     );
   }
 }
@@ -341,75 +340,6 @@ class _RequestCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0A2419),
-        border: Border(top: BorderSide(color: Color(0xFF0E8F55), width: 0.6)),
-      ),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 18),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: const [
-            _NavItem(icon: Icons.home_rounded, label: "HOME", active: false),
-            _NavItem(icon: Icons.eco_rounded, label: "GARDEN", active: false),
-            _NavItem(
-              icon: Icons.groups_rounded,
-              label: "COMMUNITY",
-              active: false,
-            ),
-            _NavItem(
-              icon: Icons.account_circle_rounded,
-              label: "PROFILE",
-              active: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.active,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = active ? AppColors.accent : const Color(0xFF96A2B8);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.0,
-          ),
-        ),
-      ],
     );
   }
 }
