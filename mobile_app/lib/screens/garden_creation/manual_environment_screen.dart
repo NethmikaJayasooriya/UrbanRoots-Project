@@ -4,20 +4,21 @@ import 'garden_strategy_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
 class ManualEnvironmentScreen extends StatefulWidget {
-  const ManualEnvironmentScreen({super.key});
+  // Receives the data bundle from the previous screens
+  final Map<String, dynamic> gardenData; 
+
+  const ManualEnvironmentScreen({super.key, required this.gardenData});
 
   @override
   State<ManualEnvironmentScreen> createState() => _ManualEnvironmentScreenState();
 }
 
 class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
-  // Variables to store user choices
   String _selectedSoil = "Potting Mix";
   double _sunlightValue = 50;
   String _wateringFrequency = "Daily";
   bool _isWindy = false;
 
-  // Data for the soil selection cards
   final List<Map<String, String>> _soilTypes = [
     {"name": "Potting Mix", "desc": "High Nutrients, Balanced"},
     {"name": "Red Soil", "desc": "Garden Soil, Acidic"},
@@ -27,7 +28,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
 
   final List<String> _wateringOptions = ["Daily", "Every 2 Days", "Weekly"];
 
-  // Dynamically changes the sunlight icon and text based on slider position
   Map<String, dynamic> _getSunlightInfo() {
     if (_sunlightValue < 30) return {"label": "Shadow / Low Light", "icon": Icons.cloud};
     if (_sunlightValue < 70) return {"label": "Partial Sun", "icon": Icons.wb_cloudy};
@@ -60,7 +60,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 10),
               
-              // RED WARNING NOTICE to push users toward IoT devices eventually
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -87,7 +86,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               _sectionTitle("1. Soil Source"),
               const SizedBox(height: 15),
               
-              // Soil Types Grid
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -140,7 +138,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 30),
 
-              // Sunlight Slider Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween, 
                 children: [
@@ -168,7 +165,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               _sectionTitle("3. Watering Frequency"),
               const SizedBox(height: 15),
               
-              // Segmented selection for watering habits
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(12)),
@@ -204,7 +200,6 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
 
               const SizedBox(height: 30),
 
-              // Toggle for wind exposure
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(12)),
@@ -224,12 +219,20 @@ class _ManualEnvironmentScreenState extends State<ManualEnvironmentScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Button to move to the Strategy screen
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GardenStrategyScreen())),
+                  onPressed: () {
+                    // Append this screen's specific data to the bundle
+                    widget.gardenData['soil_type'] = _selectedSoil;
+                    widget.gardenData['sunlight_level'] = _sunlightValue.toInt();
+                    widget.gardenData['watering_frequency'] = _wateringFrequency;
+                    widget.gardenData['is_windy'] = _isWindy;
+
+                    // Pass to final strategy screen
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => GardenStrategyScreen(gardenData: widget.gardenData)));
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen, 
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))

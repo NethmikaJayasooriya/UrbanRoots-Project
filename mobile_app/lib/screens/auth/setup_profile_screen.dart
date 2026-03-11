@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-
-// IMPORTANT: Adjust these import paths to match your actual folder structure
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/screens/garden_creation/garden_intro_screen.dart';
 

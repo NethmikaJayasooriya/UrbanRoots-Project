@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:geolocator/geolocator.dart'; 
 import 'iot_connection_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
@@ -13,12 +14,13 @@ class GardenBasicsScreen extends StatefulWidget {
 class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
   final TextEditingController _nameController = TextEditingController();
   
-  // Selection state tracking
   int _selectedSpaceIndex = -1;
   bool _isLocating = false;
-  String _locationText = "Colombo, Sri Lanka";
+  String _locationText = "Location not set";
+  
+  double? _latitude;
+  double? _longitude;
 
-  // Data structure for the space types, using WebP for optimization
   final List<Map<String, dynamic>> _spaceOptions = [
     {'label': 'Indoor', 'image': 'assets/images/indoor.webp'},
     {'label': 'Balcony', 'image': 'assets/images/balcony.webp'},
@@ -29,30 +31,83 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Cache images early to prevent flashing when the user scrolls down
     for (var option in _spaceOptions) {
       precacheImage(AssetImage(option['image']), context);
     }
   }
 
-  // Simulates an API call to fetch GPS location
-  void _fetchLocation() async {
+  Future<void> _fetchLocation() async {
     setState(() => _isLocating = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _isLocating = false;
+          _locationText = "Location services disabled";
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _isLocating = false;
+            _locationText = "Permission denied";
+          });
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+          _locationText = "${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+        });
+      }
+    } catch (e) {
       setState(() {
         _isLocating = false;
-        _locationText = "Battaramulla, Sri Lanka";
+        _locationText = "Error fetching location";
       });
     }
   }
 
+  // Instead of saving to the DB here, we bundle the data and pass it to the next screen!
+  void _goToNextScreen() {
+    final Map<String, dynamic> gardenData = {
+      "user_id": "test-user-123", // Replace this later when you add Auth
+      "garden_name": _nameController.text,
+      "location": _locationText,
+      "latitude": _latitude,
+      "longitude": _longitude,
+      "environment": _spaceOptions[_selectedSpaceIndex]['label'],
+    };
+
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (context) => IoTConnectionScreen(gardenData: gardenData)
+      )
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool isSelectionValid = _selectedSpaceIndex != -1;
+    bool isSelectionValid = _selectedSpaceIndex != -1 && 
+                            _nameController.text.isNotEmpty && 
+                            _latitude != null;
 
     return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(), // Dismiss keyboard on tap
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: AppColors.backgroundColor,
         appBar: AppBar(
@@ -73,11 +128,11 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                   style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textMain, height: 1.2)),
               const SizedBox(height: 30),
 
-              // NAME INPUT
               Text("Give your garden a name", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 10),
               TextField(
                 controller: _nameController,
+                onChanged: (value) => setState(() {}),
                 style: const TextStyle(color: AppColors.textMain),
                 decoration: InputDecoration(
                   filled: true,
@@ -90,14 +145,15 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
               ),
               const SizedBox(height: 25),
 
-              // LOCATION SECTION
-              Text("Location", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
+              Text("Location (GPS)", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
+                    Icon(Icons.location_on, color: _latitude != null ? AppColors.primaryGreen : Colors.grey, size: 20),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: _isLocating
                           ? const LinearProgressIndicator(color: AppColors.primaryGreen, minHeight: 2)
@@ -106,14 +162,13 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                     const SizedBox(width: 10),
                     GestureDetector(
                       onTap: _fetchLocation,
-                      child: Text("Update", style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+                      child: Text(_isLocating ? "Waiting..." : "Get GPS", style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 25),
 
-              // SPACE TYPE GRID
               Text("What kind of space is it?", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
               const SizedBox(height: 15),
               GridView.builder(
@@ -130,7 +185,6 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        // Background image
                         Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
@@ -141,8 +195,6 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                             ),
                           ),
                         ),
-                        
-                        // Dark overlay for text readability (animates opacity)
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
@@ -150,8 +202,6 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                             color: Colors.black.withOpacity(isSelected ? 0.2 : 0.5),
                           ),
                         ),
-
-                        // Active Green Border
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
@@ -162,8 +212,6 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                             ),
                           ),
                         ),
-
-                        // Label text
                         Align(
                           alignment: Alignment.bottomCenter,
                           child: Padding(
@@ -178,8 +226,6 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
                             ),
                           ),
                         ),
-                        
-                        // Checkmark icon
                         if (isSelected)
                           Positioned(
                             top: 10,
@@ -197,14 +243,12 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
               ),
               const SizedBox(height: 40),
 
-              // NEXT BUTTON
+              // Button just passes data forward now
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: isSelectionValid
-                      ? () => Navigator.push(context, MaterialPageRoute(builder: (context) => const IoTConnectionScreen()))
-                      : null,
+                  onPressed: isSelectionValid ? _goToNextScreen : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     disabledBackgroundColor: AppColors.surfaceColor,

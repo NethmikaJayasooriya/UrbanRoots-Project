@@ -4,27 +4,27 @@ import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
 
 class GardenStrategyScreen extends StatefulWidget {
-  const GardenStrategyScreen({super.key});
+  // Receives the fully bundled data from all previous screens!
+  final Map<String, dynamic> gardenData; 
+
+  const GardenStrategyScreen({super.key, required this.gardenData});
 
   @override
   State<GardenStrategyScreen> createState() => _GardenStrategyScreenState();
 }
 
 class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
-  // Default selections
   String _containerSize = "Medium";
   String _experienceLevel = "Beginner";
-  String _selectedGoal = "Max Yield"; // Matched with your goalOptions array
+  String _selectedGoal = "Max Yield"; 
   final List<String> _selectedCrops = [];
 
-  // Container sizing data mapping
   final List<Map<String, dynamic>> _containerOptions = [
     {"name": "Small", "size": "< 6\"", "icon": Icons.local_florist},
     {"name": "Medium", "size": "10-12\"", "icon": Icons.grass},
     {"name": "Large", "size": "Ground", "icon": Icons.landscape},
   ];
 
-  // Crop categories with material icons for visual separation
   final List<Map<String, dynamic>> _cropCategories = [
     {"name": "Leafy Greens", "icon": Icons.eco},
     {"name": "Vegetables", "icon": Icons.local_dining},
@@ -35,14 +35,12 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
     {"name": "Medicinal", "icon": Icons.medical_services_outlined},
   ];
 
-  // Goals dictating AI behavior 
   final List<Map<String, dynamic>> _goalOptions = [
     {"name": "Max Yield", "icon": Icons.shopping_bag},
     {"name": "Aesthetic", "icon": Icons.auto_awesome},
     {"name": "Low Care", "icon": Icons.timer},
   ];
 
-  // Helper method to handle multiple chip selections
   void _toggleCrop(String crop) {
     setState(() {
       _selectedCrops.contains(crop) ? _selectedCrops.remove(crop) : _selectedCrops.add(crop);
@@ -66,7 +64,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page Header
             Text("Strategy.", style: GoogleFonts.poppins(fontSize: 40, fontWeight: FontWeight.w800, color: AppColors.textMain, letterSpacing: -1)),
             Text("Refine your setup for optimal growth.", style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14)),
             const SizedBox(height: 24),
@@ -78,7 +75,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     
-                    // 1. Container Size Section
                     _sectionHeader("1. Container Size"),
                     const SizedBox(height: 12),
                     Row(
@@ -111,7 +107,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // 2. Target Crops Section
                     _sectionHeader("2. Target Crops"),
                     const SizedBox(height: 12),
                     Wrap(
@@ -146,7 +141,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // 3. Gardening Goal Section
                     _sectionHeader("3. Gardening Goal"),
                     const SizedBox(height: 12),
                     Row(
@@ -177,7 +171,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // 4. Experience Level Section
                     _sectionHeader("4. Experience Level"),
                     const SizedBox(height: 12),
                     Container(
@@ -207,14 +200,12 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
               ),
             ),
 
-            // Bottom Action Button
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0, top: 10),
               child: SizedBox(
                 width: double.infinity, height: 60,
                 child: ElevatedButton(
                   onPressed: _selectedCrops.isEmpty ? null : () async {
-                    // 1. Show a loading indicator
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Saving garden to database...'),
@@ -222,34 +213,34 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                       ),
                     );
 
-                    // 2. Trigger the backend API call with hardcoded previous screen data for testing
+                    // 🚨 IMPORTANT: You must update api_service.dart to accept latitude and longitude parameters!
                     bool success = await ApiService.saveGarden(
-                      userId: "test_firebase_uid_123", // Will be replaced with FirebaseAuth UID later
-                      gardenName: "Test SDGP Garden",
-                      location: "Colombo, Sri Lanka",
-                      environment: "Balcony",
-                      isIotConnected: false,
-                      soilType: "Potting Mix",
-                      sunlightLevel: 80,
-                      wateringFrequency: "Daily",
-                      isWindy: true,
-                      containerSize: _containerSize, // Captures from this screen
-                      gardeningGoal: _selectedGoal,  // Captures from this screen
-                      targetCrops: _selectedCrops,   // Captures from this screen
-                      experienceLevel: _experienceLevel, // Captures from this screen
+                      userId: widget.gardenData['user_id'] ?? "test_firebase_uid_123", 
+                      gardenName: widget.gardenData['garden_name'] ?? "My Garden",
+                      location: widget.gardenData['location'] ?? "Unknown",
+                      latitude: widget.gardenData['latitude'], // Add this to ApiService!
+                      longitude: widget.gardenData['longitude'], // Add this to ApiService!
+                      environment: widget.gardenData['environment'] ?? "Unknown",
+                      isIotConnected: widget.gardenData['is_iot_connected'] ?? false,
+                      soilType: widget.gardenData['soil_type'] ?? "Potting Mix",
+                      sunlightLevel: widget.gardenData['sunlight_level'] ?? 50,
+                      wateringFrequency: widget.gardenData['watering_frequency'] ?? "Daily",
+                      isWindy: widget.gardenData['is_windy'] ?? false,
+                      containerSize: _containerSize, 
+                      gardeningGoal: _selectedGoal,  
+                      targetCrops: _selectedCrops,   
+                      experienceLevel: _experienceLevel, 
                     );
 
-                    // 3. Handle success or failure
                     if (mounted) {
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('✅ Garden created successfully!'),
+                          const SnackBar(
+                            content: Text('✅ Garden created successfully!'),
                             backgroundColor: AppColors.primaryGreen,
                           ),
                         );
                         // TODO: Navigate to the Dashboard after saving
-                        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const DashboardScreen()));
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -275,7 +266,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
     );
   }
 
-  // Helper for section titles
   Widget _sectionHeader(String title) {
     return Text(title.toUpperCase(), style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2));
   }

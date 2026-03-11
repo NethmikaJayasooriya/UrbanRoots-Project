@@ -14,6 +14,12 @@ export class Garden {
   @Column({ type: 'varchar', length: 255 })
   location: string;
 
+  @Column({ type: 'float', nullable: true })
+  latitude: number;
+
+  @Column({ type: 'float', nullable: true })
+  longitude: number;
+
   @Column({ type: 'varchar', length: 50 })
   environment: string;
 

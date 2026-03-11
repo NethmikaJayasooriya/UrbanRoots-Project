@@ -5,7 +5,10 @@ import 'garden_strategy_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
 class IoTConnectionScreen extends StatefulWidget {
-  const IoTConnectionScreen({super.key});
+  // Receives the data bundle from the first screen
+  final Map<String, dynamic> gardenData; 
+
+  const IoTConnectionScreen({super.key, required this.gardenData});
 
   @override
   State<IoTConnectionScreen> createState() => _IoTConnectionScreenState();
@@ -17,7 +20,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
   String? _selectedDevice;
   late AnimationController _animationController;
 
-  // Mock list of devices for prototyping
   final List<String> _foundDevices = [
     "UrbanRoots Sensor X1", "Smart Garden Hub", "ESP32-Garden-04"
   ];
@@ -57,7 +59,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
     }
   }
 
-  // DIALOG: Captures wind info that sensors typically miss
   void _showWindConfigDialog(BuildContext context) {
     bool localWindState = false;
 
@@ -82,11 +83,10 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                 ),
                 const SizedBox(height: 24),
                 
-                // Toggle Container
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), 
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1F2924), // Slightly lighter than surface for depth
+                    color: const Color(0xFF1F2924), 
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: SwitchListTile(
@@ -105,10 +105,19 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
             actions: [
               TextButton(
                 onPressed: () {
+                  // Add IoT specifics to our data bundle
+                  widget.gardenData['is_iot_connected'] = true;
+                  widget.gardenData['is_windy'] = localWindState;
+                  
+                  // Fill in blanks that the manual screen would normally handle
+                  widget.gardenData['soil_type'] = "IoT Sensor Managed";
+                  widget.gardenData['sunlight_level'] = 50; 
+                  widget.gardenData['watering_frequency'] = "Auto";
+
                   Navigator.pop(context); 
                   Navigator.push(
                     context, 
-                    MaterialPageRoute(builder: (context) => const GardenStrategyScreen())
+                    MaterialPageRoute(builder: (context) => GardenStrategyScreen(gardenData: widget.gardenData))
                   );
                 },
                 child: Padding(
@@ -148,7 +157,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                 style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             const SizedBox(height: 40),
 
-            // Radar Animation UI
             Center(
               child: AnimatedBuilder(
                 animation: _animationController,
@@ -180,7 +188,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                 style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 30),
 
-            // Discovered Devices List
             Expanded(
               child: _isScanning
                   ? const SizedBox()
@@ -214,7 +221,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
                     ),
             ),
 
-            // Action Buttons
             SizedBox(
               width: double.infinity,
               height: 56,
@@ -232,7 +238,11 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen> with SingleTi
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManualEnvironmentScreen())),
+              onPressed: () {
+                // If skipping IoT, tell the data bundle and move to Manual
+                widget.gardenData['is_iot_connected'] = false;
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ManualEnvironmentScreen(gardenData: widget.gardenData)));
+              },
               child: Text("Skip for now", style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             ),
           ],

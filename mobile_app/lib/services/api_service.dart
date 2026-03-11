@@ -1,15 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // Used for kIsWeb
 
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator. 
-static const String baseUrl = 'http://localhost:3000';
+  // Smart URL: Automatically uses localhost for Web, and 10.0.2.2 for Android Emulator
+  static String get baseUrl => kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   static Future<bool> saveGarden({
     required String userId,
     required String gardenName,
     required String location,
+    
+    // 🌍 ADDED: Our new GPS coordinates (nullable in case the user denied GPS permissions)
+    required double? latitude,
+    required double? longitude,
+    
     required String environment,
     required bool isIotConnected,
     required String soilType,
@@ -29,6 +34,11 @@ static const String baseUrl = 'http://localhost:3000';
           'user_id': userId,
           'garden_name': gardenName,
           'location': location,
+          
+          // 🌍 ADDED: Sending the raw numbers straight to NestJS and TypeORM
+          'latitude': latitude,
+          'longitude': longitude,
+          
           'environment': environment,
           'is_iot_connected': isIotConnected,
           'soil_type': soilType,
