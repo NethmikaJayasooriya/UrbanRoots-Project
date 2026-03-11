@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import 'edit_profile_screen.dart';
+import 'privacy_data_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -62,7 +63,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _NavRow(
                           icon: Icons.lock_outline_rounded,
                           title: "Privacy & Data",
-                          onTap: () => _toast("Privacy & Data tapped"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyDataScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
