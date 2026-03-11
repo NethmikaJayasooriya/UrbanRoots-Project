@@ -15,6 +15,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isThirsty = false;
   bool _isTapped = false;
 
+  // Controllers for all the different layers of the UI
   AnimationController? _petController;
   late AnimationController _bubbleController;
   late AnimationController _glowController;
@@ -31,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // fade + slide for when bubble first appears
+    // Bubble entry animation
     _bubbleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -45,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _bubbleController, curve: Curves.easeOut));
 
-    // slow breathe glow around the bubble border
+    // Breathing glow effect
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -54,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
 
-    // tiny vertical bounce so bubble feels alive when it sits there
+    // Floating bubble animation
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
@@ -63,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
     );
 
-    // shimmer sweep across the bubble text area
+    // Light shimmer sweep
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -85,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // Handle the interaction when clicking the pet
   void _handlePetTap() async {
     if (_isTapped) return;
     setState(() => _isTapped = true);
@@ -109,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return 'assets/animations/pet_happy.json';
   }
 
-  // short sentences — the emoji carries the feeling
   String _getPetDialogue() {
     if (_isThirsty) return "So thirsty… help! 😢";
     if (_isTapped) return "Hehe, stop it! 🌿";
@@ -117,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return "We're thriving! ✨";
   }
 
-  // second line adds personality without crowding
   String _getPetSubtext() {
     if (_isThirsty) return "moisture critically low";
     if (_isTapped) return "you're the best 🥰";
@@ -128,7 +128,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Color get _accentColor =>
       _isThirsty ? Colors.redAccent : AppColors.primaryGreen;
 
-  // bubble bg gradient shifts based on mood
   List<Color> get _bubbleGradient => _isThirsty
       ? [const Color(0xFF2D1515), const Color(0xFF1A0C0C)]
       : _isTapped
@@ -157,20 +156,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildPetArea() {
+    // These constants align the different Lottie files
     const double idleYOffset = 28.0;
     const double happyYOffset = 0.0;
-    const double jumpYOffset = 0.0;
     const double sadYOffset = 28.0;
 
+    // Fixed: Happy animation needs a larger scale to match idle character size
+    bool isHappyState = _isTapped || (_activePlant != null && !_isThirsty);
+    double petScale = isHappyState ? 1.15 : 1.05;
+
     double yOffset;
-    if (_isTapped)
-      yOffset = jumpYOffset;
-    else if (_isThirsty)
-      yOffset = sadYOffset;
-    else if (_activePlant != null)
+    if (_isTapped || (_activePlant != null && !_isThirsty)) {
       yOffset = happyYOffset;
-    else
+    } else if (_isThirsty) {
+      yOffset = sadYOffset;
+    } else {
       yOffset = idleYOffset;
+    }
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -188,12 +190,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Transform.translate(
                       offset: Offset(0, yOffset),
                       child: Transform.scale(
-                        scale: 1.05,
+                        scale: petScale, // Scaled up happy state to match idle size
                         alignment: Alignment.bottomCenter,
                         child: Lottie.asset(
                           _getPetAnimation(),
-                          key: ValueKey(
-                              _isTapped ? 'tapped' : _getPetAnimation()),
+                          key: ValueKey(_isTapped ? 'tapped' : _getPetAnimation()),
                           fit: BoxFit.contain,
                           alignment: Alignment.bottomCenter,
                           controller: _isTapped ? _petController : null,
@@ -215,8 +216,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-
-              // bubble floats top-right, bounces gently, glows with pet's mood
               Positioned(
                 top: 40,
                 right: 0,
@@ -253,8 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             animation: Listenable.merge([_glowPulse, _shimmerAnim]),
             builder: (_, child) {
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: _bubbleGradient,
@@ -267,14 +265,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     width: 1.8,
                   ),
                   boxShadow: [
-                    // outer glow — breathes with the pet
                     BoxShadow(
-                      color: _accentColor
-                          .withOpacity(_glowPulse.value * 0.45),
+                      color: _accentColor.withOpacity(_glowPulse.value * 0.45),
                       blurRadius: 20,
                       spreadRadius: 3,
                     ),
-                    // hard drop shadow so it pops off the bg
                     BoxShadow(
                       color: Colors.black.withOpacity(0.55),
                       blurRadius: 10,
@@ -284,7 +279,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 child: Stack(
                   children: [
-                    // shimmer layer sits on top of text like a light sweep
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(18),
@@ -292,9 +286,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           shaderCallback: (bounds) => LinearGradient(
                             begin: Alignment(_shimmerAnim.value - 1, 0),
                             end: Alignment(_shimmerAnim.value, 0),
-                            colors: [
+                            colors: const [
                               Colors.transparent,
-                              _accentColor.withOpacity(0.07),
+                              Colors.white10,
                               Colors.transparent,
                             ],
                           ).createShader(bounds),
@@ -323,7 +317,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                        // subtext — personal, quiet, fits in one line
                         Padding(
                           padding: const EdgeInsets.only(left: 16, top: 2),
                           child: Text(
@@ -346,8 +339,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               );
             },
           ),
-
-          // tail points toward the pet below-left
           Align(
             alignment: Alignment.bottomLeft,
             child: CustomPaint(
@@ -401,8 +392,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Text(
               "Hello, Nethmika!",
-              style: GoogleFonts.poppins(
-                  color: AppColors.textDim, fontSize: 14),
+              style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14),
             ),
             Text(
               "Bat Cave",
@@ -464,8 +454,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _compactStatItem(
-      String title, String value, IconData icon, Color color) {
+  Widget _compactStatItem(String title, String value, IconData icon, Color color) {
     return Column(
       children: [
         Icon(icon, color: color, size: 22),
@@ -507,8 +496,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome,
-                  color: AppColors.primaryGreen, size: 16),
+              Icon(Icons.auto_awesome, color: AppColors.primaryGreen, size: 16),
               const SizedBox(width: 8),
               Text(
                 hasPlant ? "DIRECTIVE" : "RECOMMENDATION",
@@ -576,7 +564,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// pulsing dot — the heartbeat of the bubble
 class _StatusDot extends StatefulWidget {
   final Color color;
   const _StatusDot({required this.color});
@@ -630,12 +617,10 @@ class _StatusDotState extends State<_StatusDot> with TickerProviderStateMixin {
   }
 }
 
-// triangle pointing bottom-left toward the pet
 class _BubbleTailPainter extends CustomPainter {
   final Color fillColor;
   final Color borderColor;
-  const _BubbleTailPainter(
-      {required this.fillColor, required this.borderColor});
+  const _BubbleTailPainter({required this.fillColor, required this.borderColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -645,17 +630,8 @@ class _BubbleTailPainter extends CustomPainter {
       ..lineTo(size.width, size.height * 0.3)
       ..close();
 
-    canvas.drawPath(path,
-        Paint()
-          ..color = fillColor
-          ..style = PaintingStyle.fill);
-
-    canvas.drawPath(path,
-        Paint()
-          ..color = borderColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(path, Paint()..color = fillColor..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeJoin = StrokeJoin.round);
   }
 
   @override
