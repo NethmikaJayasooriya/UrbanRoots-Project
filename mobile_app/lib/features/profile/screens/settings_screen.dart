@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'edit_profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,7 +12,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool darkTheme = true;
   bool smartReminders = true;
-  bool faceIdLogin = false;
 
   String measurementUnit = "Metric";
 
@@ -25,15 +25,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Align(
-          alignment: Alignment.topCenter, // ✅ same as notifications
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 420,
-            ), // ✅ same as profile
+            constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                // ✅ same padding vibe as notifications
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onBack: () => Navigator.of(context).maybePop(),
                     ),
 
-                    // ✅ MORE GAP like you asked (between heading and first section)
                     const SizedBox(height: 30),
 
                     const _SectionLabel("ACCOUNT & PRIVACY"),
@@ -53,7 +49,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _NavRow(
                           icon: Icons.person_outline_rounded,
                           title: "Personal Info",
-                          onTap: () => _toast("Personal Info tapped"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditProfileScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const _DividerLine(),
                         _NavRow(
@@ -93,35 +96,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 22),
-
-                    const _SectionLabel("SECURITY"),
-                    const SizedBox(height: 12),
-                    _GroupCard(
-                      children: [
-                        _NavRow(
-                          icon: Icons.key_outlined,
-                          title: "Change Password",
-                          onTap: () => _toast("Change Password tapped"),
-                        ),
-                        const _DividerLine(),
-                        _SwitchRow(
-                          icon: Icons.face_retouching_natural_outlined,
-                          title: "Face ID Login",
-                          value: faceIdLogin,
-                          onChanged: (v) => setState(() => faceIdLogin = v),
-                          // match screenshot feel
-                          inactiveTrackColor: Colors.grey,
-                          inactiveThumbColor: Colors.white,
-                        ),
-                      ],
-                    ),
-
                     const SizedBox(height: 28),
 
                     _LogoutButton(onTap: () => _toast("Logout tapped")),
 
-                    // ✅ leave bottom free space (same concept as notifications)
                     const SizedBox(height: 220),
                   ],
                 ),
@@ -167,8 +145,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-/* -------------------- Header (match Notifications sizing) -------------------- */
-
 class _Header extends StatelessWidget {
   const _Header({required this.title, required this.onBack});
 
@@ -196,7 +172,7 @@ class _Header extends StatelessWidget {
           title,
           style: const TextStyle(
             color: AppColors.text,
-            fontSize: 26, // ✅ same as notifications
+            fontSize: 26,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,
           ),
@@ -205,8 +181,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Section Label (same as notifications) -------------------- */
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
@@ -225,8 +199,6 @@ class _SectionLabel extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Group Card + Divider -------------------- */
 
 class _GroupCard extends StatelessWidget {
   const _GroupCard({required this.children});
@@ -257,8 +229,6 @@ class _DividerLine extends StatelessWidget {
   }
 }
 
-/* -------------------- Rows (match notifications text sizing) -------------------- */
-
 class _NavRow extends StatelessWidget {
   const _NavRow({required this.icon, required this.title, required this.onTap});
 
@@ -281,7 +251,7 @@ class _NavRow extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   color: AppColors.text,
-                  fontSize: 16, // ✅ same scale as notification row title
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.15,
                 ),
@@ -423,8 +393,6 @@ class _LeftIcon extends StatelessWidget {
   }
 }
 
-/* -------------------- Logout -------------------- */
-
 class _LogoutButton extends StatelessWidget {
   const _LogoutButton({required this.onTap});
   final VoidCallback onTap;
@@ -462,8 +430,6 @@ class _LogoutButton extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Bottom Sheet -------------------- */
 
 class _BottomSheetCard extends StatelessWidget {
   const _BottomSheetCard({required this.title, required this.child});
