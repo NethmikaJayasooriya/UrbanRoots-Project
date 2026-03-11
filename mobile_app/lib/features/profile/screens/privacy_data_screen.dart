@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'change_password_screen.dart';
 
 class PrivacyDataScreen extends StatefulWidget {
   const PrivacyDataScreen({super.key});
@@ -48,7 +49,14 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
                         _NavTile(
                           icon: Icons.lock_outline_rounded,
                           title: "Change Password",
-                          onTap: () => _toast("Change Password tapped"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ChangePasswordScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const _DividerLine(),
                         _SwitchTile(
