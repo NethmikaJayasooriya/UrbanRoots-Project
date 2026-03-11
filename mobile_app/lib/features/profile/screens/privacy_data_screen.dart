@@ -460,7 +460,7 @@ class _DangerCard extends StatelessWidget {
                       color: Color(0xFFFF7C7C),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      height: 1.45,
+                      height: 1.50,
                     ),
                   ),
                 ],
