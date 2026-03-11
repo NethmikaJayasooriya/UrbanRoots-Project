@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import 'change_password_screen.dart';
+import 'download_my_data_screen.dart';
 
 class PrivacyDataScreen extends StatefulWidget {
   const PrivacyDataScreen({super.key});
@@ -111,7 +112,14 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
                           icon: Icons.download_rounded,
                           title: "Download My Data",
                           subtitle: "Get a copy of your UrbanRoots history",
-                          onTap: () => _toast("Download My Data tapped"),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DownloadMyDataScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -460,7 +468,7 @@ class _DangerCard extends StatelessWidget {
                       color: Color(0xFFFF7C7C),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      height: 1.50,
+                      height: 1.45,
                     ),
                   ),
                 ],
