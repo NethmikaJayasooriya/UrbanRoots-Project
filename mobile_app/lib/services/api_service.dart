@@ -64,4 +64,22 @@ class ApiService {
       return false;
     }
   }
+
+  // 🦇 NEW: Fetches the live weather and digital pet advice for the Bat Cave dashboard
+  static Future<Map<String, dynamic>?> getGardenStatus(int gardenId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/gardens/$gardenId/status'));
+      
+      if (response.statusCode == 200) {
+        // Returns the exact JSON bundle we just verified in your browser!
+        return jsonDecode(response.body); 
+      } else {
+        debugPrint('❌ Failed to fetch status: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('🚨 Server connection error: $e');
+      return null;
+    }
+  }
 }

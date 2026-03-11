@@ -1,5 +1,5 @@
 // src/garden/garden.controller.ts
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { GardenService } from './garden.service';
 
 @Controller('gardens') // This means the URL will be http://localhost:3000/gardens
@@ -18,5 +18,13 @@ export class GardenController {
       message: "Garden successfully created!",
       data: savedGarden
     };
+  }
+
+  // ADDED: NEW ENDPOINT FOR DASHBOARD DATA
+  // URL will be: http://localhost:3000/gardens/1/status
+  @Get(':id/status')
+  async getDashboardStatus(@Param('id') id: string) {
+    // We convert the string ID from the URL into a number for TypeORM
+    return await this.gardenService.getGardenStatus(Number(id));
   }
 }
