@@ -20,6 +20,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     ).showSnackBar(const SnackBar(content: Text("Profile updated")));
   }
 
+  void _editProfileImage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Edit profile picture tapped")),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,7 +42,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// HEADER
                     Row(
                       children: [
                         InkResponse(
@@ -65,24 +70,82 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                     const SizedBox(height: 30),
 
-                    /// PROFILE AVATAR
                     Center(
-                      child: Container(
-                        width: 110,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.border, width: 3),
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 60,
-                          color: AppColors.muted,
+                      child: SizedBox(
+                        width: 128,
+                        height: 128,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 118,
+                              height: 118,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.accent.withOpacity(0.45),
+                                  width: 3,
+                                ),
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 52,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            Positioned(
+                              right: 4,
+                              bottom: 8,
+                              child: InkWell(
+                                onTap: _editProfileImage,
+                                borderRadius: BorderRadius.circular(999),
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppColors.bg,
+                                      width: 3,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.accent.withOpacity(
+                                          0.25,
+                                        ),
+                                        blurRadius: 16,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.edit_rounded,
+                                    size: 18,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 28),
 
                     const Text(
                       "PERSONAL DETAILS",
@@ -103,17 +166,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             label: "First Name",
                             controller: firstName,
                           ),
-
                           const _Divider(),
-
                           _InputField(label: "Last Name", controller: lastName),
-
                           const _Divider(),
-
                           _InputField(label: "Email", controller: email),
-
                           const _Divider(),
-
                           _InputField(label: "Phone", controller: phone),
                         ],
                       ),
@@ -202,9 +259,7 @@ class _InputField extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-
-          const SizedBox(height: 6),
-
+          const SizedBox(height: 10),
           TextField(
             controller: controller,
             style: const TextStyle(
@@ -212,7 +267,11 @@ class _InputField extends StatelessWidget {
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
-            decoration: const InputDecoration(border: InputBorder.none),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
         ],
       ),
