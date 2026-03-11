@@ -14,8 +14,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool darkTheme = true;
   bool smartReminders = true;
 
-  String measurementUnit = "Metric";
-
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
@@ -88,13 +86,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onChanged: (v) => setState(() => darkTheme = v),
                         ),
                         const _DividerLine(),
-                        _ValueRow(
-                          icon: Icons.straighten_outlined,
-                          title: "Measurement Units",
-                          value: measurementUnit,
-                          onTap: _openMeasurementSheet,
-                        ),
-                        const _DividerLine(),
                         _SwitchRow(
                           icon: Icons.notifications_active_outlined,
                           title: "Smart Reminders",
@@ -114,39 +105,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _openMeasurementSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _BottomSheetCard(
-        title: "Measurement Units",
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _SheetOption(
-              title: "Metric",
-              selected: measurementUnit == "Metric",
-              onTap: () {
-                setState(() => measurementUnit = "Metric");
-                Navigator.pop(context);
-              },
-            ),
-            const _SheetDivider(),
-            _SheetOption(
-              title: "Imperial",
-              selected: measurementUnit == "Imperial",
-              onTap: () {
-                setState(() => measurementUnit = "Imperial");
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
         ),
       ),
     );
@@ -277,61 +235,6 @@ class _NavRow extends StatelessWidget {
   }
 }
 
-class _ValueRow extends StatelessWidget {
-  const _ValueRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Row(
-          children: [
-            _LeftIcon(icon: icon),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.15,
-                ),
-              ),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.muted,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.muted,
-              size: 22,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SwitchRow extends StatelessWidget {
   const _SwitchRow({
     required this.icon,
@@ -435,104 +338,6 @@ class _LogoutButton extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BottomSheetCard extends StatelessWidget {
-  const _BottomSheetCard({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.border, width: 1),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                child,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SheetOption extends StatelessWidget {
-  const _SheetOption({
-    required this.title,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (selected)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: AppColors.accent,
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SheetDivider extends StatelessWidget {
-  const _SheetDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 1,
-      color: AppColors.border.withValues(alpha: 0.65),
     );
   }
 }
