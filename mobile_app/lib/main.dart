@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         primaryColor: const Color(0xFF00E676),
         scaffoldBackgroundColor: const Color(0xFF07160F), 
       ),
-     home: const GardenIntroScreen(), 
+     home: const MainNavigationWrapper(), 
     );
   }
 }
