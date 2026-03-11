@@ -11,7 +11,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool darkTheme = true;
   bool smartReminders = true;
 
   void _toast(String msg) {
@@ -43,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const _SectionLabel("ACCOUNT & PRIVACY"),
                     const SizedBox(height: 12),
+
                     _GroupCard(
                       children: [
                         _NavRow(
@@ -57,7 +57,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                           },
                         ),
+
                         const _DividerLine(),
+
                         _NavRow(
                           icon: Icons.lock_outline_rounded,
                           title: "Privacy & Data",
@@ -77,15 +79,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const _SectionLabel("APP PREFERENCES"),
                     const SizedBox(height: 12),
+
                     _GroupCard(
                       children: [
-                        _SwitchRow(
-                          icon: Icons.dark_mode_outlined,
-                          title: "Dark Theme",
-                          value: darkTheme,
-                          onChanged: (v) => setState(() => darkTheme = v),
-                        ),
-                        const _DividerLine(),
                         _SwitchRow(
                           icon: Icons.notifications_active_outlined,
                           title: "Smart Reminders",
@@ -219,7 +215,6 @@ class _NavRow extends StatelessWidget {
                   color: AppColors.text,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: -0.15,
                 ),
               ),
             ),
@@ -241,16 +236,12 @@ class _SwitchRow extends StatelessWidget {
     required this.title,
     required this.value,
     required this.onChanged,
-    this.inactiveTrackColor,
-    this.inactiveThumbColor,
   });
 
   final IconData icon;
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final Color? inactiveTrackColor;
-  final Color? inactiveThumbColor;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +258,6 @@ class _SwitchRow extends StatelessWidget {
                 color: AppColors.text,
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.15,
               ),
             ),
           ),
@@ -276,8 +266,7 @@ class _SwitchRow extends StatelessWidget {
             onChanged: onChanged,
             activeColor: Colors.white,
             activeTrackColor: AppColors.accent,
-            inactiveTrackColor: inactiveTrackColor ?? AppColors.border,
-            inactiveThumbColor: inactiveThumbColor ?? Colors.white,
+            inactiveTrackColor: AppColors.border,
           ),
         ],
       ),
@@ -317,22 +306,20 @@ class _LogoutButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.accent, width: 1.5),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Icon(Icons.logout_rounded, color: AppColors.accent, size: 20),
+            Icon(Icons.logout_rounded, color: AppColors.accent),
             SizedBox(width: 10),
             Text(
               "LOGOUT",
               style: TextStyle(
                 color: AppColors.accent,
-                fontSize: 16,
                 fontWeight: FontWeight.w900,
-                letterSpacing: 3.0,
+                letterSpacing: 3,
               ),
             ),
           ],
