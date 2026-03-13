@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 // IMPORTANT: Adjust these import paths to match your actual folder structure
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/screens/garden_creation/garden_intro_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mobile_app/services/auth_service.dart';
 
 class SetupProfileScreen extends StatefulWidget {
   const SetupProfileScreen({super.key});
@@ -41,7 +43,9 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     } catch (e) {
       debugPrint("Failed to pick image: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to get image. Check permissions.")),
+        const SnackBar(
+          content: Text("Failed to get image. Check permissions."),
+        ),
       );
     }
   }
@@ -60,20 +64,45 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
               child: Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primaryGreen),
-              title: Text('Take a photo', style: GoogleFonts.poppins(color: AppColors.textMain, fontWeight: FontWeight.w500)),
+              leading: const Icon(
+                Icons.camera_alt_rounded,
+                color: AppColors.primaryGreen,
+              ),
+              title: Text(
+                'Take a photo',
+                style: GoogleFonts.poppins(
+                  color: AppColors.textMain,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.primaryGreen),
-              title: Text('Choose from gallery', style: GoogleFonts.poppins(color: AppColors.textMain, fontWeight: FontWeight.w500)),
+              leading: const Icon(
+                Icons.photo_library_rounded,
+                color: AppColors.primaryGreen,
+              ),
+              title: Text(
+                'Choose from gallery',
+                style: GoogleFonts.poppins(
+                  color: AppColors.textMain,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -87,22 +116,55 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   }
   // --------------------------
 
-  void _completeProfile() {
+  void _completeProfile() async {
     if (_formKey.currentState!.validate()) {
       // TODO: Upload _profileImage to Firebase Storage here before navigating
-      
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await AuthService.saveUserRecord(user, {
+          'full_name':
+              '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+          'phone_no': _phoneController.text.trim(),
+          'email': _emailController.text.trim().isNotEmpty
+              ? _emailController.text.trim()
+              : user.email,
+          'auth_provider': user.providerData.isNotEmpty
+              ? user.providerData.first.providerId
+              : 'email',
+          'is_onboaded': true,
+          'profile_pic_url':
+              '', // Placeholder since storage is not implemented yet
+        });
+      }
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+        );
+      }
+    }
+  }
+
+  void _skipProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await AuthService.saveUserRecord(user, {
+        'email': user.email,
+        'auth_provider': user.providerData.isNotEmpty
+            ? user.providerData.first.providerId
+            : 'email',
+        'is_onboaded': false,
+      });
+    }
+
+    if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
       );
     }
-  }
-
-  void _skipProfile() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
-    );
   }
 
   @override
@@ -112,9 +174,15 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text("Complete Profile", style: GoogleFonts.poppins(color: AppColors.textMain, fontWeight: FontWeight.bold)),
+        title: Text(
+          "Complete Profile",
+          style: GoogleFonts.poppins(
+            color: AppColors.textMain,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
-        automaticallyImplyLeading: false, 
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -124,7 +192,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              
+
               // Interactive Profile Picture Avatar Frame
               GestureDetector(
                 onTap: _showImageSourceActionSheet,
@@ -132,50 +200,91 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                   alignment: Alignment.bottomRight,
                   children: [
                     Container(
-                      width: 120, height: 120,
+                      width: 120,
+                      height: 120,
                       decoration: BoxDecoration(
                         color: AppColors.surfaceColor,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryGreen, width: 2),
+                        border: Border.all(
+                          color: AppColors.primaryGreen,
+                          width: 2,
+                        ),
                         // Dynamically show the picked image if it exists
                         image: _profileImage != null
-                            ? DecorationImage(image: FileImage(_profileImage!), fit: BoxFit.cover)
+                            ? DecorationImage(
+                                image: FileImage(_profileImage!),
+                                fit: BoxFit.cover,
+                              )
                             : null,
                       ),
                       // Only show the placeholder icon if no image is selected
-                      child: _profileImage == null 
-                          ? const Icon(Icons.person, size: 60, color: Colors.white24)
+                      child: _profileImage == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.white24,
+                            )
                           : null,
                     ),
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryGreen, 
+                        color: AppColors.primaryGreen,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.backgroundColor, width: 3) // Creates a cutout effect
+                        border: Border.all(
+                          color: AppColors.backgroundColor,
+                          width: 3,
+                        ), // Creates a cutout effect
                       ),
-                      child: const Icon(Icons.edit, size: 18, color: Colors.black),
+                      child: const Icon(
+                        Icons.edit,
+                        size: 18,
+                        color: Colors.black,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 40),
 
-              _buildTextField("First Name", _firstNameController, Icons.person_outline, 
-                validator: (v) => (v == null || v.isEmpty) ? "First name required" : null),
+              _buildTextField(
+                "First Name",
+                _firstNameController,
+                Icons.person_outline,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? "First name required" : null,
+              ),
               const SizedBox(height: 16),
-              
-              _buildTextField("Last Name", _lastNameController, Icons.person_outline,
-                validator: (v) => (v == null || v.isEmpty) ? "Last name required" : null),
+
+              _buildTextField(
+                "Last Name",
+                _lastNameController,
+                Icons.person_outline,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? "Last name required" : null,
+              ),
               const SizedBox(height: 16),
-              
-              _buildTextField("Email", _emailController, Icons.email_outlined,
-                validator: (v) => (v == null || !v.contains('@')) ? "Enter valid email" : null),
+
+              _buildTextField(
+                "Email",
+                _emailController,
+                Icons.email_outlined,
+                validator: (v) => (v == null || !v.contains('@'))
+                    ? "Enter valid email"
+                    : null,
+              ),
               const SizedBox(height: 16),
-              
-              _buildTextField("Phone Number", _phoneController, Icons.phone_outlined, isNumber: true,
-                validator: (v) => (v == null || v.length < 10) ? "Enter valid phone number" : null),
-              
+
+              _buildTextField(
+                "Phone Number",
+                _phoneController,
+                Icons.phone_outlined,
+                isNumber: true,
+                validator: (v) => (v == null || v.length < 10)
+                    ? "Enter valid phone number"
+                    : null,
+              ),
+
               const SizedBox(height: 40),
 
               SizedBox(
@@ -185,16 +294,28 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                   onPressed: _completeProfile,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: Text("Finish Setup", style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
+                  child: Text(
+                    "Finish Setup",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 15),
               TextButton(
-                onPressed: _skipProfile, 
-                child: Text("Skip for now", style: GoogleFonts.poppins(color: AppColors.textDim))
-              )
+                onPressed: _skipProfile,
+                child: Text(
+                  "Skip for now",
+                  style: GoogleFonts.poppins(color: AppColors.textDim),
+                ),
+              ),
             ],
           ),
         ),
@@ -202,7 +323,13 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, IconData icon, {bool isNumber = false, String? Function(String?)? validator}) {
+  Widget _buildTextField(
+    String hint,
+    TextEditingController controller,
+    IconData icon, {
+    bool isNumber = false,
+    String? Function(String?)? validator,
+  }) {
     return TextFormField(
       controller: controller,
       validator: validator,
@@ -214,7 +341,10 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         prefixIcon: Icon(icon, color: Colors.white54, size: 20),
         hintText: hint,
         hintStyle: GoogleFonts.poppins(color: AppColors.textDim),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 20,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Colors.white10),

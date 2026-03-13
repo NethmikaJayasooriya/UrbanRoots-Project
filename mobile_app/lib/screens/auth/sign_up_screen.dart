@@ -4,9 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
-import 'package:mobile_app/services/auth_service.dart'; 
+import 'package:mobile_app/services/otp_service.dart';
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
+import 'verification_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,7 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  
+
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
   bool _isGoogleLoading = false;
@@ -37,23 +38,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
       setState(() => _isEmailLoading = true);
 
       try {
-        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passController.text.trim(),
-        );
+        final email = _emailController.text.trim();
+        final userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: email,
+              password: _passController.text.trim(),
+            );
 
         debugPrint("User created: ${userCredential.user?.email}");
 
+        // Generate OTP and show it to the user
+        final otp = await OtpService.generateOtp(email);
+
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+          // Show OTP in a dialog (simulating email delivery)
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surfaceColor,
+              title: Text(
+                "Verification Code",
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Text(
+                "Your OTP is: $otp\n\n(In production, this will be sent to your email)",
+                style: GoogleFonts.poppins(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    "OK",
+                    style: GoogleFonts.poppins(color: AppColors.primaryGreen),
+                  ),
+                ),
+              ],
+            ),
           );
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    VerificationScreen(email: email, flow: 'signup'),
+              ),
+            );
+          }
         }
       } on FirebaseAuthException catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${e.message}")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: ${e.message}")));
       } finally {
         if (mounted) setState(() => _isEmailLoading = false);
       }
@@ -65,7 +105,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isGoogleLoading = true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
+        clientId:
+            '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
       );
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -74,13 +115,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
       debugPrint("Google Login Success: ${userCredential.user?.email}");
 
       if (mounted) {
@@ -91,9 +135,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (e) {
       debugPrint("Google Login Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google login failed: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Google login failed: $e")));
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -120,15 +164,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    Text("Create Account",
-                        style: GoogleFonts.poppins(
-                            fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                    Text(
+                      "Create Account",
+                      style: GoogleFonts.poppins(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    const Icon(Icons.spa, color: AppColors.primaryGreen, size: 28),
+                    const Icon(
+                      Icons.spa,
+                      color: AppColors.primaryGreen,
+                      size: 28,
+                    ),
                   ],
                 ),
-                Text("Join the green revolution today.",
-                    style: GoogleFonts.poppins(fontSize: 14, color: Colors.white54)),
+                Text(
+                  "Join the green revolution today.",
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white54,
+                  ),
+                ),
                 const SizedBox(height: 40),
 
                 _buildLabel("Email"),
@@ -137,7 +195,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   hint: "Enter your email",
                   icon: Icons.email_outlined,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return "Email is required";
+                    if (value == null || value.isEmpty)
+                      return "Email is required";
                     if (!value.contains('@')) return "Enter a valid email";
                     return null;
                   },
@@ -151,10 +210,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   icon: Icons.lock_outline,
                   isPassword: true,
                   isPasswordVisible: _isPasswordVisible,
-                  onVisibilityToggle: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                  onVisibilityToggle: () =>
+                      setState(() => _isPasswordVisible = !_isPasswordVisible),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return "Password is required";
-                    if (value.length < 8) return "Must be at least 8 characters";
+                    if (value == null || value.isEmpty)
+                      return "Password is required";
+                    if (value.length < 8)
+                      return "Must be at least 8 characters";
                     return null;
                   },
                 ),
@@ -173,11 +235,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: Text.rich(
                         TextSpan(
                           text: "I agree to the ",
-                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                           children: [
-                            TextSpan(text: "Terms", style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+                            TextSpan(
+                              text: "Terms",
+                              style: GoogleFonts.poppins(
+                                color: AppColors.primaryGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const TextSpan(text: " and "),
-                            TextSpan(text: "Privacy Policy", style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+                            TextSpan(
+                              text: "Privacy Policy",
+                              style: GoogleFonts.poppins(
+                                color: AppColors.primaryGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -190,15 +267,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   width: double.infinity,
                   height: 55,
                   child: ElevatedButton(
-                    onPressed: _agreedToTerms && !_isEmailLoading ? _handleSignUp : null,
+                    onPressed: _agreedToTerms && !_isEmailLoading
+                        ? _handleSignUp
+                        : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryGreen,
                       disabledBackgroundColor: Colors.white10,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: _isEmailLoading
                         ? const CircularProgressIndicator(color: Colors.black)
-                        : Text("Sign Up", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black)),
+                        : Text(
+                            "Sign Up",
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
                   ),
                 ),
 
@@ -206,19 +293,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 _buildDivider(),
                 const SizedBox(height: 30),
 
-                _buildSocialButton("Continue with Google", FontAwesomeIcons.google, 
-                    onTap: _handleGoogleSignIn, isLoading: _isGoogleLoading),
+                _buildSocialButton(
+                  "Continue with Google",
+                  FontAwesomeIcons.google,
+                  onTap: _handleGoogleSignIn,
+                  isLoading: _isGoogleLoading,
+                ),
 
                 const SizedBox(height: 40),
                 Center(
                   child: GestureDetector(
-                    onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LoginScreen(),
+                      ),
+                    ),
                     child: RichText(
                       text: TextSpan(
                         text: "Already have an account? ",
                         style: GoogleFonts.poppins(color: Colors.white54),
                         children: [
-                          TextSpan(text: "Log In", style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+                          TextSpan(
+                            text: "Log In",
+                            style: GoogleFonts.poppins(
+                              color: AppColors.primaryGreen,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -235,7 +337,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
-      child: Text(text, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w500)),
+      child: Text(
+        text,
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -245,14 +353,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const Expanded(child: Divider(color: Colors.white10)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Text("Or", style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+          child: Text(
+            "Or",
+            style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12),
+          ),
         ),
         const Expanded(child: Divider(color: Colors.white10)),
       ],
     );
   }
 
-  Widget _buildSocialButton(String text, IconData icon, {VoidCallback? onTap, bool isLoading = false}) {
+  Widget _buildSocialButton(
+    String text,
+    IconData icon, {
+    VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
     return Container(
       width: double.infinity,
       height: 55,
@@ -264,16 +380,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
         onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(16),
         child: Center(
-          child: isLoading 
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FaIcon(icon, color: Colors.white, size: 18),
-                  const SizedBox(width: 12),
-                  Text(text, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-                ],
-              ),
+          child: isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FaIcon(icon, color: Colors.white, size: 18),
+                    const SizedBox(width: 12),
+                    Text(
+                      text,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
@@ -299,16 +428,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
         prefixIcon: Icon(icon, color: Colors.white54, size: 20),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(isPasswordVisible ? Icons.visibility : Icons.visibility_off, color: Colors.white54),
-                onPressed: onVisibilityToggle)
+                icon: Icon(
+                  isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.white54,
+                ),
+                onPressed: onVisibilityToggle,
+              )
             : null,
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white30),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primaryGreen)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.danger, width: 1.5)),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.danger, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 18,
+          horizontal: 20,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primaryGreen),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.danger, width: 2),
+        ),
         errorStyle: GoogleFonts.poppins(color: AppColors.danger, fontSize: 12),
       ),
     );
