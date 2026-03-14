@@ -23,49 +23,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       try {
         final email = _emailController.text.trim();
 
-        // Generate OTP locally
-        final otp = await OtpService.generateOtp(email);
+        // Request OTP from backend
+        await OtpService.requestOtp(email, 'forgot_password');
 
         if (!mounted) return;
 
-        // Show OTP in a dialog (simulating email delivery)
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: AppColors.surfaceColor,
-            title: Text(
-              "Reset Code",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              "Your OTP is: $otp\n\n(In production, this will be sent to your email)",
-              style: GoogleFonts.poppins(color: Colors.white70),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  "OK",
-                  style: GoogleFonts.poppins(color: AppColors.primaryGreen),
-                ),
-              ),
-            ],
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Reset code sent to your email")),
         );
 
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  VerificationScreen(email: email, flow: 'forgot_password'),
-            ),
-          );
-        }
+        if (!mounted) return;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                VerificationScreen(email: email, flow: 'forgot_password'),
+          ),
+        );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

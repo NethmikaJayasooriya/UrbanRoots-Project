@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
-import 'package:mobile_app/screens/auth/setup_profile_screen.dart';
+// Ensure MainNavigationWrapper is accessible
 import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 import 'forgot_password_screen.dart';
+import 'setup_profile_screen.dart';
 import 'sign_up_screen.dart';
+import 'verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,32 +36,30 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       debugPrint("Google sign-in user: ${userCredential.user?.email}");
-      await AuthService.updateLastLogin(userCredential.user!.uid);
-      if (mounted) {
-        final isOnboarded = await AuthService.checkIsOnboarded(
-          userCredential.user!.uid,
-        );
-        if (isOnboarded) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const MainNavigationWrapper(),
-            ),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint("Google sign-in error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Google sign-in failed. Please try again."),
+
+      final user = userCredential.user!;
+      final email = user.email;
+      if (email == null) throw Exception("No email found from Google.");
+
+      await OtpService.requestGoogleOtp(email);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerificationScreen(email: email, flow: 'google'),
         ),
       );
+    } catch (e) {
+      debugPrint("Google sign-in error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Google sign-in failed. Please try again."),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -76,30 +76,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
         debugPrint("Logged in user: ${userCredential.user?.email}");
 
-        // Save persistent login state
-        await OtpService.setLoggedIn(true);
-        await AuthService.updateLastLogin(userCredential.user!.uid);
+        // Ask Backend to send an OTP
+        await OtpService.requestOtp(email, 'login');
 
-        if (mounted) {
-          final isOnboarded = await AuthService.checkIsOnboarded(
-            userCredential.user!.uid,
-          );
-          if (isOnboarded) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MainNavigationWrapper(),
-              ),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SetupProfileScreen(),
-              ),
-            );
-          }
-        }
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerificationScreen(email: email, flow: 'login'),
+          ),
+        );
       } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(
           context,

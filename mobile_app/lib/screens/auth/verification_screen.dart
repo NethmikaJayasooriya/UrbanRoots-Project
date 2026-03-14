@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/otp_service.dart';
+import 'package:mobile_app/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 import 'setup_profile_screen.dart';
 import 'reset_password_screen.dart';
 
@@ -60,7 +63,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     try {
-      final isValid = await OtpService.verifyOtp(widget.email, otp);
+      final isValid = await OtpService.verifyOtp(email: widget.email, enteredOtp: otp);
 
       if (!isValid) {
         setState(() {
@@ -70,9 +73,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         return;
       }
 
-      // OTP verified successfully — clear stored OTP
-      await OtpService.clearOtp(widget.email);
-
+      // OTP verified successfully (backend handles clearing the OTP internally)
       if (!mounted) return;
 
       if (widget.flow == 'signup') {
@@ -84,6 +85,29 @@ class _VerificationScreenState extends State<VerificationScreen> {
           MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
           (route) => false,
         );
+      } else if (widget.flow == 'login' || widget.flow == 'google') {
+        // We know we just verified via backend. Let's check onboarding.
+        // We need the user's uid to do this. We can get it from FirebaseAuth instance.
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+          
+          await OtpService.setLoggedIn(true); // Persist session local
+
+          if (isOnboarded) {
+             Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
+              (route) => false,
+            );
+          } else {
+             Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
+              (route) => false,
+            );
+          }
+        }
       } else if (widget.flow == 'forgot_password') {
         Navigator.pushReplacement(
           context,
@@ -104,7 +128,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Future<void> _resendOtp() async {
     if (_resendCooldown > 0) return;
 
-    final otp = await OtpService.generateOtp(widget.email);
+    await OtpService.requestOtp(widget.email, widget.flow);
 
     if (!mounted) return;
 
@@ -112,32 +136,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
       _otpError = ''; // clear error when new OTP sent
     });
 
-    // Show the OTP in a dialog (simulate email delivery)
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceColor,
-        title: Text(
-          "Your OTP Code",
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          "Your verification code is: $otp\n\n(In production, this would be sent to your email)",
-          style: GoogleFonts.poppins(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              "OK",
-              style: GoogleFonts.poppins(color: AppColors.primaryGreen),
-            ),
-          ),
-        ],
-      ),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("A new verification code has been sent to your email.")),
     );
 
     // Start cooldown timer (30 seconds)

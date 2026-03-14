@@ -1,50 +1,108 @@
-import 'dart:math';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-/// Local OTP service for generating and verifying 4-digit codes.
-/// Replace with real backend API calls when available.
+/// OTP service that connects to the NestJS backend API.
 class OtpService {
-  static const int _otpLength = 4;
-  static const int _expiryMinutes = 5;
+  // Use localhost for Web, 10.0.2.2 for Android emulator
+  static const String _baseUrl = kIsWeb ? 'http://localhost:3000/auth' : 'http://10.0.2.2:3000/auth';
 
-  /// Generates a random 4-digit OTP and stores it locally for the given email.
-  /// Returns the generated OTP string.
-  static Future<String> generateOtp(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    final random = Random();
-    final otp = List.generate(_otpLength, (_) => random.nextInt(10)).join();
-    final expiry = DateTime.now().add(const Duration(minutes: _expiryMinutes));
+  // Base URL for the generic OTP controller (no Firebase user check)
+  static const String _otpBaseUrl = kIsWeb ? 'http://localhost:3000/otp' : 'http://10.0.2.2:3000/otp';
 
-    await prefs.setString('otp_$email', otp);
-    await prefs.setString('otp_expiry_$email', expiry.toIso8601String());
-
-    return otp;
+  /// Sends an OTP for Google Sign-In.
+  /// Uses /otp/generate which does NOT check if the user exists in Firebase Auth,
+  /// so it works correctly even after Google has already created the Firebase user.
+  static Future<String> requestGoogleOtp(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_otpBaseUrl/generate'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return "OTP sent successfully";
+      } else {
+        final errorMsg = jsonDecode(response.body)['message'] ?? 'Failed to send OTP';
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      print('Error sending Google OTP: $e');
+      throw Exception('Could not connect to backend: $e');
+    }
   }
 
-  /// Verifies the user-entered OTP against the stored one.
-  /// Returns true if valid and not expired.
-  static Future<bool> verifyOtp(String email, String enteredOtp) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedOtp = prefs.getString('otp_$email');
-    final expiryStr = prefs.getString('otp_expiry_$email');
+  /// Requests an OTP from the backend based on the specific auth flow.
+  /// [flow] can be 'login', 'signup', or 'forgot_password'.
+  static Future<String> requestOtp(String email, String flow) async {
+    try {
+      String endpoint = '$_baseUrl/';
+      if (flow == 'login') {
+        endpoint += 'login-otp';
+      } else if (flow == 'signup') {
+        endpoint += 'signup-otp';
+      } else if (flow == 'forgot_password') {
+        endpoint += 'forgot-password-otp';
+      } else {
+        throw Exception('Invalid OTP flow');
+      }
 
-    if (storedOtp == null || expiryStr == null) return false;
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
 
-    final expiry = DateTime.parse(expiryStr);
-    if (DateTime.now().isAfter(expiry)) {
-      // OTP has expired
-      await clearOtp(email);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return "OTP sent successfully";
+      } else {
+        final errorMsg = jsonDecode(response.body)['message'] ?? 'Failed to generate OTP';
+        print('Backend OTP error: $errorMsg');
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      print('Network error generating OTP: $e');
+      throw Exception('Could not connect to backend: $e');
+    }
+  }
+
+  /// Verifies the user-entered OTP.
+  /// If [uid] and [provider] are provided, the backend will sync/create the Firestore user.
+  static Future<bool> verifyOtp({
+    required String email, 
+    required String enteredOtp,
+    String? uid,
+    String? provider,
+  }) async {
+    try {
+      final body = {
+        'email': email,
+        'otp': enteredOtp,
+        if (uid != null) 'uid': uid,
+        if (provider != null) 'provider': provider,
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/verify-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('Network error verifying OTP: $e');
       return false;
     }
-
-    return storedOtp == enteredOtp;
   }
 
   /// Clears stored OTP data for the given email.
   static Future<void> clearOtp(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('otp_$email');
-    await prefs.remove('otp_expiry_$email');
+    // Handled by the backend internally. No-op here.
   }
 
   /// Marks the user as persistently logged in.

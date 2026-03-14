@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -11,24 +14,35 @@ class AuthService {
         '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
   );
 
-  // ─── Firestore User Records ───────────────────────────────────────────────
-  static Future<void> saveUserRecord(
-    User user,
-    Map<String, dynamic> data,
-  ) async {
+  // ─── Backend API endpoints ───────────────────────────────────────────────
+  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+
+  static Future<void> setupProfile({
+    required String uid,
+    required String firstName,
+    required String lastName,
+    required String email,
+  }) async {
     try {
-      final userRef = _firestore.collection('users').doc(user.uid);
+      final response = await http.post(
+        Uri.parse('$_baseUrl/user/setup-profile'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'uid': uid,
+          'firstName': firstName,
+          'lastName': lastName,
+          'email': email,
+        }),
+      );
 
-      final docSnapshot = await userRef.get();
-      if (!docSnapshot.exists) {
-        data['created_at'] = FieldValue.serverTimestamp();
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        print("Backend mapping error: ${response.body}");
+        throw Exception('Failed to setup profile on backend');
       }
-      data['last_login'] = FieldValue.serverTimestamp();
-
-      await userRef.set(data, SetOptions(merge: true));
-      print("User record saved/updated successfully.");
+      print("Profile setup successful via backend.");
     } catch (e) {
-      print("Error saving user record: $e");
+      print("Error calling setupProfile: $e");
+      rethrow;
     }
   }
 
@@ -41,6 +55,7 @@ class AuthService {
       return false;
     } catch (e) {
       print("Error checking onboarding status: $e");
+      // If permission denied, assume not onboarded so they go to SetupProfileScreen
       return false;
     }
   }

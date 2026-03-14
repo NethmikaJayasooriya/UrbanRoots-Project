@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
+import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/otp_service.dart';
+import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 import 'login_screen.dart';
 import 'setup_profile_screen.dart';
 import 'verification_screen.dart';
@@ -47,41 +48,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         debugPrint("User created: ${userCredential.user?.email}");
 
-        // Generate OTP and show it to the user
-        final otp = await OtpService.generateOtp(email);
+        // Request OTP from backend for signup flow
+        await OtpService.requestOtp(email, 'signup');
 
         if (mounted) {
-          // Show OTP in a dialog (simulating email delivery)
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              backgroundColor: AppColors.surfaceColor,
-              title: Text(
-                "Verification Code",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Text(
-                "Your OTP is: $otp\n\n(In production, this will be sent to your email)",
-                style: GoogleFonts.poppins(color: Colors.white70),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(
-                    "OK",
-                    style: GoogleFonts.poppins(color: AppColors.primaryGreen),
-                  ),
-                ),
-              ],
-            ),
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Sign-up initiated! Verification code sent.")),
           );
 
           if (mounted) {
-            Navigator.pushReplacement(
+            Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) =>
@@ -104,40 +80,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
     debugPrint("DEBUG: Google Sign-In button pressed");
     setState(() => _isGoogleLoading = true);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId:
-            '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
-      );
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
+      final userCredential = await AuthService.signInWithGoogle();
+      if (userCredential == null) {
         setState(() => _isGoogleLoading = false);
         return;
       }
+      debugPrint("Google sign-up user: ${userCredential.user?.email}");
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      final user = userCredential.user!;
+      final email = user.email;
+      if (email == null) throw Exception("No email found from Google.");
+
+      await OtpService.requestGoogleOtp(email);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VerificationScreen(email: email, flow: 'google'),
+        ),
       );
-
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(
-        credential,
-      );
-      debugPrint("Google Login Success: ${userCredential.user?.email}");
-
+    } catch (e) {
+      debugPrint("Google sign-in error: $e");
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const SetupProfileScreen()),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Google sign-in failed. Please try again."),
+          ),
         );
       }
-    } catch (e) {
-      debugPrint("Google Login Error: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Google login failed: $e")));
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }

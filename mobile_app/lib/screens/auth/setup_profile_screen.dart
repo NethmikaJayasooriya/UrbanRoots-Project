@@ -122,49 +122,43 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await AuthService.saveUserRecord(user, {
-          'full_name':
-              '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
-          'phone_no': _phoneController.text.trim(),
-          'email': _emailController.text.trim().isNotEmpty
-              ? _emailController.text.trim()
-              : user.email,
-          'auth_provider': user.providerData.isNotEmpty
-              ? user.providerData.first.providerId
-              : 'email',
-          'is_onboaded': true,
-          'profile_pic_url':
-              '', // Placeholder since storage is not implemented yet
-        });
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+        await AuthService.setupProfile(
+          uid: user.uid,
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: _emailController.text.trim().isNotEmpty 
+              ? _emailController.text.trim() 
+              : (user.email ?? ''),
         );
       }
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+      );
     }
   }
 
   void _skipProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await AuthService.saveUserRecord(user, {
-        'email': user.email,
-        'auth_provider': user.providerData.isNotEmpty
-            ? user.providerData.first.providerId
-            : 'email',
-        'is_onboaded': false,
-      });
-    }
-
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+      // Just mark defaults or minimal info
+      await AuthService.setupProfile(
+          uid: user.uid,
+          firstName: '',
+          lastName: '',
+          email: user.email ?? '',
       );
     }
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+    );
   }
 
   @override
