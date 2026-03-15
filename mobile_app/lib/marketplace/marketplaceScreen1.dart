@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-
-// FIX 1: Use forward slashes and ensure this points to the correct file where ShoppingCart is defined
-// If ShoppingCart is in the same folder:
-// import 'shopping_cart.dart'; 
-// Or if using the package name:
 import 'package:mobile_app/marketplace/shoppingCart.dart';
+
 
 class MarketplaceScreen1 extends StatelessWidget {
   const MarketplaceScreen1({super.key});

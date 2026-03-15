@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-
-
-
 import 'marketplace/marketplaceScreen1.dart'; 
 
 
