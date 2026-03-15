@@ -43,7 +43,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         final userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: email,
-              password: _passController.text.trim(),
+              password: _passController.text,
             );
 
         debugPrint("User created: ${userCredential.user?.email}");

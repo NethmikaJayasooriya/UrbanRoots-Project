@@ -122,14 +122,32 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await AuthService.setupProfile(
-          uid: user.uid,
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          email: _emailController.text.trim().isNotEmpty 
-              ? _emailController.text.trim() 
-              : (user.email ?? ''),
-        );
+        try {
+          String provider = user.providerData.isNotEmpty 
+              ? user.providerData.first.providerId 
+              : 'email/password';
+
+          await AuthService.setupProfile(
+            uid: user.uid,
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+            email: _emailController.text.trim().isNotEmpty 
+                ? _emailController.text.trim() 
+                : (user.email ?? ''),
+            phone: _phoneController.text.trim(),
+            authProvider: provider,
+            profilePic: user.photoURL,
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save profile: $e'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return;
+        }
       }
 
       if (!mounted) return;
