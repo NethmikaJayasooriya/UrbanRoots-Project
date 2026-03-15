@@ -20,8 +20,6 @@ class MarketplaceScreen1 extends StatelessWidget {
               Navigator.push(
                 context, 
                 MaterialPageRoute(
-                  // FIX 2: Removed 'const' because ShoppingCart might not have a const constructor
-                  // or the compiler can't find the class due to the bad import.
                   builder: (context) => ShoppingCart(), 
                 ),
               );
