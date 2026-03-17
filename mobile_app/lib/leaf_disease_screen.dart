@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -9,9 +10,38 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:permission_handler/permission_handler.dart';
 import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
+
+// ═══════════════════════════════════════════════
+// ML API Service
+// ═══════════════════════════════════════════════
+class LeafDiseaseAPI {
+  // !! IMPORTANT: Replace X with your PC's IPv4 address
+  // Run 'ipconfig' in terminal and look for IPv4 Address under WiFi
+  // Your phone and PC must be on the same WiFi network
+  static const String _baseUrl = 'http://192.168.1.1:8000'; // ← change this IP
+
+  static Future<Map<String, dynamic>> predict(String imagePath) async {
+    final uri     = Uri.parse('$_baseUrl/predict');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+
+    final streamed = await request.send().timeout(
+      const Duration(seconds: 30),
+    );
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Server returned ${response.statusCode}');
+    }
+  }
+}
 
 // ── Vibration helper ──────────────────────────
 Future<void> _vibrate(List<int> pattern) async {
@@ -127,13 +157,74 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 
   // ── Camera init ────────────────────────────
   Future<void> _startCamera() async {
-    try {
-      _cameras = await availableCameras();
-      if (_cameras.isEmpty) return;
-      await _initController(_camIndex);
-    } catch (e) {
-      debugPrint('Camera start error: $e');
+    final status = await Permission.camera.request();
+
+    if (status.isGranted) {
+      try {
+        _cameras = await availableCameras();
+        if (_cameras.isEmpty) {
+          _showCameraError('No cameras found on this device.');
+          return;
+        }
+        await _initController(_camIndex);
+      } catch (e) {
+        debugPrint('Camera start error: $e');
+        _showCameraError('Failed to start camera. Please try again.');
+      }
+    } else if (status.isDenied) {
+      _showCameraError(
+          'Camera permission denied. Please allow camera access.');
+    } else if (status.isPermanentlyDenied) {
+      _showPermissionSettingsDialog();
     }
+  }
+
+  // ── Camera error snackbar ──────────────────
+  void _showCameraError(String message) {
+    if (!mounted) return;
+    setState(() => _cameraReady = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.danger,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  // ── Permission settings dialog ─────────────
+  void _showPermissionSettingsDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surfaceColor,
+        shape:
+            RoundedRectangleBorder(borderRadius: AppRadius.lgBR),
+        title: Text('Camera Permission Required',
+            style: AppText.subheading),
+        content: Text(
+          'Camera access was permanently denied. '
+          'Please enable it in your device Settings to scan leaves.',
+          style: AppText.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: Text('Open Settings',
+                style: TextStyle(color: AppColors.neonGreen)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _initController(int index) async {
@@ -213,43 +304,81 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     });
   }
 
-  // ── Save to history ────────────────────────
-  // Single reusable helper — called by both camera and gallery
-  Future<void> _saveToHistory(String imagePath) async {
-    await ScanHistoryService.saveScan(ScanRecord(
-      id:          DateTime.now().millisecondsSinceEpoch.toString(),
-      imagePath:   imagePath,
-      diseaseName: 'Leaf Curl Disease', // TODO: replace with real AI result
-      confidence:  0.98,                // TODO: replace with real AI result
-      severity:    'High',              // TODO: replace with real AI result
-      scannedAt:   DateTime.now(),
-      isHealthy:   false,               // TODO: replace with real AI result
-    ));
+  // ── Call API and save to history ──────────
+  Future<Map<String, dynamic>> _callAPIAndSave(String imagePath) async {
+    try {
+      final result      = await LeafDiseaseAPI.predict(imagePath);
+      final diseaseName = result['disease'] as String;
+      final confidence  = (result['confidence'] as num).toDouble() / 100.0;
+      final isHealthy   = diseaseName.toLowerCase().contains('healthy');
+      final severity    = _getSeverity(diseaseName);
+
+      await ScanHistoryService.saveScan(ScanRecord(
+        id:          DateTime.now().millisecondsSinceEpoch.toString(),
+        imagePath:   imagePath,
+        diseaseName: diseaseName,
+        confidence:  confidence,
+        severity:    severity,
+        scannedAt:   DateTime.now(),
+        isHealthy:   isHealthy,
+      ));
+      return result;
+    } catch (e) {
+      debugPrint('API error: $e');
+      await ScanHistoryService.saveScan(ScanRecord(
+        id:          DateTime.now().millisecondsSinceEpoch.toString(),
+        imagePath:   imagePath,
+        diseaseName: 'API Error — Check connection',
+        confidence:  0.0,
+        severity:    'Low',
+        scannedAt:   DateTime.now(),
+        isHealthy:   false,
+      ));
+      return {'disease': 'API Error — Check connection', 'confidence': 0.0};
+    }
+  }
+
+  String _getSeverity(String diseaseName) {
+    final n = diseaseName.toLowerCase();
+    if (n.contains('healthy'))                      return 'Low';
+    if (n.contains('virus') || n.contains('curl'))  return 'High';
+    if (n.contains('blight') || n.contains('mold')) return 'High';
+    if (n.contains('spot') || n.contains('mites'))  return 'Medium';
+    return 'Medium';
   }
 
   // ── Gallery picker ─────────────────────────
   Future<void> _pickFromGallery() async {
     try {
+      // Request storage permission on older Android versions
+      if (Platform.isAndroid) {
+        final status = await Permission.photos.request();
+        if (status.isDenied || status.isPermanentlyDenied) {
+          _showCameraError('Gallery permission denied. Please allow access in Settings.');
+          return;
+        }
+      }
+
       final picker  = ImagePicker();
       final XFile? picked = await picker.pickImage(
-          source: ImageSource.gallery, imageQuality: 90);
+          source: ImageSource.gallery, imageQuality: 100);
       if (picked == null || !mounted) return;
 
       setState(() => _analyzing = true);
 
-      // TODO: replace with real AI API call
-      await Future.delayed(const Duration(seconds: 2));
+      // Real API call to FastAPI ML model
+      final result = await _callAPIAndSave(picked.path);
 
-      // Save to history using picked.path
-      await _saveToHistory(picked.path);
-
-      // ✅ Double vibrate — scan complete success feedback
       await _vibrate([0, 80, 150, 80]);
 
       if (!mounted) return;
       Navigator.push(
         context,
-        _slideRoute(DiseaseResultScreen(imagePath: picked.path)),
+        _slideRoute(DiseaseResultScreen(
+          imagePath:   picked.path,
+          diseaseName: result['disease'] as String,
+          confidence:  (result['confidence'] as num).toDouble(),
+        )),
       );
     } catch (e) {
       debugPrint('Gallery error: $e');
@@ -284,18 +413,20 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // Turn flash OFF immediately after shutter — no delay
       await _camController!.setFlashMode(FlashMode.off);
 
-      // TODO: replace with real AI API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Save to history using photo.path
-      await _saveToHistory(photo.path);
+      // Real API call to FastAPI ML model
+      final result = await _callAPIAndSave(photo.path);
 
       // ✅ Double vibrate — scan complete success feedback
       await _vibrate([0, 80, 150, 80]);
 
       if (!mounted) return;
       Navigator.push(
-          context, _slideRoute(DiseaseResultScreen(imagePath: photo.path)));
+          context,
+          _slideRoute(DiseaseResultScreen(
+            imagePath:   photo.path,
+            diseaseName: result['disease'] as String,
+            confidence:  (result['confidence'] as num).toDouble(),
+          )));
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
@@ -364,6 +495,12 @@ class _LeafScanScreenState extends State<LeafScanScreen>
               ),
               const SizedBox(height: 14),
               Text('Starting camera...', style: AppText.caption),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _startCamera,
+                child: Text('Tap to retry',
+                    style: TextStyle(color: AppColors.neonGreen)),
+              ),
             ],
           ),
         ),
@@ -1012,7 +1149,15 @@ class _CornerPainter extends CustomPainter {
 // ═══════════════════════════════════════════════
 class DiseaseResultScreen extends StatefulWidget {
   final String imagePath;
-  const DiseaseResultScreen({super.key, required this.imagePath});
+  final String diseaseName;
+  final double confidence;
+
+  const DiseaseResultScreen({
+    super.key,
+    required this.imagePath,
+    this.diseaseName = 'Unknown',
+    this.confidence  = 0.0,
+  });
 
   @override
   State<DiseaseResultScreen> createState() => _DiseaseResultScreenState();
@@ -1158,23 +1303,16 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
 
   // ── Share as text ──────────────────────────
   void _shareAsText() {
-    const text = '''
+    final confidenceStr = '${widget.confidence.toStringAsFixed(1)}%';
+    final text = '''
 🌿 UrbanRoots — Scan Result
 
-🦠 Disease: Leaf Curl Disease
-📊 Confidence: 98%
-⚠️ Severity: High
-
-💊 Treatment Plan:
-  1. Isolate the plant to prevent spread
-  2. Remove and destroy all affected leaves
-  3. Apply organic neem oil solution weekly
-
-🛒 Recommended Remedy: Organic Neem Oil
+🦠 Disease: ${widget.diseaseName}
+📊 Confidence: $confidenceStr
 
 Scanned with UrbanRoots 🌱
 ''';
-    Share.share(text.trim(), subject: 'Leaf Scan Result — Leaf Curl Disease');
+    Share.share(text.trim(), subject: 'Leaf Scan Result — ${widget.diseaseName}');
   }
 
   // ── Share as image (screenshot) ───────────
@@ -1339,14 +1477,14 @@ Scanned with UrbanRoots 🌱
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const DiseaseDetailScreen(
-                              diseaseName: 'Leaf Curl Disease'),
+                          builder: (_) => DiseaseDetailScreen(
+                              diseaseName: widget.diseaseName),
                         ),
                       ),
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text('Leaf Curl Disease',
+                            child: Text(widget.diseaseName,
                                 style: AppText.heading),
                           ),
                           const SizedBox(width: 8),
@@ -1382,7 +1520,7 @@ Scanned with UrbanRoots 🌱
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text('AI Confidence', style: AppText.label),
-                        Text('98%', style: AppText.primaryValue),
+                        Text('${widget.confidence.toStringAsFixed(1)}%', style: AppText.primaryValue),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1391,7 +1529,7 @@ Scanned with UrbanRoots 🌱
                       builder: (_, __) => ClipRRect(
                         borderRadius: AppRadius.pillBR,
                         child: LinearProgressIndicator(
-                          value:           _barAnim.value * 0.98,
+                          value:           _barAnim.value * (widget.confidence / 100.0),
                           minHeight:       8,
                           backgroundColor: Colors.white.withOpacity(0.07),
                           valueColor: const AlwaysStoppedAnimation<Color>(
