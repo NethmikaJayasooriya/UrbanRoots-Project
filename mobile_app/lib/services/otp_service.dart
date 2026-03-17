@@ -8,30 +8,7 @@ class OtpService {
   // Use localhost for Web, 10.0.2.2 for Android emulator
   static const String _baseUrl = kIsWeb ? 'http://localhost:3000/auth' : 'http://10.0.2.2:3000/auth';
 
-  // Base URL for the generic OTP controller (no Firebase user check)
-  static const String _otpBaseUrl = kIsWeb ? 'http://localhost:3000/otp' : 'http://10.0.2.2:3000/otp';
 
-  /// Sends an OTP for Google Sign-In.
-  /// Uses /otp/generate which does NOT check if the user exists in Firebase Auth,
-  /// so it works correctly even after Google has already created the Firebase user.
-  static Future<String> requestGoogleOtp(String email) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_otpBaseUrl/generate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return "OTP sent successfully";
-      } else {
-        final errorMsg = jsonDecode(response.body)['message'] ?? 'Failed to send OTP';
-        throw Exception(errorMsg);
-      }
-    } catch (e) {
-      print('Error sending Google OTP: $e');
-      throw Exception('Could not connect to backend: $e');
-    }
-  }
 
   /// Requests an OTP from the backend based on the specific auth flow.
   /// [flow] can be 'login', 'signup', or 'forgot_password'.

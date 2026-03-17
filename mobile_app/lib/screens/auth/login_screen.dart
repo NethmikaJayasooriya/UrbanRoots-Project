@@ -41,16 +41,27 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = user.email;
       if (email == null) throw Exception("No email found from Google.");
 
-      await OtpService.requestGoogleOtp(email);
+      // Check onboarding status
+      final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+      
+      // Persist session
+      await OtpService.setLoggedIn(true);
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VerificationScreen(email: email, flow: 'google'),
-        ),
-      );
+      if (isOnboarded) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       debugPrint("Google sign-in error: $e");
       if (mounted) {

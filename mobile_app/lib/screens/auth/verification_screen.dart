@@ -85,7 +85,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
           MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
           (route) => false,
         );
-      } else if (widget.flow == 'login' || widget.flow == 'google') {
+      } else if (widget.flow == 'login') {
         // We know we just verified via backend. Let's check onboarding.
         // We need the user's uid to do this. We can get it from FirebaseAuth instance.
         final user = FirebaseAuth.instance.currentUser;
