@@ -35,17 +35,21 @@ export class AuthService {
    */
   async requestSignupOtp(email: string): Promise<void> {
     try {
-      await this.firebaseService.auth.getUserByEmail(email);
-      // If successful, user already exists
-      throw new BadRequestException('An account with this email already exists. Please log in.');
+      const user = await this.firebaseService.auth.getUserByEmail(email);
+      
+      // If user exists, they might be in the middle of signup.
+      // We'll allow sending a "signup" OTP anyway, as it's used for verification.
+      // If they are already fully onboarded, we could block it, but for now 
+      // let's just send the OTP to avoid the "already exists" dead-end.
+      await this.otpService.generateAndSendOtp(email);
+      this.logger.log(`Signup OTP sent to existing user ${email} (continuing flow)`);
+
     } catch (error) {
       if (error.code === 'auth/user-not-found') {
         // User does not exist, send OTP for signup
         await this.otpService.generateAndSendOtp(email);
-        this.logger.log(`Signup OTP sent to ${email}`);
+        this.logger.log(`Signup OTP sent to new user ${email}`);
       } else {
-        // Rethrow the BadRequestException if it was the "already exists" error
-        if (error instanceof BadRequestException) throw error;
         throw new BadRequestException('Failed to initiate signup.');
       }
     }
@@ -93,5 +97,22 @@ export class AuthService {
       },
       { merge: true } // Merge so we don't overwrite if it already exists
     );
+  }
+
+  /**
+   * Directly update a user's password in Firebase Auth.
+   * This should only be called after successful OTP verification.
+   */
+  async updatePassword(email: string, newPassword: string): Promise<void> {
+    try {
+      const user = await this.firebaseService.auth.getUserByEmail(email);
+      await this.firebaseService.auth.updateUser(user.uid, {
+        password: newPassword,
+      });
+      this.logger.log(`Password updated successfully for ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to update password for ${email}`, error.stack);
+      throw new BadRequestException('Could not update password. Please try again.');
+    }
   }
 }

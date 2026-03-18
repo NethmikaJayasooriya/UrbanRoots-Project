@@ -54,4 +54,24 @@ export class AuthController {
 
     return { success: true, message: 'OTP verified successfully' };
   }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body('email') email: string,
+    @Body('otp') otp: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    if (!email || !otp || !newPassword) {
+      throw new BadRequestException('Email, OTP, and new password are required');
+    }
+
+    const isValid = await this.authService.verifyOtp(email, otp);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
+
+    await this.authService.updatePassword(email, newPassword);
+    return { success: true, message: 'Password reset successfully' };
+  }
 }

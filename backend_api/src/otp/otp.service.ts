@@ -21,10 +21,13 @@ export class OtpService {
   private readonly otpStore = new Map<string, OtpRecord>();
 
   constructor(private readonly configService: ConfigService) {
+    const smtpSecure = this.configService.get<string | boolean>('SMTP_SECURE');
+    const isSecure = smtpSecure === true || smtpSecure === 'true';
+
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST'),
       port: this.configService.get<number>('SMTP_PORT'),
-      secure: this.configService.get<boolean>('SMTP_SECURE') ?? false,
+      secure: isSecure,
       family: 4,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),

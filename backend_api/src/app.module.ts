@@ -1,28 +1,46 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { OtpModule } from './otp/otp.module';
-import { FirebaseModule } from './firebase/firebase.module';
+
+// Modules from your team member's folder structure
 import { AuthModule } from './auth/auth.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { OtpModule } from './otp/otp.module';
 import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
-    // Load the Config Module first — makes .env available everywhere
-    ConfigModule.forRoot({
-      isGlobal: true,
+    // 1. Loads the .env file globally
+    ConfigModule.forRoot({ isGlobal: true }),
+
+    // 2. Connects to Supabase using the .env variables
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.get<string>('DB_USERNAME'),
+        password: config.get<string>('DB_PASSWORD'),
+        database: config.get<string>('DB_NAME'),
+        autoLoadEntities: true,
+        synchronize: true, // Auto-creates tables in Supabase based on entities
+        ssl: {
+          rejectUnauthorized: false, // REQUIRED for Supabase connections
+        },
+      }),
     }),
 
-    // Firebase Admin SDK (global — FirebaseService injectable everywhere)
-    FirebaseModule,
-
-    // Auth routes: /auth/login-otp, /auth/signup-otp, /auth/verify-otp, etc.
-    OtpModule,
+    // 3. Import existing feature modules
     AuthModule,
+    FirebaseModule,
+    OtpModule,
     UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

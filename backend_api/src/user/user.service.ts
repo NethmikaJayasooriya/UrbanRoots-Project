@@ -8,7 +8,7 @@ export interface UserProfileData {
   phone?: string;
   authProvider?: string;
   profilePic?: string;
-  is_onboaded?: boolean;
+  is_onboarded?: boolean;
 }
 
 @Injectable()

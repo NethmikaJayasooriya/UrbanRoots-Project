@@ -19,7 +19,7 @@ export class UserController {
     @Body('authProvider') authProvider?: string,
     @Body('profilePic') profilePic?: string,
   ) {
-    if (!uid || !firstName || !lastName || !email) {
+    if (uid === undefined || firstName === undefined || lastName === undefined || email === undefined) {
       throw new BadRequestException('uid, firstName, lastName, and email are required for profile setup.');
     }
 
@@ -30,7 +30,7 @@ export class UserController {
       phone,
       authProvider,
       profilePic,
-      is_onboaded: true,
+      is_onboarded: true,
     });
     return { success: true, message: 'Profile setup complete' };
   }
