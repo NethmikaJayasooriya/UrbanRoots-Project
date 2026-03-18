@@ -18,11 +18,38 @@ app.add_middleware(
 model = tf.keras.models.load_model(r"C:\Users\Himasara\Desktop\urbanRoots1\UrbanRoots-Project\ai_service\leaf_model.keras")
 
 CLASS_NAMES = [
+    "Blueberry___healthy",
+    "Cherry_(including_sour)___Powdery_mildew",
+    "Cherry_(including_sour)___healthy",
+    "Crape_jasmine_Yellow_leaf_disease",
+    "Crape_jasmine_healthy",
+    "Crape_jasmine_insect_bite",
+    "Dwarf_white_bauhinia_Death_leaf",
+    "Dwarf_white_bauhinia_Yellow_Leaf_Disease",
+    "Dwarf_white_bauhinia_healthy",
+    "Grape___Black_rot",
+    "Grape___Esca_(Black_Measles)",
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)",
+    "Grape___healthy",
+    "Hibiscus_Blight",
+    "Hibiscus_Death_leaf",
+    "Hibiscus_Scorch",
+    "Hibiscus_healthy",
+    "Night_flowering_jasmine_Early_blight",
+    "Night_flowering_jasmine_Red_spot",
+    "Night_flowering_jasmine_healthy",
+    "Orange___Haunglongbing_(Citrus_greening)",
     "Pepper__bell___Bacterial_spot",
     "Pepper__bell___healthy",
     "Potato___Early_blight",
     "Potato___Late_blight",
     "Potato___healthy",
+    "Raspberry___healthy",
+    "Rose___blight",
+    "Rose___healthy",
+    "Soybean___healthy",
+    "Strawberry___Leaf_scorch",
+    "Strawberry___healthy",
     "Tomato_Bacterial_spot",
     "Tomato_Early_blight",
     "Tomato_Late_blight",
@@ -32,12 +59,16 @@ CLASS_NAMES = [
     "Tomato__Target_Spot",
     "Tomato__Tomato_YellowLeaf__Curl_Virus",
     "Tomato__Tomato_mosaic_virus",
-    "Tomato_healthy"
+    "Tomato_healthy",
 ]
 
 @app.get("/")
 def home():
-    return {"message": "Leaf Disease Detection API is running!"}
+    return {
+        "message": "Leaf Disease Detection API is running!",
+        "total_classes": len(CLASS_NAMES),
+        "version": "v3 — 42 classes, 97.35% accuracy"
+    }
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -53,7 +84,6 @@ async def predict(file: UploadFile = File(...)):
     predicted_index = np.argmax(predictions[0])
     confidence = float(np.max(predictions[0])) * 100
 
-    # Reject if confidence is too low — likely not a supported leaf
     if confidence < 55:
         return {
             "disease": "Not recognized",
@@ -61,7 +91,12 @@ async def predict(file: UploadFile = File(...)):
             "message": "Please take a clearer photo of a leaf"
         }
 
+    disease_name = CLASS_NAMES[predicted_index]
+    is_healthy   = "healthy" in disease_name.lower()
+
     return {
-        "disease": CLASS_NAMES[predicted_index],
-        "confidence": round(confidence, 2)
+        "disease":    disease_name,
+        "confidence": round(confidence, 2),
+        "is_healthy": is_healthy,
+        "plant":      disease_name.split("_")[0].split("(")[0].strip()
     }
