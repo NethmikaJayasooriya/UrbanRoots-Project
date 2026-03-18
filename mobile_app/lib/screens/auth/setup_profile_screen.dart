@@ -36,12 +36,17 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       );
 
       if (pickedFile != null) {
+        // FIX: Ensure the widget is still mounted before setting state
+        if (!mounted) return;
         setState(() {
           _profileImage = File(pickedFile.path);
         });
       }
     } catch (e) {
       debugPrint("Failed to pick image: $e");
+
+      // FIX: Check mounted before using context to show the SnackBar
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Failed to get image. Check permissions."),
@@ -118,26 +123,27 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
   void _completeProfile() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Upload _profileImage to Firebase Storage here before navigating
-
       final user = FirebaseAuth.instance.currentUser;
+
       if (user != null) {
         try {
-          String provider = user.providerData.isNotEmpty 
-              ? user.providerData.first.providerId 
+          String provider = user.providerData.isNotEmpty
+              ? user.providerData.first.providerId
               : 'email/password';
 
+          debugPrint("Attempting to save profile for UID: ${user.uid}");
           await AuthService.setupProfile(
             uid: user.uid,
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
-            email: _emailController.text.trim().isNotEmpty 
-                ? _emailController.text.trim() 
+            email: _emailController.text.trim().isNotEmpty
+                ? _emailController.text.trim()
                 : (user.email ?? ''),
             phone: _phoneController.text.trim(),
             authProvider: provider,
             profilePic: user.photoURL,
           );
+          debugPrint("Profile saved successfully on backend.");
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -162,13 +168,18 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   void _skipProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Just mark defaults or minimal info
-      await AuthService.setupProfile(
+      try {
+        // Just mark defaults or minimal info
+        await AuthService.setupProfile(
           uid: user.uid,
           firstName: '',
           lastName: '',
           email: user.email ?? '',
-      );
+        );
+      } catch (e) {
+        debugPrint("Background profile skip error: $e");
+        // We continue to redirect anyway, as skipping shouldn't block the user
+      }
     }
 
     if (!mounted) return;

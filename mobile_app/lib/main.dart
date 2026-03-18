@@ -7,6 +7,8 @@ import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/setup_profile_screen.dart';
 import 'screens/auth/verification_screen.dart';
+import 'services/auth_service.dart';
+import 'screens/garden_creation/garden_intro_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +30,6 @@ class MyApp extends StatelessWidget {
         primaryColor: const Color(0xFF00E676),
         scaffoldBackgroundColor: const Color(0xFF07160F),
       ),
-
       home: const SplashScreenWrapper(),
     );
   }
@@ -59,7 +60,13 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
       // User logged in, check OTP verification
       final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
       if (loggedIn) {
-        _goToScreen(const SetupProfileScreen());
+        // Check if already onboarded to skip setup profile
+        final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+        if (isOnboarded) {
+          _goToScreen(const GardenIntroScreen());
+        } else {
+          _goToScreen(const SetupProfileScreen());
+        }
       } else {
         _goToScreen(const VerificationScreen());
       }
@@ -70,6 +77,10 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
   }
 
   void _goToScreen(Widget screen) {
+    // FIX: This prevents the "unmounted context" crash you saw in the logs!
+    // It checks if the widget is still active before trying to navigate.
+    if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => screen),

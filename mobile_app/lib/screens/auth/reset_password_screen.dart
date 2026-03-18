@@ -7,8 +7,9 @@ import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
+  final String otp;
 
-  const ResetPasswordScreen({super.key, required this.email});
+  const ResetPasswordScreen({super.key, required this.email, required this.otp});
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -43,8 +44,16 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Use Firebase password reset email approach
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: widget.email);
+      // Use Backend to reset password directly via OTP
+      final success = await OtpService.resetPassword(
+        email: widget.email,
+        enteredOtp: widget.otp,
+        newPassword: password,
+      );
+
+      if (!success) {
+        throw Exception("Failed to reset password. The link might have expired.");
+      }
 
       // Clear the persistent login since password is being reset
       await OtpService.setLoggedIn(false);
@@ -53,7 +62,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              "Password reset link sent to ${widget.email}! Please check your email.",
+              "Password reset successfully! You can now log in with your new password.",
               style: GoogleFonts.poppins(color: Colors.black),
             ),
             backgroundColor: AppColors.primaryGreen,

@@ -77,6 +77,34 @@ class OtpService {
     }
   }
 
+  /// Resets the user's password via the backend after OTP verification.
+  static Future<bool> resetPassword({
+    required String email,
+    required String enteredOtp,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'otp': enteredOtp,
+          'newPassword': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['success'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('Network error resetting password: $e');
+      return false;
+    }
+  }
+
   /// Clears stored OTP data for the given email.
   static Future<void> clearOtp(String email) async {
     // Handled by the backend internally. No-op here.

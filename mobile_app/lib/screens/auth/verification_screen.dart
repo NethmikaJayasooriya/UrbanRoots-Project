@@ -63,7 +63,13 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     try {
-      final isValid = await OtpService.verifyOtp(email: widget.email, enteredOtp: otp);
+      final user = FirebaseAuth.instance.currentUser;
+      final isValid = await OtpService.verifyOtp(
+        email: widget.email, 
+        enteredOtp: otp,
+        uid: user?.uid,
+        provider: 'email/password',
+      );
 
       if (!isValid) {
         setState(() {
@@ -112,7 +118,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ResetPasswordScreen(email: widget.email),
+            builder: (_) => ResetPasswordScreen(email: widget.email, otp: otp),
           ),
         );
       }

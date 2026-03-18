@@ -56,7 +56,7 @@ class AuthService {
     try {
       final docSnapshot = await _firestore.collection('users').doc(uid).get();
       if (docSnapshot.exists && docSnapshot.data() != null) {
-        return docSnapshot.data()!['is_onboaded'] == true;
+        return docSnapshot.data()!['is_onboarded'] == true;
       }
       return false;
     } catch (e) {
