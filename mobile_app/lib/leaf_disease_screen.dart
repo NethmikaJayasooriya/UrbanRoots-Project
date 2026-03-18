@@ -23,7 +23,7 @@ class LeafDiseaseAPI {
   // !! IMPORTANT: Replace X with your PC's IPv4 address
   // Run 'ipconfig' in terminal and look for IPv4 Address under WiFi
   // Your phone and PC must be on the same WiFi network
-  static const String _baseUrl = 'http://192.168.1.4:8000'; 
+  static const String _baseUrl = 'http://192.168.1.1:8000'; // ← change this IP
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
@@ -87,7 +87,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   // ── Animations ─────────────────────────────
   late AnimationController _pulseCtrl;
   late Animation<double>   _pulseAnim;
-  late Animation<double>   _glowAnim;  //  pulsing glow for shutter
+  late Animation<double>   _glowAnim;  // ✅ pulsing glow for shutter
 
   late AnimationController _rippleCtrl;
   late Animation<double>   _rippleAnim;
@@ -128,7 +128,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.93, end: 1.0).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    // Glow pulses between low and high opacity in sync with scale
+    // ✅ Glow pulses between low and high opacity in sync with scale
     _glowAnim = Tween<double>(begin: 0.15, end: 0.55).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
@@ -231,7 +231,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     try {
       final ctrl = CameraController(
         _cameras[index],
-        ResolutionPreset.high,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -397,6 +397,13 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     XFile? photo;
     try {
       // Manually control flash:
+      // Auto-focus and lock exposure before capture for better quality
+      try {
+        await _camController!.setFocusMode(FocusMode.auto);
+        await _camController!.setExposureMode(ExposureMode.auto);
+        await Future.delayed(const Duration(milliseconds: 300));
+      } catch (_) {}
+
       // Turn torch ON right before capture (if On or Auto mode)
       if (_flash == FlashOption.on) {
         await _camController!.setFlashMode(FlashMode.torch);
@@ -416,7 +423,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       // Real API call to FastAPI ML model
       final result = await _callAPIAndSave(photo.path);
 
-      // Double vibrate — scan complete success feedback
+      // ✅ Double vibrate — scan complete success feedback
       await _vibrate([0, 80, 150, 80]);
 
       if (!mounted) return;
@@ -874,7 +881,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.neonGreen, width: 3),
-                    // Glow opacity pulses in sync with scale
+                    // ✅ Glow opacity pulses in sync with scale
                     boxShadow: [
                       BoxShadow(
                         color:        AppColors.neonGreen.withOpacity(
