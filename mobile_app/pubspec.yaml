@@ -39,6 +39,9 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/Plants/flowers/
+    - assets/images/Plants/Fruits/
+    - assets/images/Plants/Kitchen Essentials/
     - assets/animations/pet_idle.json
     - assets/animations/pet_happy.json
     - assets/animations/pet_sad.json

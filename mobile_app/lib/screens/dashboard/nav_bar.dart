@@ -4,7 +4,7 @@ import 'package:mobile_app/core/theme/app_colors.dart';
 
 // Your local imports based on the screenshot
 import 'Home.dart'; 
-import 'garden/my_Garden.dart';
+import 'garden/myGarden_firstLogin.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
