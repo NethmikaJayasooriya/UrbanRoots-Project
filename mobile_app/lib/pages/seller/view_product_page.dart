@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mobile_app/models/products.dart';
+import 'package:mobile_app/style.dart';
 
 
 class ViewProductPage extends StatefulWidget {
@@ -58,7 +59,7 @@ class _State extends State<ViewProductPage> {
                 const SnackBar(content: Text('Product deleted.')),
               );
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -78,7 +79,7 @@ class _State extends State<ViewProductPage> {
             ),
           if (!_editing)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_outline, color: AppColors.error),
               onPressed: _confirmDelete,
             ),
           if (_editing)
@@ -103,32 +104,32 @@ class _State extends State<ViewProductPage> {
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF555555)),
+                    color: AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: _imageFile?.bytes != null
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           child: Image.memory(_imageFile!.bytes!, fit: BoxFit.cover),
                         )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.image_outlined,
-                                color: Colors.white38, size: 40),
+                                color: AppColors.textFaint, size: 40),
                             const SizedBox(height: 8),
                             Text(
                               widget.product.imageUrl,
                               style: const TextStyle(
-                                  color: Colors.white38, fontSize: 12),
+                                  color: AppColors.textFaint, fontSize: 12),
                               textAlign: TextAlign.center,
                             ),
                             if (_editing) ...[
                               const SizedBox(height: 8),
                               const Text('Tap to change image',
                                   style: TextStyle(
-                                      color: Colors.white54, fontSize: 12)),
+                                      color: AppColors.textdim, fontSize: 12)),
                             ],
                           ],
                         ),
@@ -139,7 +140,7 @@ class _State extends State<ViewProductPage> {
 
               // ── Product Name ───────────────────────────────
               const Text('Product Name',
-                  style: TextStyle(fontSize: 13, color: Colors.white70)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textLight)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _nameCtrl,
@@ -156,7 +157,7 @@ class _State extends State<ViewProductPage> {
 
               // ── Description ────────────────────────────────
               const Text('Description',
-                  style: TextStyle(fontSize: 13, color: Colors.white70)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textLight)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _descCtrl,
@@ -174,7 +175,7 @@ class _State extends State<ViewProductPage> {
 
               // ── Price ──────────────────────────────────────
               const Text('Price',
-                  style: TextStyle(fontSize: 13, color: Colors.white70)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textLight)),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _priceCtrl,

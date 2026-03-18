@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mobile_app/models/products.dart';
+import 'package:mobile_app/style.dart';
 
 class AddProductPage extends StatefulWidget {
   const AddProductPage({super.key});
@@ -60,7 +61,7 @@ class _State extends State<AddProductPage> {
 
               // ── Product Image ──────────────────────────────
               const Text('Product Image',
-                  style: TextStyle(fontSize: 13, color: Colors.white70)),
+                  style: TextStyle(fontSize: 13, color: AppColors.textLight)),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _pickImage,
@@ -68,13 +69,13 @@ class _State extends State<AddProductPage> {
                   height: 160,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF555555)),
+                    color: AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: _imageFile?.bytes != null
                       ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                           child: Image.memory(_imageFile!.bytes!,
                               fit: BoxFit.cover),
                         )
@@ -82,11 +83,11 @@ class _State extends State<AddProductPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_photo_alternate_outlined,
-                                color: Colors.white38, size: 36),
+                                color: AppColors.textFaint, size: 36),
                             SizedBox(height: 8),
                             Text('Tap to upload image',
                                 style: TextStyle(
-                                    color: Colors.white38, fontSize: 13)),
+                                    color: AppColors.textFaint, fontSize: 13)),
                           ],
                         ),
                 ),
@@ -96,7 +97,7 @@ class _State extends State<AddProductPage> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     '${_imageFile!.name}  (${(_imageFile!.size / 1024).toStringAsFixed(0)} KB)  · tap to change',
-                    style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    style: const TextStyle(color: AppColors.textFaint, fontSize: 11),
                   ),
                 ),
 

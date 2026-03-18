@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
-
-
-const kGreen = Color(0xFF4ADE80);
-const kSurface = Color(0xFF141F14);
-const kBorder = Color(0xFF2A3D2A);
-const kMuted = Color(0xFF6B8F6B);
+import 'package:mobile_app/style.dart';
 
 class SellerOnboardingPage extends StatefulWidget {
   const SellerOnboardingPage({super.key});
@@ -45,15 +40,15 @@ class _State extends State<SellerOnboardingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D150D),
+        backgroundColor: AppColors.background,
         elevation: 0,
         title: const Row(
           children: [
-            Icon(Icons.eco, color: kGreen, size: 20),
+            Icon(Icons.eco, color: AppColors.primary, size: 20),
             SizedBox(width: 8),
             Text('greenery',
                 style: TextStyle(
-                    color: kGreen,
+                    color: AppColors.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 2)),
@@ -74,7 +69,7 @@ class _State extends State<SellerOnboardingPage> {
                       color: Colors.white)),
               const SizedBox(height: 6),
               const Text('Fill in your business details to get started.',
-                  style: TextStyle(color: kMuted, fontSize: 13)),
+                  style: TextStyle(color: AppColors.textdim, fontSize: 13)),
               const SizedBox(height: 32),
 
               _label('Business Logo'),
@@ -122,8 +117,8 @@ class _State extends State<SellerOnboardingPage> {
                 child: ElevatedButton(
                   onPressed: _loading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: kGreen,
-                    foregroundColor: const Color(0xFF052E16),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.background,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
@@ -134,7 +129,7 @@ class _State extends State<SellerOnboardingPage> {
                           height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              color: Color(0xFF052E16)))
+                              color: AppColors.background))
                       : const Text('Start Selling',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w800)),
@@ -149,7 +144,7 @@ class _State extends State<SellerOnboardingPage> {
 
   Widget _label(String text) => Text(text,
       style: const TextStyle(
-          color: kMuted,
+          color: AppColors.textdim,
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5));
@@ -166,24 +161,24 @@ class _State extends State<SellerOnboardingPage> {
       keyboardType: type,
       validator: validator,
       style: const TextStyle(color: Colors.white, fontSize: 14),
-      cursorColor: kGreen,
+      cursorColor: AppColors.primary,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: kMuted),
-        prefixIcon: Icon(icon, color: kMuted, size: 18),
+        hintStyle: const TextStyle(color: AppColors.textdim),
+        prefixIcon: Icon(icon, color: AppColors.textdim, size: 18),
         filled: true,
-        fillColor: kSurface,
+        fillColor: AppColors.surfaceColor,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kBorder)),
+            borderSide: const BorderSide(color: AppColors.border)),
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kBorder)),
+            borderSide: const BorderSide(color: AppColors.border)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: kGreen, width: 1.5)),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Colors.redAccent)),
@@ -207,27 +202,27 @@ class _State extends State<SellerOnboardingPage> {
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: kSurface,
+          color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: picked ? kGreen : kBorder,
+              color: picked ? AppColors.primary : AppColors.border,
               width: picked ? 1.5 : 1),
         ),
         child: Row(
           children: [
             Icon(
                 picked ? Icons.check_circle_outline : icon,
-                color: picked ? kGreen : kMuted,
+                color: picked ? AppColors.primary : AppColors.textdim,
                 size: 20),
             const SizedBox(width: 12),
             Expanded(
                 child: Text(text,
                     style: TextStyle(
-                        color: picked ? kGreen : kMuted,
+                        color: picked ? AppColors.primary : AppColors.textdim,
                         fontSize: 13))),
             const Text('Browse',
                 style: TextStyle(
-                    color: kGreen,
+                    color: AppColors.primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
           ],

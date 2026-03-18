@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/models/products.dart';
-
+import 'package:mobile_app/pages/seller/add_product_page.dart';
+import 'package:mobile_app/pages/seller/view_product_page.dart';
+import 'package:mobile_app/style.dart';
 
 class SellerProductsPage extends StatefulWidget {
   const SellerProductsPage({super.key});
@@ -9,7 +11,6 @@ class SellerProductsPage extends StatefulWidget {
 }
 
 class _State extends State<SellerProductsPage> {
-  // Replace with your actual data source
   final List<Products> _products = Products.getProducts();
 
   void _confirmDelete(int index) {
@@ -31,8 +32,8 @@ class _State extends State<SellerProductsPage> {
                 const SnackBar(content: Text('Product deleted.')),
               );
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.redAccent)),
+            child: Text('Delete',
+                style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -45,87 +46,130 @@ class _State extends State<SellerProductsPage> {
       appBar: AppBar(
         title: const Text('My Products'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Product',
-            onPressed: () {
-              // Navigate to AddProductPage
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton.icon(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const AddProductPage())),
+              icon: const Icon(Icons.add, size: 18, color: AppColors.primary),
+              label: const Text('Add',
+                  style: TextStyle(
+                      color: AppColors.primary, fontWeight: FontWeight.w600)),
+            ),
           ),
         ],
       ),
       body: _products.isEmpty
-          ? const Center(
-              child: Text('No products yet. Tap + to add one.',
-                  style: TextStyle(color: Colors.white54)),
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2_outlined,
+                      size: 48, color: AppColors.textFaint),
+                  const SizedBox(height: 12),
+                  const Text('No products yet.',
+                      style: TextStyle(
+                          color: AppColors.textdim,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  const Text('Tap Add to list your first product.',
+                      style: TextStyle(
+                          color: AppColors.textFaint, fontSize: 13)),
+                ],
+              ),
             )
           : ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSizes.paddingMd),
               itemCount: _products.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final p = _products[index];
                 return Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF555555)),
+                    color: AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.asset(
-                        p.imageUrl,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 56,
-                          height: 56,
-                          color: const Color(0xFF3A3A3A),
-                          child: const Icon(Icons.image_outlined,
-                              color: Colors.white38),
-                        ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => ViewProductPage(product: p))),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          // Image
+                          ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusSm),
+                            child: Image.asset(
+                              p.imageUrl,
+                              width: 58,
+                              height: 58,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 58,
+                                height: 58,
+                                color: AppColors.surfaceAlt,
+                                child: const Icon(Icons.image_outlined,
+                                    color: AppColors.textFaint, size: 24),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p.name,
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textMain)),
+                                const SizedBox(height: 4),
+                                Text(p.description,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textdim)),
+                                const SizedBox(height: 6),
+                                Text('\$${p.price.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary)),
+                              ],
+                            ),
+                          ),
+
+                          // Actions
+                          Column(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined,
+                                    size: 20, color: AppColors.textLight),
+                                onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            ViewProductPage(product: p))),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete_outline,
+                                    size: 20, color: AppColors.error),
+                                onPressed: () => _confirmDelete(index),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                    title: Text(p.name,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(p.description,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.white54)),
-                        const SizedBox(height: 4),
-                        Text('\$${p.price.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.greenAccent)),
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined,
-                              size: 20, color: Colors.white54),
-                          onPressed: () {
-                            // Navigate to ViewProductPage(product: p)
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              size: 20, color: Colors.redAccent),
-                          onPressed: () => _confirmDelete(index),
-                        ),
-                      ],
                     ),
                   ),
                 );
