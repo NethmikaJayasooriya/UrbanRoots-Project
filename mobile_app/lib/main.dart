@@ -25,7 +25,7 @@ class UrbanRootsApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         useMaterial3: true,
       ),
-      home: const MarketplaceScreen1(),
+      home: const Marketplace_Screen1(),
     );
   }
 }

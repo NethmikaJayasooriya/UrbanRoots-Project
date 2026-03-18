@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'cart_model.dart';
-import 'shoppingCart.dart';
+import 'shopping_Cart.dart';
 
 // A simple data class for products displayed on this screen
 class Product {
@@ -40,7 +40,7 @@ class Marketplace_Screen1 extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ShoppingCart()),
+                    MaterialPageRoute(builder: (context) => const Shopping_Cart()),
                   );
                 },
                 icon: const Icon(Icons.shopping_cart_outlined),
