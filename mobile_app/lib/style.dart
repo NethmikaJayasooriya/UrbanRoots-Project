@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-
   // main background color
   static const Color background = Color(0xFF07160f);
 
   //Surface color for cards and containers
   static const Color surfaceColor = Color(0xFF16201b);
+  static const Color surfaceAlt  = Color(0xFF1E2D24);  
 
   //brand neon green for active states and highlights
   static const Color primary = Color(0xFF00e676);
+  static const Color primaryMuted = Color(0x2200e676); 
 
   //font colors
   static const Color textMain = Colors.white;
   static const Color textdim = Colors.white54;
+  static const Color textLight = Colors.white70;
+  static const Color textFaint = Colors.white38;
 
   // Error / destructive actions
   static const Color error = Colors.redAccent;
@@ -24,6 +27,7 @@ class AppColors {
 
 class AppSizes {
   // Border radius
+  static const double radiusXs = 4;
   static const double radiusSm = 6;
   static const double radiusMd = 8;
   static const double radiusLg = 12;
