@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = tf.keras.models.load_model(r"C:\Users\Himasara\Desktop\leaf-disease-detector\leaf_model.keras")
+model = tf.keras.models.load_model(r"C:\Users\Himasara\Desktop\urbanRoots1\UrbanRoots-Project\ai_service\leaf_model.keras")
 
 CLASS_NAMES = [
     "Pepper__bell___Bacterial_spot",
