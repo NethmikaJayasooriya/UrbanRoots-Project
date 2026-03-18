@@ -13,8 +13,8 @@ class Product {
   const Product({required this.name, required this.category, required this.price});
 }
 
-class MarketplaceScreen1 extends StatelessWidget {
-  const MarketplaceScreen1({super.key});
+class Marketplace_Screen1 extends StatelessWidget {
+  const Marketplace_Screen1({super.key});
 
   // Product list — easy to expand later
   static const List<Product> _products = [

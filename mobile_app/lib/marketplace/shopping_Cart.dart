@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'cart_model.dart';
 
-class ShoppingCart extends StatelessWidget {
-  const ShoppingCart({super.key});
+class Shopping_Cart extends StatelessWidget {
+  const Shopping_Cart({super.key});
 
   @override
   Widget build(BuildContext context) {
