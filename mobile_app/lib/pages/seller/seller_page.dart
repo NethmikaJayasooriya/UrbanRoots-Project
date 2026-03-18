@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_app/pages/seller/add_product_page.dart';
+import 'package:mobile_app/pages/seller/sales_page.dart';
+import 'package:mobile_app/pages/seller/seller_products_page.dart';
+import 'package:mobile_app/pages/seller/update_seller_details.dart';
 
 class SellerPage extends StatelessWidget {
   const SellerPage({super.key});
@@ -12,7 +16,6 @@ class SellerPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // ── Profile Summary ───────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
@@ -30,8 +33,11 @@ class SellerPage extends StatelessWidget {
                       width: 64,
                       height: 64,
                       color: const Color(0xFF3A3A3A),
-                      child: const Icon(Icons.storefront_outlined,
-                          color: Colors.white38, size: 32),
+                      child: const Icon(
+                        Icons.storefront_outlined,
+                        color: Colors.white38,
+                        size: 32,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -40,36 +46,49 @@ class SellerPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('GreenLeaf Co.',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700)),
+                        const Text(
+                          'GreenLeaf Co.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        const Text('hello@greenleaf.com',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.white54)),
+                        const Text(
+                          'hello@greenleaf.com',
+                          style: TextStyle(fontSize: 12, color: Colors.white54),
+                        ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 16),
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 16,
+                            ),
                             const SizedBox(width: 4),
-                            const Text('4.8',
-                                style: TextStyle(fontSize: 13)),
+                            const Text('4.8', style: TextStyle(fontSize: 13)),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                    color: Colors.greenAccent, width: 0.5),
+                                  color: Colors.greenAccent,
+                                  width: 0.5,
+                                ),
                               ),
-                              child: const Text('Verified',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.greenAccent)),
+                              child: const Text(
+                                'Verified',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.greenAccent,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -83,8 +102,10 @@ class SellerPage extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Navigation Links ──────────────────────────
-            const Text('Manage',
-                style: TextStyle(fontSize: 13, color: Colors.white54)),
+            const Text(
+              'Manage',
+              style: TextStyle(fontSize: 13, color: Colors.white54),
+            ),
             const SizedBox(height: 10),
 
             _navTile(
@@ -93,7 +114,12 @@ class SellerPage extends StatelessWidget {
               label: 'My Products',
               subtitle: 'View, edit or delete products',
               onTap: () {
-                // Navigator.push to SellerProductsPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SellerProductsPage(),
+                  ),
+                );
               },
             ),
             _navTile(
@@ -102,7 +128,12 @@ class SellerPage extends StatelessWidget {
               label: 'Add Product',
               subtitle: 'List a new product',
               onTap: () {
-                // Navigator.push to AddProductPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddProductPage(),
+                  ),
+                );
               },
             ),
             _navTile(
@@ -111,7 +142,10 @@ class SellerPage extends StatelessWidget {
               label: 'Sales',
               subtitle: 'View your sales history',
               onTap: () {
-                // Navigator.push to SalesPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SalesPage()),
+                );
               },
             ),
             _navTile(
@@ -120,7 +154,12 @@ class SellerPage extends StatelessWidget {
               label: 'Update Details',
               subtitle: 'Edit business info and payment details',
               onTap: () {
-                // Navigator.push to UpdateSellerDetailsPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UpdateSellerDetailsPage(),
+                  ),
+                );
               },
             ),
           ],
@@ -141,10 +180,14 @@ class SellerPage extends StatelessWidget {
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 4),
           leading: Icon(icon, color: Colors.white70, size: 22),
-          title: Text(label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          subtitle: Text(subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.white38)),
+          title: Text(
+            label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(fontSize: 12, color: Colors.white38),
+          ),
           trailing: const Icon(Icons.chevron_right, color: Colors.white38),
           onTap: onTap,
         ),
