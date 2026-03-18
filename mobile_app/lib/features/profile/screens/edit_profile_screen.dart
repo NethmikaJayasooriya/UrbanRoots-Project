@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../services/profile_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -14,10 +15,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final email = TextEditingController(text: "alex@email.com");
   final phone = TextEditingController(text: "+94 77 123 4567");
 
-  void _save() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+  bool _isLoading = false;
+
+  void _save() async {
+    setState(() => _isLoading = true);
+
+    // Hardcoding 'test-user-123' as UID since FirebaseAuth was removed from this prototype branch
+    final success = await ProfileService.updateProfile(
+      uid: 'test-user-123',
+      firstName: firstName.text.trim(),
+      lastName: lastName.text.trim(),
+      email: email.text.trim(),
+      phone: phone.text.trim(),
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? "Profile updated in Supabase & Firestore!" : "Failed to update profile",
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: success ? AppColors.accent : Colors.redAccent,
+      ),
+    );
   }
 
   void _editProfileImage() {
@@ -190,13 +213,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        child: const Text(
-                          "SAVE CHANGES",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+                        child: _isLoading 
+                          ? const SizedBox(
+                              height: 22, 
+                              width: 22, 
+                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
+                            )
+                          : const Text(
+                              "SAVE CHANGES",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                       ),
                     ),
 

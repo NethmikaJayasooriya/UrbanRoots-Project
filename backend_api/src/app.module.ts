@@ -5,6 +5,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 
+import { UserModule } from './user/user.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { User } from './user/entities/user.entity';
+
 @Module({
   imports: [
     //Load the Config Module first
@@ -23,10 +27,13 @@ import { AppService } from './app.service';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-        entities: [],
+        entities: [User],
         synchronize: true,
       }),
     }),
+
+    UserModule,
+    FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
