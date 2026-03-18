@@ -4,10 +4,15 @@ import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
 
 class GardenStrategyScreen extends StatefulWidget {
-  // Receives the fully bundled data from all previous screens!
-  final Map<String, dynamic> gardenData; 
+  final Map<String, dynamic> gardenData;
+  // The final callback — fires when the DB save succeeds
+  final Function(Map<String, dynamic>)? onGardenCreated;
 
-  const GardenStrategyScreen({super.key, required this.gardenData});
+  const GardenStrategyScreen({
+    super.key,
+    required this.gardenData,
+    this.onGardenCreated,
+  });
 
   @override
   State<GardenStrategyScreen> createState() => _GardenStrategyScreenState();
@@ -16,7 +21,7 @@ class GardenStrategyScreen extends StatefulWidget {
 class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
   String _containerSize = "Medium";
   String _experienceLevel = "Beginner";
-  String _selectedGoal = "Max Yield"; 
+  String _selectedGoal = "Max Yield";
   final List<String> _selectedCrops = [];
 
   final List<Map<String, dynamic>> _containerOptions = [
@@ -43,8 +48,68 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
 
   void _toggleCrop(String crop) {
     setState(() {
-      _selectedCrops.contains(crop) ? _selectedCrops.remove(crop) : _selectedCrops.add(crop);
+      _selectedCrops.contains(crop)
+          ? _selectedCrops.remove(crop)
+          : _selectedCrops.add(crop);
     });
+  }
+
+  Future<void> _saveGarden() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Saving garden to database...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    bool success = await ApiService.saveGarden(
+      userId: widget.gardenData['user_id'] ?? "test_firebase_uid_123",
+      gardenName: widget.gardenData['garden_name'] ?? "My Garden",
+      location: widget.gardenData['location'] ?? "Unknown",
+      latitude: widget.gardenData['latitude'],
+      longitude: widget.gardenData['longitude'],
+      environment: widget.gardenData['environment'] ?? "Unknown",
+      isIotConnected: widget.gardenData['is_iot_connected'] ?? false,
+      soilType: widget.gardenData['soil_type'] ?? "Potting Mix",
+      sunlightLevel: widget.gardenData['sunlight_level'] ?? 50,
+      wateringFrequency: widget.gardenData['watering_frequency'] ?? "Daily",
+      isWindy: widget.gardenData['is_windy'] ?? false,
+      containerSize: _containerSize,
+      gardeningGoal: _selectedGoal,
+      targetCrops: _selectedCrops,
+      experienceLevel: _experienceLevel,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Garden created successfully!'),
+          backgroundColor: AppColors.primaryGreen,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // ── KEY: enrich data bundle with strategy choices ──────────────────────
+      widget.gardenData['container_size'] = _containerSize;
+      widget.gardenData['gardening_goal'] = _selectedGoal;
+      widget.gardenData['target_crops'] = _selectedCrops;
+      widget.gardenData['experience_level'] = _experienceLevel;
+
+      // ── Notify MyGardenScreen that a garden now exists ─────────────────────
+      widget.onGardenCreated?.call(widget.gardenData);
+
+      // ── Pop the entire creation stack back to MainNavigationWrapper ────────
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Failed to create garden. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -55,8 +120,8 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white), 
-          onPressed: () => Navigator.pop(context)
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Padding(
@@ -64,8 +129,19 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Strategy.", style: GoogleFonts.poppins(fontSize: 40, fontWeight: FontWeight.w800, color: AppColors.textMain, letterSpacing: -1)),
-            Text("Refine your setup for optimal growth.", style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14)),
+            Text(
+              "Strategy.",
+              style: GoogleFonts.poppins(
+                fontSize: 40,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMain,
+                letterSpacing: -1,
+              ),
+            ),
+            Text(
+              "Refine your setup for optimal growth.",
+              style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14),
+            ),
             const SizedBox(height: 24),
 
             Expanded(
@@ -74,7 +150,6 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    
                     _sectionHeader("1. Container Size"),
                     const SizedBox(height: 12),
                     Row(
@@ -82,22 +157,53 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                         bool isSelected = _containerSize == opt["name"];
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _containerSize = opt["name"]),
+                            onTap: () => setState(
+                                () => _containerSize = opt["name"]),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primaryGreen.withOpacity(0.05) : AppColors.surfaceColor,
+                                color: isSelected
+                                    ? AppColors.primaryGreen.withOpacity(0.05)
+                                    : AppColors.surfaceColor,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: isSelected ? AppColors.primaryGreen : Colors.transparent, width: 1.5),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.primaryGreen
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
                               ),
                               child: Column(
                                 children: [
-                                  Icon(opt["icon"], color: isSelected ? AppColors.primaryGreen : Colors.white24, size: 24),
+                                  Icon(opt["icon"],
+                                      color: isSelected
+                                          ? AppColors.primaryGreen
+                                          : Colors.white24,
+                                      size: 24),
                                   const SizedBox(height: 8),
-                                  Text(opt["name"], style: GoogleFonts.poppins(color: isSelected ? AppColors.textMain : Colors.white60, fontWeight: FontWeight.bold, fontSize: 13)),
-                                  Text(opt["size"], style: GoogleFonts.poppins(color: isSelected ? AppColors.primaryGreen.withOpacity(0.7) : Colors.white24, fontSize: 10)),
+                                  Text(
+                                    opt["name"],
+                                    style: GoogleFonts.poppins(
+                                      color: isSelected
+                                          ? AppColors.textMain
+                                          : Colors.white60,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Text(
+                                    opt["size"],
+                                    style: GoogleFonts.poppins(
+                                      color: isSelected
+                                          ? AppColors.primaryGreen
+                                              .withOpacity(0.7)
+                                          : Colors.white24,
+                                      fontSize: 10,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -110,29 +216,47 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     _sectionHeader("2. Target Crops"),
                     const SizedBox(height: 12),
                     Wrap(
-                      spacing: 8, 
+                      spacing: 8,
                       runSpacing: 10,
                       children: _cropCategories.map((cropData) {
                         String cropName = cropData["name"];
                         IconData cropIcon = cropData["icon"];
                         bool isSelected = _selectedCrops.contains(cropName);
-                        
                         return GestureDetector(
                           onTap: () => _toggleCrop(cropName),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), 
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primaryGreen : AppColors.surfaceColor, 
+                              color: isSelected
+                                  ? AppColors.primaryGreen
+                                  : AppColors.surfaceColor,
                               borderRadius: BorderRadius.circular(20),
-                              border: isSelected ? Border.all(color: AppColors.primaryGreen, width: 2) : Border.all(color: Colors.white10),
+                              border: isSelected
+                                  ? Border.all(
+                                      color: AppColors.primaryGreen, width: 2)
+                                  : Border.all(color: Colors.white10),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(cropIcon, size: 16, color: isSelected ? Colors.black : Colors.white70),
+                                Icon(cropIcon,
+                                    size: 16,
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70),
                                 const SizedBox(width: 8),
-                                Text(cropName, style: GoogleFonts.poppins(color: isSelected ? Colors.black : Colors.white70, fontWeight: FontWeight.w600, fontSize: 12)),
+                                Text(
+                                  cropName,
+                                  style: GoogleFonts.poppins(
+                                    color: isSelected
+                                        ? Colors.black
+                                        : Colors.white70,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -148,20 +272,40 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                         bool isSelected = _selectedGoal == goal["name"];
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedGoal = goal["name"]),
+                            onTap: () => setState(
+                                () => _selectedGoal = goal["name"]),
                             child: Container(
                               margin: const EdgeInsets.only(right: 8),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primaryGreen.withOpacity(0.1) : AppColors.surfaceColor,
+                                color: isSelected
+                                    ? AppColors.primaryGreen.withOpacity(0.1)
+                                    : AppColors.surfaceColor,
                                 borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: isSelected ? AppColors.primaryGreen : Colors.transparent),
+                                border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.primaryGreen
+                                        : Colors.transparent),
                               ),
                               child: Column(
                                 children: [
-                                  Icon(goal["icon"], color: isSelected ? AppColors.primaryGreen : Colors.white24, size: 20),
+                                  Icon(goal["icon"],
+                                      color: isSelected
+                                          ? AppColors.primaryGreen
+                                          : Colors.white24,
+                                      size: 20),
                                   const SizedBox(height: 4),
-                                  Text(goal["name"], style: GoogleFonts.poppins(color: isSelected ? AppColors.textMain : Colors.white30, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    goal["name"],
+                                    style: GoogleFonts.poppins(
+                                      color: isSelected
+                                          ? AppColors.textMain
+                                          : Colors.white30,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -175,18 +319,38 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(color: AppColors.surfaceColor, borderRadius: BorderRadius.circular(15)),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceColor,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                       child: Row(
-                        children: ["Beginner", "Intermediate", "Pro"].map((lvl) {
+                        children:
+                            ["Beginner", "Intermediate", "Pro"].map((lvl) {
                           bool isSelected = _experienceLevel == lvl;
                           return Expanded(
                             child: GestureDetector(
-                              onTap: () => setState(() => _experienceLevel = lvl),
+                              onTap: () =>
+                                  setState(() => _experienceLevel = lvl),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(color: isSelected ? AppColors.primaryGreen : Colors.transparent, borderRadius: BorderRadius.circular(11)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.primaryGreen
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
                                 child: Center(
-                                  child: Text(lvl, style: GoogleFonts.poppins(color: isSelected ? Colors.black : Colors.white30, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  child: Text(
+                                    lvl,
+                                    style: GoogleFonts.poppins(
+                                      color: isSelected
+                                          ? Colors.black
+                                          : Colors.white30,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -203,60 +367,26 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0, top: 10),
               child: SizedBox(
-                width: double.infinity, height: 60,
+                width: double.infinity,
+                height: 60,
                 child: ElevatedButton(
-                  onPressed: _selectedCrops.isEmpty ? null : () async {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Saving garden to database...'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-
-                    // 🚨 IMPORTANT: You must update api_service.dart to accept latitude and longitude parameters!
-                    bool success = await ApiService.saveGarden(
-                      userId: widget.gardenData['user_id'] ?? "test_firebase_uid_123", 
-                      gardenName: widget.gardenData['garden_name'] ?? "My Garden",
-                      location: widget.gardenData['location'] ?? "Unknown",
-                      latitude: widget.gardenData['latitude'], // Add this to ApiService!
-                      longitude: widget.gardenData['longitude'], // Add this to ApiService!
-                      environment: widget.gardenData['environment'] ?? "Unknown",
-                      isIotConnected: widget.gardenData['is_iot_connected'] ?? false,
-                      soilType: widget.gardenData['soil_type'] ?? "Potting Mix",
-                      sunlightLevel: widget.gardenData['sunlight_level'] ?? 50,
-                      wateringFrequency: widget.gardenData['watering_frequency'] ?? "Daily",
-                      isWindy: widget.gardenData['is_windy'] ?? false,
-                      containerSize: _containerSize, 
-                      gardeningGoal: _selectedGoal,  
-                      targetCrops: _selectedCrops,   
-                      experienceLevel: _experienceLevel, 
-                    );
-
-                    if (mounted) {
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ Garden created successfully!'),
-                            backgroundColor: AppColors.primaryGreen,
-                          ),
-                        );
-                        // TODO: Navigate to the Dashboard after saving
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('❌ Failed to create garden. Please try again.'),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  },
+                  onPressed: _selectedCrops.isEmpty ? null : _saveGarden,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen, 
+                    backgroundColor: AppColors.primaryGreen,
                     disabledBackgroundColor: AppColors.surfaceColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
                   ),
-                  child: Text("Start Growing", style: GoogleFonts.poppins(color: _selectedCrops.isEmpty ? Colors.white24 : Colors.black, fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: Text(
+                    "Start Growing",
+                    style: GoogleFonts.poppins(
+                      color: _selectedCrops.isEmpty
+                          ? Colors.white24
+                          : Colors.black,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -267,6 +397,14 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
   }
 
   Widget _sectionHeader(String title) {
-    return Text(title.toUpperCase(), style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2));
+    return Text(
+      title.toUpperCase(),
+      style: GoogleFonts.poppins(
+        color: AppColors.primaryGreen,
+        fontWeight: FontWeight.w800,
+        fontSize: 11,
+        letterSpacing: 1.2,
+      ),
+    );
   }
 }

@@ -4,7 +4,10 @@ import 'garden_basics_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
 class GardenIntroScreen extends StatelessWidget {
-  const GardenIntroScreen({super.key});
+  // Callback passed from MyGardenScreen — fires when the full flow completes
+  final Function(Map<String, dynamic>)? onGardenCreated;
+
+  const GardenIntroScreen({super.key, this.onGardenCreated});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +21,7 @@ class GardenIntroScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 52),
 
-              // Refined Top Badge — leaf/plant icon to match garden theme
+              // Top badge
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -34,14 +37,9 @@ class GardenIntroScreen extends StatelessWidget {
                       ),
                     ),
                     child: const Center(
-                      child: Icon(
-                        Icons.eco_rounded,
-                        color: AppColors.primaryGreen,
-                        size: 32,
-                      ),
+                      child: Icon(Icons.eco_rounded, color: AppColors.primaryGreen, size: 32),
                     ),
                   ),
-                  // Small sparkle dot accent top-right
                   Positioned(
                     top: -4,
                     right: -4,
@@ -74,15 +72,11 @@ class GardenIntroScreen extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 "We need a few details to optimize your growth.",
-                style: GoogleFonts.poppins(
-                  color: AppColors.textDim,
-                  fontSize: 15,
-                ),
+                style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 15),
               ),
 
               const SizedBox(height: 40),
 
-              // Value Propositions for the user
               _buildReasonRow(
                 Icons.psychology_outlined,
                 "AI Calibration",
@@ -101,7 +95,6 @@ class GardenIntroScreen extends StatelessWidget {
                 "Syncs your digital plant's mood with its health.",
               ),
 
-              // Decorative plant illustration fills the gap naturally
               Expanded(
                 child: Center(
                   child: Padding(
@@ -114,7 +107,7 @@ class GardenIntroScreen extends StatelessWidget {
                 ),
               ),
 
-              // Primary Action
+              // Primary CTA — passes onGardenCreated down the chain
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -123,15 +116,16 @@ class GardenIntroScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const GardenBasicsScreen()),
+                        builder: (context) => GardenBasicsScreen(
+                          onGardenCreated: onGardenCreated,
+                        ),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: Text(
                     "Create My Garden",
@@ -146,12 +140,9 @@ class GardenIntroScreen extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Secondary escape hatch action
               Center(
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Go back to the dashboard if they abort
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: Text(
                     "Setup later",
                     style: GoogleFonts.poppins(
@@ -192,11 +183,7 @@ class GardenIntroScreen extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 desc,
-                style: GoogleFonts.poppins(
-                  color: AppColors.textDim,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
+                style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 13, height: 1.4),
               ),
             ],
           ),
@@ -206,11 +193,9 @@ class GardenIntroScreen extends StatelessWidget {
   }
 }
 
-// Custom painter for the procedural plant illustration
 class _PlantIllustrationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // We fetch colors directly from our theme for consistency
     final accentGreen = AppColors.primaryGreen;
     const dimGreen = Color(0xFF1A3D28);
     const midGreen = Color(0xFF0D4A22);
@@ -241,28 +226,23 @@ class _PlantIllustrationPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height;
 
-    // Soft glow circle behind plant
     canvas.drawCircle(Offset(cx, cy * 0.72), 54, glowPaint);
 
-    // Main stem — gentle S-curve upward
     final stemPath = Path()
       ..moveTo(cx, cy)
       ..cubicTo(cx - 10, cy - 30, cx + 14, cy - 60, cx, cy - 95);
     canvas.drawPath(stemPath, stemPaint);
 
-    // Left branch stem
     final leftBranch = Path()
       ..moveTo(cx - 2, cy - 52)
       ..cubicTo(cx - 22, cy - 62, cx - 46, cy - 58, cx - 58, cy - 48);
     canvas.drawPath(leftBranch, stemPaint);
 
-    // Right branch stem
     final rightBranch = Path()
       ..moveTo(cx + 2, cy - 68)
       ..cubicTo(cx + 20, cy - 80, cx + 44, cy - 76, cx + 54, cy - 62);
     canvas.drawPath(rightBranch, stemPaint);
 
-    // Helper: draw a leaf shape
     void drawLeaf(Offset tip, Offset base, double width) {
       final mid = Offset((tip.dx + base.dx) / 2, (tip.dy + base.dy) / 2);
       final dx = tip.dy - base.dy;
@@ -280,29 +260,22 @@ class _PlantIllustrationPainter extends CustomPainter {
 
       canvas.drawPath(leafFill, leafPaint);
       canvas.drawPath(leafFill, leafBorderPaint);
-
-      // Midrib vein
-      canvas.drawLine(base, tip,
-          Paint()
-            ..color = accentGreen.withOpacity(0.3)
-            ..strokeWidth = 0.8
-            ..strokeCap = StrokeCap.round
-            ..style = PaintingStyle.stroke);
+      canvas.drawLine(
+        base,
+        tip,
+        Paint()
+          ..color = accentGreen.withOpacity(0.3)
+          ..strokeWidth = 0.8
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke,
+      );
     }
 
-    // Top leaf (crown)
     drawLeaf(Offset(cx, cy - 118), Offset(cx, cy - 90), 180);
-
-    // Left leaf
     drawLeaf(Offset(cx - 60, cy - 50), Offset(cx - 18, cy - 54), 140);
-
-    // Right leaf
     drawLeaf(Offset(cx + 56, cy - 64), Offset(cx + 16, cy - 70), 140);
-
-    // Small secondary left leaf
     drawLeaf(Offset(cx - 28, cy - 80), Offset(cx - 8, cy - 76), 100);
 
-    // Soil / ground arc
     final soilPaint = Paint()
       ..color = dimGreen
       ..style = PaintingStyle.fill;
@@ -311,12 +284,10 @@ class _PlantIllustrationPainter extends CustomPainter {
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
-    final soilRect = Rect.fromCenter(
-        center: Offset(cx, cy + 2), width: 90, height: 18);
+    final soilRect = Rect.fromCenter(center: Offset(cx, cy + 2), width: 90, height: 18);
     canvas.drawOval(soilRect, soilPaint);
     canvas.drawOval(soilRect, soilBorderPaint);
 
-    // Small decorative dots (sparkles)
     final sparklePositions = [
       Offset(cx - 78, cy - 88),
       Offset(cx + 74, cy - 40),

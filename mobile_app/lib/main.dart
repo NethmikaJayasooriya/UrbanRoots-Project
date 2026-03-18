@@ -4,7 +4,7 @@ import 'firebase_options.dart'; // Pulls in your API keys and config
 import 'screens/auth/splash_screen.dart'; 
 import 'screens/dashboard/Home.dart';
 import 'package:mobile_app/screens/dashboard/nav_bar.dart';
-import 'package:mobile_app/screens/garden_creation/garden_intro_screen.dart';
+
 
 void main() async { 
   // Required before initializing native plugins like Firebase

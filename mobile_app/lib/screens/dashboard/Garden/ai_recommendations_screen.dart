@@ -3,59 +3,87 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
-  const AiRecommendationsScreen({super.key});
+  // Receives garden context so AI can tailor results
+  final Map<String, dynamic> gardenData;
+
+  const AiRecommendationsScreen({super.key, required this.gardenData});
 
   @override
   State<AiRecommendationsScreen> createState() => _AiRecommendationsScreenState();
 }
 
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
-  // 🦇 STATE TRACKER: This remembers which plants the user has clicked "Add" for
+  // Tracks which plants the user has selected
   final Set<String> _addedPlants = {};
 
+  // ── Hardcoded AI results (swap with real API call later) ──────────────────
   final List<Map<String, dynamic>> aiResults = [
     {
       "plant_name": "tomato",
       "success_probability": "92%",
-      "short_reason": "Tomatoes thrive in warm temperatures, and your current soil type is a perfect match for root growth."
+      "short_reason":
+          "Tomatoes thrive in warm temperatures, and your current soil type is a perfect match for root growth.",
     },
     {
       "plant_name": "bell pepper",
       "success_probability": "85%",
-      "short_reason": "High humidity is ideal for bell peppers, though they will need steady sunlight."
+      "short_reason":
+          "High humidity is ideal for bell peppers, though they will need steady sunlight.",
     },
     {
       "plant_name": "Bauhinia acuminata",
       "success_probability": "78%",
-      "short_reason": "This tropical shrub fits your indoor environment well but requires careful moisture management."
-    }
+      "short_reason":
+          "This tropical shrub fits your indoor environment well but requires careful moisture management.",
+    },
   ];
 
+  // ── Maps plant name → local asset image path ──────────────────────────────
   String _getImagePathForPlant(String plantName) {
     final Map<String, String> imagePaths = {
-      // Flowers
       "bauhinia acuminata": "assets/images/Plants/flowers/Bauhinia_acuminata.jpg",
       "crape jasmine": "assets/images/Plants/flowers/crape jasmine.webp",
       "hibiscus": "assets/images/Plants/flowers/hibiscus flower.jpg",
       "night flowering jasmine": "assets/images/Plants/flowers/night flowering jasmine.jpg",
       "rose": "assets/images/Plants/flowers/rose.jpg",
-      
-      // Fruits
       "blueberry": "assets/images/Plants/Fruits/blueberry.webp",
       "cherry": "assets/images/Plants/Fruits/cherry.jpg",
       "grape": "assets/images/Plants/Fruits/grape.jpg",
       "orange": "assets/images/Plants/Fruits/orange.jpg",
       "raspberry": "assets/images/Plants/Fruits/raspberry.jpg",
       "strawberry": "assets/images/Plants/Fruits/strawberry.jpg",
-      
-      // Kitchen Essentials
       "bell pepper": "assets/images/Plants/Kitchen Essentials/bell pepper.webp",
       "potato": "assets/images/Plants/Kitchen Essentials/potato.jpg",
       "soyabean": "assets/images/Plants/Kitchen Essentials/soyabean.jpg",
       "tomato": "assets/images/Plants/Kitchen Essentials/tomato.jpg",
     };
+    return imagePaths[plantName.toLowerCase()] ?? "assets/images/logo.png";
+  }
 
-    return imagePaths[plantName.toLowerCase()] ?? "assets/images/logo.png"; 
+  // ── Converts selected plant names → full plant maps for MyGardenScreen ───
+  List<Map<String, dynamic>> _buildSelectedPlantMaps() {
+    return _addedPlants.map((plantName) {
+      return {
+        'id': plantName.replaceAll(' ', '_').toLowerCase(),
+        'name': _capitalize(plantName),
+        'image': _getImagePathForPlant(plantName),
+        'imageIsAsset': true, // tells MyGardenScreen to use Image.asset
+        'status': 'Freshly added · Thriving',
+        'moisture': '—',
+        'sunlight': '—',
+      };
+    }).toList();
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s.split(' ').map((w) => w[0].toUpperCase() + w.substring(1)).join(' ');
+  }
+
+  // ── Confirm and return to MyGardenScreen ─────────────────────────────────
+  void _confirmSelection() {
+    final plants = _buildSelectedPlantMaps();
+    Navigator.pop(context, plants);
   }
 
   @override
@@ -76,13 +104,82 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: aiResults.length,
-          itemBuilder: (context, index) {
-            final plant = aiResults[index];
-            return _buildRecommendationCard(plant);
-          },
+        child: Column(
+          children: [
+            // ── Recommendation cards list ───────────────────────────────────
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                itemCount: aiResults.length,
+                itemBuilder: (context, index) {
+                  return _buildRecommendationCard(aiResults[index]);
+                },
+              ),
+            ),
+
+            // ── Sticky "Create Your Garden" button at the bottom ───────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundColor,
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.06)),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_addedPlants.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        "${_addedPlants.length} crop${_addedPlants.length > 1 ? 's' : ''} selected",
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primaryGreen,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _addedPlants.isEmpty ? null : _confirmSelection,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        disabledBackgroundColor: AppColors.surfaceColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.yard_rounded,
+                            color: _addedPlants.isEmpty ? Colors.white24 : Colors.black,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "CREATE YOUR GARDEN",
+                            style: GoogleFonts.poppins(
+                              color: _addedPlants.isEmpty ? Colors.white24 : Colors.black,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -91,8 +188,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   Widget _buildRecommendationCard(Map<String, dynamic> plant) {
     final String plantName = plant['plant_name'];
     final String imagePath = _getImagePathForPlant(plantName);
-    
-    // Check if this specific plant is currently in our "added" list
     final bool isAdded = _addedPlants.contains(plantName);
 
     return Container(
@@ -100,12 +195,15 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(
+          color: isAdded ? AppColors.primaryGreen.withOpacity(0.5) : Colors.white10,
+          width: isAdded ? 1.5 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Half: Image & Success Rate
+          // Image + success badge
           Stack(
             children: [
               ClipRRect(
@@ -118,7 +216,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 140,
                     color: Colors.black26,
-                    child: const Center(child: Icon(Icons.image_not_supported, color: Colors.white30, size: 40)),
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.white30, size: 40),
+                    ),
                   ),
                 ),
               ),
@@ -137,7 +237,11 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                       const SizedBox(width: 4),
                       Text(
                         plant['success_probability'],
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 13),
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -145,8 +249,8 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               ),
             ],
           ),
-          
-          // Bottom Half: Text & Actions
+
+          // Text + add/remove button
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -163,31 +267,34 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 const SizedBox(height: 8),
                 Text(
                   plant['short_reason'],
-                  style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 13, height: 1.4),
+                  style: GoogleFonts.poppins(
+                    color: AppColors.textDim,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                
-                // 🦇 DYNAMIC BUTTON LOGIC
+
+                // Toggle add / remove
                 SizedBox(
                   width: double.infinity,
                   child: isAdded
-                      // STATE: WHEN ADDED
                       ? ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              _addedPlants.remove(plantName); // Remove from list
-                            });
+                            setState(() => _addedPlants.remove(plantName));
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("$plantName removed from garden."),
-                                backgroundColor: Colors.redAccent, // Red for removal
+                                content: Text("$plantName removed."),
+                                backgroundColor: Colors.redAccent,
                                 duration: const Duration(seconds: 1),
                               ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primaryGreen,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             elevation: 0,
                           ),
@@ -198,20 +305,20 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 "ADDED TO GARDEN",
-                                style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.poppins(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
                         )
-                      // STATE: DEFAULT (NOT ADDED)
                       : OutlinedButton(
                           onPressed: () {
-                            setState(() {
-                              _addedPlants.add(plantName); // Add to list
-                            });
+                            setState(() => _addedPlants.add(plantName));
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text("$plantName added to garden!"),
+                                content: Text("$plantName added!"),
                                 backgroundColor: AppColors.primaryGreen,
                                 duration: const Duration(seconds: 1),
                               ),
@@ -219,12 +326,17 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.primaryGreen),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           child: Text(
                             "ADD TO GARDEN",
-                            style: GoogleFonts.poppins(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.poppins(
+                              color: AppColors.primaryGreen,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                 ),
