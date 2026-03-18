@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from tensorflow.keras.applications.efficientnet import preprocess_input
 import io
+import cv2
 
 app = FastAPI()
 
@@ -15,7 +16,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = tf.keras.models.load_model(r"C:\Users\Himasara\Desktop\urbanRoots1\UrbanRoots-Project\ai_service\leaf_model.keras")
+model = tf.keras.models.load_model(
+    r"C:\Users\Himasara\Desktop\urbanRoots1\UrbanRoots-Project\ai_service\leaf_model.keras"
+)
 
 CLASS_NAMES = [
     "Blueberry___healthy",
@@ -62,33 +65,76 @@ CLASS_NAMES = [
     "Tomato_healthy",
 ]
 
+
+def preprocess_leaf_image(image_bytes):
+    nparr  = np.frombuffer(image_bytes, np.uint8)
+    img_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    hsv    = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+
+    mask_green  = cv2.inRange(hsv, np.array([25, 30, 30]), np.array([95, 255, 255]))
+    mask_yellow = cv2.inRange(hsv, np.array([15, 30, 30]), np.array([35, 255, 255]))
+    mask_brown  = cv2.inRange(hsv, np.array([5,  30, 20]), np.array([20, 255, 200]))
+
+    combined = cv2.bitwise_or(mask_green, mask_yellow)
+    combined = cv2.bitwise_or(combined, mask_brown)
+
+    kernel   = np.ones((15, 15), np.uint8)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN,  kernel)
+
+    contours, _ = cv2.findContours(combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest    = max(contours, key=cv2.contourArea)
+        area       = cv2.contourArea(largest)
+        total_area = img_cv.shape[0] * img_cv.shape[1]
+
+        if area > total_area * 0.10:
+            x, y, w, h = cv2.boundingRect(largest)
+            pad_x = int(w * 0.10)
+            pad_y = int(h * 0.10)
+            x     = max(0, x - pad_x)
+            y     = max(0, y - pad_y)
+            w     = min(img_cv.shape[1] - x, w + 2 * pad_x)
+            h     = min(img_cv.shape[0] - y, h + 2 * pad_y)
+            img_cv = img_cv[y:y+h, x:x+w]
+
+    img_rgb = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB)
+    return Image.fromarray(img_rgb)
+
+
 @app.get("/")
 def home():
     return {
-        "message": "Leaf Disease Detection API is running!",
+        "message":       "Leaf Disease Detection API is running!",
         "total_classes": len(CLASS_NAMES),
-        "version": "v3 — 42 classes, 97.35% accuracy"
+        "version":       "v3 — 42 classes, 97.35% accuracy"
     }
+
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
-    img = Image.open(io.BytesIO(contents)).convert("RGB")
-    img = img.resize((224, 224))
 
+    try:
+        img = preprocess_leaf_image(contents)
+    except Exception:
+        img = Image.open(io.BytesIO(contents)).convert("RGB")
+
+    img       = img.convert("RGB").resize((224, 224))
     img_array = np.array(img, dtype=np.float32)
     img_array = preprocess_input(img_array)
     img_array = np.expand_dims(img_array, axis=0)
 
-    predictions = model.predict(img_array)
+    predictions     = model.predict(img_array)
     predicted_index = np.argmax(predictions[0])
-    confidence = float(np.max(predictions[0])) * 100
+    confidence      = float(np.max(predictions[0])) * 100
 
     if confidence < 55:
         return {
-            "disease": "Not recognized",
+            "disease":    "Not recognized",
             "confidence": round(confidence, 2),
-            "message": "Please take a clearer photo of a leaf"
+            "message":    "Please take a clearer photo of a leaf"
         }
 
     disease_name = CLASS_NAMES[predicted_index]

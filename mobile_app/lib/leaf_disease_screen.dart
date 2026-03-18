@@ -23,7 +23,7 @@ class LeafDiseaseAPI {
   // !! IMPORTANT: Replace X with your PC's IPv4 address
   // Run 'ipconfig' in terminal and look for IPv4 Address under WiFi
   // Your phone and PC must be on the same WiFi network
-  static const String _baseUrl = 'http://192.168.1.1:8000'; // ← change this IP
+  static const String _baseUrl = 'http://192.168.1.4:8000'; // ← change this IP
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
