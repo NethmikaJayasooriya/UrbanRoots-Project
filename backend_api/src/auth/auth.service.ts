@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { OtpService } from '../otp/otp.service';
 import { FirebaseService } from '../firebase/firebase.service';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +10,7 @@ export class AuthService {
   constructor(
     private readonly otpService: OtpService,
     private readonly firebaseService: FirebaseService,
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   /**
@@ -83,20 +85,58 @@ export class AuthService {
 
   /**
    * Helper: After OTP is verified for a NEW signup or login, 
-   * ensure the user's base Firestore document exists.
+   * ensure the user's base Firestore document exists AND sync to Supabase.
    */
   async syncUserToFirestore(uid: string, email: string, provider: string): Promise<void> {
-    const userRef = this.firebaseService.firestore.collection('users').doc(uid);
-    await userRef.set(
-      {
-        email: email,
-        authProvider: provider,
-        createdAt: new Date(),
-        // We do *not* save the password here! 
-        // Firebase Auth handles storing the password securely.
-      },
-      { merge: true } // Merge so we don't overwrite if it already exists
-    );
+    try {
+      // Sync to Firestore
+      const userRef = this.firebaseService.firestore.collection('users').doc(uid);
+      await userRef.set(
+        {
+          email: email,
+          authProvider: provider,
+          createdAt: new Date(),
+          // We do *not* save the password here! 
+          // Firebase Auth handles storing the password securely.
+        },
+        { merge: true } // Merge so we don't overwrite if it already exists
+      );
+      this.logger.log(`User synced to Firestore: ${uid}`);
+
+      // Also sync to Supabase (non-blocking)
+      await this.syncUserToSupabase(uid, email, provider);
+    } catch (error) {
+      this.logger.error(`Error syncing user to Firestore: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync a user to Supabase after successful authentication.
+   * This is called automatically during signup/login flow.
+   */
+  async syncUserToSupabase(
+    uid: string,
+    email: string,
+    authProvider?: string,
+    firstName?: string,
+    lastName?: string,
+    profilePicUrl?: string,
+  ): Promise<void> {
+    try {
+      await this.supabaseService.syncFirebaseUserToSupabase(
+        uid,
+        email,
+        firstName,
+        lastName,
+        profilePicUrl,
+        authProvider || 'email/password',
+      );
+      this.logger.log(`User synced to Supabase: ${uid}`);
+    } catch (error) {
+      this.logger.warn(`Supabase sync warning (non-blocking): ${error.message}`);
+      // Don't throw - Supabase sync should not block the main authentication flow
+    }
   }
 
   /**
@@ -114,5 +154,21 @@ export class AuthService {
       this.logger.error(`Failed to update password for ${email}`, error.stack);
       throw new BadRequestException('Could not update password. Please try again.');
     }
+  }
+
+  /**
+   * Check if an email was recently verified via OTP.
+   * Used by the reset-password flow to confirm prior verification
+   * without re-consuming the OTP.
+   */
+  isEmailRecentlyVerified(email: string): boolean {
+    return this.otpService.isEmailVerified(email);
+  }
+
+  /**
+   * Clear the verified status for an email after consuming it.
+   */
+  clearVerifiedEmail(email: string): void {
+    this.otpService.clearVerifiedEmail(email);
   }
 }

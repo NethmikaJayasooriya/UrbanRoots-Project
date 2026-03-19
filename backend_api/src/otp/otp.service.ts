@@ -20,6 +20,11 @@ export class OtpService {
   // In-memory store: email -> OtpRecord
   private readonly otpStore = new Map<string, OtpRecord>();
 
+  // Tracks emails whose OTP was recently verified (for flows like
+  // forgot-password where verification and password-reset are separate steps).
+  // Maps email -> expiry Date (valid for 10 minutes after verification).
+  private readonly verifiedEmails = new Map<string, Date>();
+
   constructor(private readonly configService: ConfigService) {
     const smtpSecure = this.configService.get<string | boolean>('SMTP_SECURE');
     const isSecure = smtpSecure === true || smtpSecure === 'true';
@@ -89,6 +94,37 @@ export class OtpService {
 
     // Clean up after successful verification
     this.otpStore.delete(email);
+
+    // Mark this email as "recently verified" for 10 minutes
+    this.verifiedEmails.set(
+      email,
+      new Date(Date.now() + 10 * 60 * 1000),
+    );
+
     return true;
+  }
+
+  /**
+   * Checks if an email was recently verified via OTP.
+   * Used by flows like forgot-password where the reset step
+   * is a separate request from the verification step.
+   */
+  isEmailVerified(email: string): boolean {
+    const expiry = this.verifiedEmails.get(email);
+    if (!expiry) return false;
+
+    if (new Date() > expiry) {
+      this.verifiedEmails.delete(email);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Clears the verified status for an email (call after consuming it).
+   */
+  clearVerifiedEmail(email: string): void {
+    this.verifiedEmails.delete(email);
   }
 }
