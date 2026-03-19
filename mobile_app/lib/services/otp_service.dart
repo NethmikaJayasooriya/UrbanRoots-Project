@@ -97,14 +97,22 @@ class OtpService {
         }),
       );
 
+      print('Reset password response status: ${response.statusCode}');
+      print('Reset password response body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
       }
-      return false;
+
+      // Parse the error message from backend
+      final errorBody = jsonDecode(response.body);
+      final errorMsg = errorBody['message'] ?? 'Password reset failed';
+      print('Reset password backend error: $errorMsg');
+      throw Exception(errorMsg);
     } catch (e) {
-      print('Network error resetting password: $e');
-      return false;
+      print('Reset password error: $e');
+      rethrow;
     }
   }
 
