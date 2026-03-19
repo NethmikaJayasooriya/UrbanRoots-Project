@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'cart_model.dart';
-
+import 'checkout_screen.dart';
 class Shopping_Cart extends StatelessWidget {
   const Shopping_Cart({super.key});
 
@@ -99,7 +99,20 @@ class Shopping_Cart extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          if (cart.items.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Your cart is empty!')),
+                            );
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CheckoutScreen(),
+                            ),
+                          );
+                        },
                         child: const Text('Checkout',
                             style: TextStyle(color: Colors.white)),
                       ),
