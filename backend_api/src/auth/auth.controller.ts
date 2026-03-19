@@ -62,16 +62,22 @@ export class AuthController {
     @Body('otp') otp: string,
     @Body('newPassword') newPassword: string,
   ) {
-    if (!email || !otp || !newPassword) {
-      throw new BadRequestException('Email, OTP, and new password are required');
+    if (!email || !newPassword) {
+      throw new BadRequestException('Email and new password are required');
     }
 
-    const isValid = await this.authService.verifyOtp(email, otp);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid or expired OTP');
+    // The OTP was already verified on the verification screen and consumed.
+    // Check the "recently verified" flag instead of re-verifying.
+    const isVerified = this.authService.isEmailRecentlyVerified(email);
+    if (!isVerified) {
+      throw new UnauthorizedException('Email not verified or session expired. Please verify OTP again.');
     }
 
     await this.authService.updatePassword(email, newPassword);
+
+    // Consume the verified status so it can't be reused
+    this.authService.clearVerifiedEmail(email);
+
     return { success: true, message: 'Password reset successfully' };
   }
 }
