@@ -176,9 +176,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         const SizedBox(height: 20),
                         _buildProductSummary(),   // Section 3
                         const SizedBox(height: 28),
-                        _buildReviewsSection(),   // Section 4
-                        const SizedBox(height: 16),
                         _buildReviewForm(),       // Review submission form
+                        const SizedBox(height: 16),
+                        _buildReviewsSection(),   // Section 4
                         const SizedBox(height: 32),
                       ],
                     ),
