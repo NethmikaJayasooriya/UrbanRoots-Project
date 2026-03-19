@@ -1,10 +1,5 @@
 name: mobile_app
-description: "A new Flutter project."
-publish_to: "none"
-
-name: mobile_app # Changed to match your internal imports!
 description: "UrbanRoots Smart Garden Application"
-
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -22,13 +17,11 @@ dependencies:
   font_awesome_flutter: ^10.6.0
   lucide_icons: 0.257.0
   
-  # Networking & Core
+  # Networking, Files & Core
   http: ^1.6.0
-  shared_preferences: ^2.2.2
   vibration: ^3.1.8
   camera: ^0.10.5+9
   permission_handler: ^11.3.0
-  image_picker: ^1.0.7
   share_plus: ^7.2.1
   path_provider: ^2.1.2
   pdf: ^3.10.8
@@ -38,7 +31,7 @@ dependencies:
   # Local Storage (Added for Unique Garden Sessions)
   shared_preferences: ^2.2.3
   
-  # Firebase & Authentication
+  # Firebase, Media & Authentication
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   google_sign_in: ^6.2.2

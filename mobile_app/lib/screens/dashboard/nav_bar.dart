@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
-// Your local imports based on the screenshot
+// Your local imports 
 import 'Home.dart'; 
 import 'garden/my_Garden.dart';
+import 'leaf_disease_screen.dart'; // <-- ADDED: Imports your teammate's ML scanner
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -16,7 +17,7 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with SingleTickerProviderStateMixin {
   
-  // CHANGED: Default to 0 so the user lands on the Digital Pet Home Screen first!
+  // Default to 0 so the user lands on the Digital Pet Home Screen first!
   int _currentIndex = 0;
 
   // Animation controller for the scanner button pulse effect
@@ -46,11 +47,10 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
   Widget build(BuildContext context) {
     final bool scannerActive = _currentIndex == 2;
 
-    // CHANGED: Plugged in the real HomeScreen() at index 0
     final List<Widget> screens = [
-      const HomeScreen(), // The Digital Pet screen!
-      const MyGardenScreen(),
-      const Center(child: Text("Global Leaf Health Scanner", style: TextStyle(color: Colors.white))),
+      const HomeScreen(), // 0: The Digital Pet screen
+      const MyGardenScreen(), // 1: The Garden layout
+      const LeafScanScreen(), // 2: <-- ADDED: The actual AI Disease Scanner!
       const Center(child: Text("Marketplace", style: TextStyle(color: Colors.white))),
       const Center(child: Text("User Profile", style: TextStyle(color: Colors.white))),
     ];

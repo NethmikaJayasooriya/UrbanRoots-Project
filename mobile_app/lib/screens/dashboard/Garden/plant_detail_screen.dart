@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
+import 'leaf_disease_screen.dart'; // <-- ADDED: Imports your teammate's ML scanner
 
 class PlantDetailScreen extends StatefulWidget {
   final Map<String, dynamic> plant;
@@ -110,7 +111,15 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton.icon(
-                      onPressed: () {}, 
+                      onPressed: () {
+                        // <-- ADDED: Actually navigates to the scanner when tapped!
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LeafScanScreen(),
+                          ),
+                        );
+                      }, 
                       icon: const Icon(Icons.camera_rounded, color: Colors.black, size: 20),
                       label: Text(
                         "Scan Leaf Now", 
