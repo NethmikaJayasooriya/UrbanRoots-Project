@@ -49,7 +49,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
         debugPrint("User created: ${userCredential.user?.email}");
 
         // Request OTP from backend for signup flow
-        await OtpService.requestOtp(email, 'signup');
+        try {
+          await OtpService.requestOtp(email, 'signup');
+        } catch (otpError) {
+          debugPrint("OTP request failed: $otpError");
+          // Delete the Firebase user if OTP request fails
+          await FirebaseAuth.instance.currentUser?.delete();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to send verification code: ${otpError.toString()}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          if (mounted) setState(() => _isEmailLoading = false);
+          return;
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -67,9 +83,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
           }
         }
       } on FirebaseAuthException catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: ${e.message}")));
+        String errorMessage = e.message ?? 'An error occurred';
+        if (e.code == 'email-already-in-use') {
+          errorMessage = 'This email is already registered. Please log in instead.';
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error: $errorMessage")),
+          );
+        }
       } finally {
         if (mounted) setState(() => _isEmailLoading = false);
       }

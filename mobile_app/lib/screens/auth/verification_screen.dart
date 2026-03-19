@@ -15,9 +15,9 @@ import 'reset_password_screen.dart';
 /// to control what happens after successful verification.
 class VerificationScreen extends StatefulWidget {
   final String email;
-  final String flow; // 'signup' or 'forgot_password'
+  final String flow; // 'signup' or 'forgot_password' or 'login'
 
-  const VerificationScreen({super.key, this.email = '', this.flow = 'signup'});
+  const VerificationScreen({super.key, this.email = '', this.flow = 'login'});
 
   @override
   State<VerificationScreen> createState() => _VerificationScreenState();
@@ -64,12 +64,33 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      final isValid = await OtpService.verifyOtp(
-        email: widget.email, 
-        enteredOtp: otp,
-        uid: user?.uid,
-        provider: 'email/password',
-      );
+      
+      // For signup flow, we must have a current user in Firebase
+      if (widget.flow == 'signup' && user == null) {
+        setState(() {
+          _otpError = "User session expired. Please sign up again.";
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Verify OTP with backend
+      late bool isValid;
+      try {
+        isValid = await OtpService.verifyOtp(
+          email: widget.email, 
+          enteredOtp: otp,
+          uid: user?.uid,
+          provider: 'email/password',
+        );
+      } catch (verifyError) {
+        debugPrint("OTP verification error: $verifyError");
+        setState(() {
+          _otpError = "Verification failed: ${verifyError.toString()}";
+          _isLoading = false;
+        });
+        return;
+      }
 
       if (!isValid) {
         setState(() {
@@ -95,24 +116,29 @@ class _VerificationScreenState extends State<VerificationScreen> {
         // We know we just verified via backend. Let's check onboarding.
         // We need the user's uid to do this. We can get it from FirebaseAuth instance.
         final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
-          
-          await OtpService.setLoggedIn(true); // Persist session local
+        if (user == null) {
+          setState(() {
+            _otpError = "User session expired. Please login again.";
+            _isLoading = false;
+          });
+          return;
+        }
+        final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+        
+        await OtpService.setLoggedIn(true); // Persist session local
 
-          if (isOnboarded) {
-             Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
-              (route) => false,
-            );
-          } else {
-             Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
-              (route) => false,
-            );
-          }
+        if (isOnboarded) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
+            (route) => false,
+          );
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
+            (route) => false,
+          );
         }
       } else if (widget.flow == 'forgot_password') {
         Navigator.pushReplacement(

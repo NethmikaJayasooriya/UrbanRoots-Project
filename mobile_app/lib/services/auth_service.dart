@@ -27,6 +27,10 @@ class AuthService {
     String? profilePic,
   }) async {
     try {
+      final normalizedPhone = phone?.trim();
+      final normalizedProvider = authProvider?.trim();
+      final normalizedProfilePic = profilePic?.trim();
+
       final response = await http.post(
         Uri.parse('$_baseUrl/user/setup-profile'),
         headers: {'Content-Type': 'application/json'},
@@ -35,15 +39,18 @@ class AuthService {
           'firstName': firstName,
           'lastName': lastName,
           'email': email,
-          if (phone != null) 'phone': phone,
-          if (authProvider != null) 'authProvider': authProvider,
-          if (profilePic != null) 'profilePic': profilePic,
+          if (normalizedPhone != null && normalizedPhone.isNotEmpty)
+            'phone': normalizedPhone,
+          if (normalizedProvider != null && normalizedProvider.isNotEmpty)
+            'authProvider': normalizedProvider,
+          if (normalizedProfilePic != null && normalizedProfilePic.isNotEmpty)
+            'profilePic': normalizedProfilePic,
         }),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         print("Backend mapping error: ${response.body}");
-        throw Exception('Failed to setup profile on backend');
+        throw Exception('Failed to setup profile on backend: ${response.body}');
       }
       print("Profile setup successful via backend.");
     } catch (e) {

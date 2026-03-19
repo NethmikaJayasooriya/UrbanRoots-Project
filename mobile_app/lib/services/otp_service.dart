@@ -69,11 +69,14 @@ class OtpService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return data['success'] == true;
+      } else {
+        final errorMsg = jsonDecode(response.body)['message'] ?? 'OTP verification failed';
+        print('Backend OTP verification error: $errorMsg');
+        return false; // Changed to return false instead of throwing
       }
-      return false;
     } catch (e) {
-      print('Network error verifying OTP: $e');
-      return false;
+      print('Error verifying OTP: $e');
+      throw Exception('Failed to verify OTP: $e');
     }
   }
 

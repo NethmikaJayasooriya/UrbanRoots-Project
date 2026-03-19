@@ -87,9 +87,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
         debugPrint("Logged in user: ${userCredential.user?.email}");
 
-        // Ask Backend to send an OTP
-        await OtpService.requestOtp(email, 'login');
+        if (!mounted) return;
 
+        // Ask Backend to send an OTP
+        try {
+          await OtpService.requestOtp(email, 'login');
+        } catch (otpError) {
+          debugPrint("OTP request failed: $otpError");
+          // Show specific OTP error and sign out the user
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to send verification code: ${otpError.toString()}'),
+                backgroundColor: AppColors.danger,
+              ),
+            );
+          }
+          return;
+        }
+
+        // Navigate to OTP verification screen only after OTP is successfully sent
         if (!mounted) return;
 
         Navigator.pushReplacement(
@@ -100,19 +118,42 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } on FirebaseAuthException catch (e) {
-        String msg = "Error: ${e.message}";
-        if (e.code == 'invalid-credential' ||
-            e.code == 'wrong-password' ||
-            e.code == 'user-not-found') {
-          msg = "Invalid email or password.";
+        String errorMessage;
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = 'No account found with this email. Please sign up first.';
+            break;
+          case 'wrong-password':
+          case 'invalid-credential':
+            errorMessage = 'Incorrect password. Please try again.';
+            break;
+          case 'invalid-email':
+            errorMessage = 'Invalid email address.';
+            break;
+          case 'user-disabled':
+            errorMessage = 'This account has been disabled.';
+            break;
+          case 'too-many-requests':
+            errorMessage = 'Too many failed attempts. Please try again later.';
+            break;
+          default:
+            errorMessage = 'Login failed: ${e.message}';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: AppColors.danger),
+          );
+        }
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Something went wrong.")));
+        debugPrint("Login error: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('An unexpected error occurred: ${e.toString()}'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
       }
     }
   }

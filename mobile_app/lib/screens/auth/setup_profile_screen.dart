@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 // IMPORTANT: Adjust these import paths to match your actual folder structure
 import 'package:mobile_app/core/theme/app_colors.dart';
@@ -22,6 +24,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  bool _isSubmitting = false;
 
   // --- Image Picker Logic ---
   File? _profileImage;
@@ -121,47 +124,141 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   }
   // --------------------------
 
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    _emailController.text = user?.email ?? '';
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<String?> _uploadProfileImageIfNeeded(String uid) async {
+    // Return existing photo URL if no new image selected
+    if (_profileImage == null) {
+      return FirebaseAuth.instance.currentUser?.photoURL;
+    }
+
+    // Skip image upload on web - profile picture is optional
+    if (kIsWeb) {
+      debugPrint("Image upload skipped on web platform - profile picture is optional");
+      return null;
+    }
+
+    try {
+      final file = _profileImage!;
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child('${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+
+      final snapshot = await storageRef.putFile(file);
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      debugPrint("Profile image uploaded successfully: $downloadUrl");
+      return downloadUrl;
+    } catch (e) {
+      debugPrint("Failed to upload profile image: $e");
+      // Don't fail the entire profile setup if image upload fails
+      return null;
+    }
+  }
+
   void _completeProfile() async {
-    if (_formKey.currentState!.validate()) {
-      final user = FirebaseAuth.instance.currentUser;
+    if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
-      if (user != null) {
-        try {
-          String provider = user.providerData.isNotEmpty
-              ? user.providerData.first.providerId
-              : 'email/password';
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No authenticated user found. Please sign in again.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
 
-          debugPrint("Attempting to save profile for UID: ${user.uid}");
-          await AuthService.setupProfile(
-            uid: user.uid,
-            firstName: _firstNameController.text.trim(),
-            lastName: _lastNameController.text.trim(),
-            email: _emailController.text.trim().isNotEmpty
-                ? _emailController.text.trim()
-                : (user.email ?? ''),
-            phone: _phoneController.text.trim(),
-            authProvider: provider,
-            profilePic: user.photoURL,
-          );
-          debugPrint("Profile saved successfully on backend.");
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to save profile: $e'),
-              backgroundColor: AppColors.danger,
-            ),
-          );
-          return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final provider = user.providerData.isNotEmpty
+          ? user.providerData.first.providerId
+          : 'email/password';
+
+      // Try to upload profile image if available
+      String? profilePicUrl;
+      try {
+        profilePicUrl = await _uploadProfileImageIfNeeded(user.uid);
+        
+        if (profilePicUrl != null &&
+            profilePicUrl.isNotEmpty &&
+            user.photoURL != profilePicUrl) {
+          try {
+            await user.updatePhotoURL(profilePicUrl);
+          } catch (photoError) {
+            debugPrint("Warning: Could not update Firebase Auth profile photo: $photoError");
+            // Continue anyway - profile photo update is not critical
+          }
         }
+      } catch (imageError) {
+        debugPrint("Warning: Image upload failed, continuing without profile picture: $imageError");
+        profilePicUrl = null;
+        // Continue with profile setup even if image upload fails
       }
 
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+      debugPrint("Attempting to save profile for UID: ${user.uid}");
+      await AuthService.setupProfile(
+        uid: user.uid,
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : (user.email ?? ''),
+        phone: _phoneController.text.trim(),
+        authProvider: provider,
+        profilePic: profilePicUrl,
       );
+
+      debugPrint("Profile saved successfully on backend.");
+
+      if (!mounted) return;
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile completed successfully!'),
+          backgroundColor: AppColors.primaryGreen,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Redirect to Garden Profile/Introduction Screen
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const GardenIntroScreen()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint("Profile completion error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save profile: ${e.toString()}'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -192,6 +289,13 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+    final ImageProvider? avatarImage = _profileImage != null
+        ? FileImage(_profileImage!)
+        : ((currentPhotoUrl != null && currentPhotoUrl.isNotEmpty)
+              ? NetworkImage(currentPhotoUrl)
+              : null);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
@@ -233,15 +337,15 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           width: 2,
                         ),
                         // Dynamically show the picked image if it exists
-                        image: _profileImage != null
+                        image: avatarImage != null
                             ? DecorationImage(
-                                image: FileImage(_profileImage!),
+                                image: avatarImage,
                                 fit: BoxFit.cover,
                               )
                             : null,
                       ),
                       // Only show the placeholder icon if no image is selected
-                      child: _profileImage == null
+                      child: avatarImage == null
                           ? const Icon(
                               Icons.person,
                               size: 60,
@@ -314,26 +418,35 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _completeProfile,
+                  onPressed: _isSubmitting ? null : _completeProfile,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGreen,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: Text(
-                    "Finish Setup",
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                          ),
+                        )
+                      : Text(
+                          "Finish Setup",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 15),
               TextButton(
-                onPressed: _skipProfile,
+                onPressed: _isSubmitting ? null : _skipProfile,
                 child: Text(
                   "Skip for now",
                   style: GoogleFonts.poppins(color: AppColors.textDim),

@@ -9,6 +9,7 @@ import 'screens/auth/setup_profile_screen.dart';
 import 'screens/auth/verification_screen.dart';
 import 'services/auth_service.dart';
 import 'screens/garden_creation/garden_intro_screen.dart';
+import 'screens/dashboard/nav_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,18 +58,20 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // User logged in, check OTP verification
+      // User logged in via Firebase, but needs OTP verification
       final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
       if (loggedIn) {
-        // Check if already onboarded to skip setup profile
+        // OTP already verified, check if already onboarded to skip setup profile
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
         if (isOnboarded) {
-          _goToScreen(const GardenIntroScreen());
+          _goToScreen(const MainNavigationWrapper());
         } else {
           _goToScreen(const SetupProfileScreen());
         }
       } else {
-        _goToScreen(const VerificationScreen());
+        // User is in Firebase but hasn't verified OTP yet - sign them out
+        await FirebaseAuth.instance.signOut();
+        _goToScreen(const LoginScreen());
       }
     } else {
       // No user logged in
