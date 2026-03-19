@@ -1,20 +1,22 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart'; // Used for kIsWeb
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Smart URL: Automatically uses localhost for Web, and 10.0.2.2 for Android Emulator
   static String get baseUrl => kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+
+  static Future<int?> getStoredGardenId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('active_garden_id');
+  }
 
   static Future<bool> saveGarden({
     required String userId,
     required String gardenName,
     required String location,
-    
-    // 🌍 ADDED: Our new GPS coordinates (nullable in case the user denied GPS permissions)
     required double? latitude,
     required double? longitude,
-    
     required String environment,
     required bool isIotConnected,
     required String soilType,
@@ -34,11 +36,8 @@ class ApiService {
           'user_id': userId,
           'garden_name': gardenName,
           'location': location,
-          
-          // 🌍 ADDED: Sending the raw numbers straight to NestJS and TypeORM
           'latitude': latitude,
           'longitude': longitude,
-          
           'environment': environment,
           'is_iot_connected': isIotConnected,
           'soil_type': soilType,
@@ -53,33 +52,98 @@ class ApiService {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        debugPrint('✅ Success: Garden saved to Supabase!');
+        final data = jsonDecode(response.body);
+        if (data['data'] != null && data['data']['garden_id'] != null) {
+           final prefs = await SharedPreferences.getInstance();
+           await prefs.setInt('active_garden_id', data['data']['garden_id']);
+        }
         return true;
-      } else {
-        debugPrint('❌ Failed: ${response.body}');
-        return false;
       }
+      return false;
     } catch (e) {
-      debugPrint('🚨 Server connection error: $e');
       return false;
     }
   }
 
-  // 🦇 NEW: Fetches the live weather and digital pet advice for the Bat Cave dashboard
-  static Future<Map<String, dynamic>?> getGardenStatus(int gardenId) async {
+  static Future<Map<String, dynamic>?> getGardenStatus([int? gardenId]) async {
+    final id = gardenId ?? await getStoredGardenId();
+    if (id == null) return null;
+
     try {
-      final response = await http.get(Uri.parse('$baseUrl/gardens/$gardenId/status'));
-      
+      final response = await http.get(Uri.parse('$baseUrl/gardens/$id/status'));
       if (response.statusCode == 200) {
-        // Returns the exact JSON bundle we just verified in your browser!
         return jsonDecode(response.body); 
-      } else {
-        debugPrint('❌ Failed to fetch status: ${response.statusCode}');
-        return null;
       }
     } catch (e) {
-      debugPrint('🚨 Server connection error: $e');
-      return null;
+      debugPrint('Error fetching status: $e');
+    }
+    return null;
+  }
+
+  static Future<List<dynamic>?> getAiRecommendations(int gardenId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/gardens/$gardenId/recommendations'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['recommendations'];
+      }
+    } catch (e) {
+      debugPrint('Error fetching recommendations: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> addCropToGarden(int gardenId, String plantName) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/gardens/$gardenId/crops'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'plant_name': plantName}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  static Future<List<dynamic>?> getGardenCrops(int gardenId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/gardens/$gardenId/crops'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['data'];
+      }
+    } catch (e) {
+      debugPrint('Error fetching crops: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> linkPetToPlant(int gardenId, int cropId) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/gardens/$gardenId/link-pet'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'crop_id': cropId}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // NEW METHOD: Saves the task checklist progress to the database
+  static Future<bool> updateCropTasks(int gardenId, int cropId, List<dynamic> tasks) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/gardens/$gardenId/crops/$cropId/tasks'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'tasks': tasks}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error updating tasks: $e');
+      return false;
     }
   }
 }

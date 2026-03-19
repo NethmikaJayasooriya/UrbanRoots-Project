@@ -19,9 +19,9 @@ import { WeatherModule } from './weather/weather.module';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: false, // Set to false because we already created the table in Supabase
+        synchronize: true, // SET THIS TO TRUE ONCE
         ssl: {
-          rejectUnauthorized: false, // Required for Supabase cloud connections
+          rejectUnauthorized: false,
         },
       }),
     }),

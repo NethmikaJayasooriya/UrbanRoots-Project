@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
-import 'package:mobile_app/services/api_service.dart'; // ADDED: Import your API service
+import 'package:mobile_app/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,15 +12,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  String? _activePlant;
   bool _isThirsty = false;
   bool _isTapped = false;
 
-  // ADDED: Variables to hold the live backend data
   Map<String, dynamic>? _dashboardData;
   bool _isLoading = true;
 
-  // Controllers for all the different layers of the UI
   AnimationController? _petController;
   late AnimationController _bubbleController;
   late AnimationController _glowController;
@@ -37,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    // Bubble entry animation
     _bubbleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -51,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _bubbleController, curve: Curves.easeOut));
 
-    // Breathing glow effect
     _glowController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -60,7 +55,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
 
-    // Floating bubble animation
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
@@ -69,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _bounceController, curve: Curves.easeInOut),
     );
 
-    // Light shimmer sweep
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
@@ -79,27 +72,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     _bubbleController.forward();
-    
-    // ADDED: Fetch the live data as soon as the screen loads
     _fetchLiveDashboardData();
   }
 
-  // ADDED: Function to call your NestJS backend
   Future<void> _fetchLiveDashboardData() async {
-    // ⚠️ IMPORTANT: Change '5' to the garden_id you tested earlier in Supabase
-    final data = await ApiService.getGardenStatus(7); 
+    final int? storedId = await ApiService.getStoredGardenId();
     
-    if (mounted) {
+    if (storedId == null) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _dashboardData = {
+            'garden_name': "Welcome to UrbanRoots",
+            'pet_status': {
+              'message': "Create a garden to hatch me! 🌱",
+              'is_thirsty': false
+            },
+            'priority_notification': "Head to the 'My Garden' tab below to setup your first environment.",
+            'linked_plant_name': "None"
+          };
+        });
+      }
+      return; 
+    }
+
+    final data = await ApiService.getGardenStatus(storedId); 
+    
+    if (mounted && data != null) {
       setState(() {
         _dashboardData = data;
         _isLoading = false;
         
-        // Make the pet look thirsty if humidity is low
-        if (data != null && data['live_weather'] != null) {
-          _isThirsty = data['live_weather']['humidity'] < 40;
+        if (data['pet_status'] != null) {
+          _isThirsty = data['pet_status']['is_thirsty'] == true;
+          
+          if (data['pet_status']['mood'] == 'super_happy' && !_isThirsty) {
+             _triggerHappyJump();
+          }
         }
       });
-      _triggerBubbleAnimation(); // Re-trigger bubble so it pops with new text
+      _triggerBubbleAnimation(); 
     }
   }
 
@@ -115,11 +127,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _handlePetTap() async {
     if (_isTapped) return;
+    _triggerHappyJump();
+  }
+
+  void _triggerHappyJump() async {
+    if (_isTapped || _isThirsty) return;
     setState(() => _isTapped = true);
     _triggerBubbleAnimation();
 
-    const double jumpSeekPosition = 0.08;
-    _petController?.value = jumpSeekPosition;
+    if (_petController != null) {
+      const double jumpSeekPosition = 0.06;
+      _petController!.value = jumpSeekPosition;
+      _petController!.forward();
+    }
 
     await Future.delayed(const Duration(milliseconds: 1400));
     if (mounted) setState(() => _isTapped = false);
@@ -133,29 +153,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _getPetAnimation() {
     if (_isThirsty) return 'assets/animations/pet_sad.json';
     if (_isTapped) return 'assets/animations/pet_happy.json';
-    if (_activePlant == null) return 'assets/animations/pet_idle.json';
-    return 'assets/animations/pet_happy.json';
+    return 'assets/animations/pet_idle.json';
   }
 
-  // UPDATED: Now uses the AI brain from your backend!
   String _getPetDialogue() {
-    if (_isLoading) return "Checking the weather... ☁️";
-    if (_isTapped) return "Hehe, stop it! 🌿";
+    if (_isLoading) return "Checking the environment... ☁️";
+    if (_isTapped && _isThirsty) return "I'm too thirsty to play... 💧";
     
-    // Use the custom message generated by NestJS
-    if (_dashboardData != null && _dashboardData!['digital_pet_advice'] != null) {
-      return _dashboardData!['digital_pet_advice'];
+    if (_dashboardData != null && _dashboardData!['pet_status'] != null) {
+      return _dashboardData!['pet_status']['message'];
     }
     
-    // Fallbacks
-    if (_isThirsty) return "So thirsty… help! 😢";
-    if (_activePlant == null) return "Pick a crop! 🌱";
     return "We're thriving! ✨";
   }
 
-  // UPDATED: Shows the live city context
   String _getPetSubtext() {
     if (_isLoading) return "connecting to satellites...";
+    if (_isTapped && _isThirsty) return "needs water badly";
     if (_isTapped) return "you're the best 🥰";
     
     if (_dashboardData != null && _dashboardData!['live_weather'] != null) {
@@ -165,8 +179,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return "keep it up, Nethmika";
   }
 
-  Color get _accentColor =>
-      _isThirsty ? Colors.redAccent : AppColors.primaryGreen;
+  Color get _accentColor => _isThirsty ? Colors.redAccent : AppColors.primaryGreen;
 
   List<Color> get _bubbleGradient => _isThirsty
       ? [const Color(0xFF2D1515), const Color(0xFF1A0C0C)]
@@ -200,17 +213,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     const double happyYOffset = 0.0;
     const double sadYOffset = 28.0;
 
-    bool isHappyState = _isTapped || (_activePlant != null && !_isThirsty);
+    bool isHappyState = !_isThirsty && _isTapped;
     double petScale = isHappyState ? 1.15 : 1.05;
 
-    double yOffset;
-    if (_isTapped || (_activePlant != null && !_isThirsty)) {
-      yOffset = happyYOffset;
-    } else if (_isThirsty) {
-      yOffset = sadYOffset;
-    } else {
-      yOffset = idleYOffset;
-    }
+    double yOffset = isHappyState ? happyYOffset : (_isThirsty ? sadYOffset : idleYOffset);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -235,9 +241,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           key: ValueKey(_isTapped ? 'tapped' : _getPetAnimation()),
                           fit: BoxFit.contain,
                           alignment: Alignment.bottomCenter,
-                          controller: _isTapped ? _petController : null,
+                          controller: _isTapped && !_isThirsty ? _petController : null,
                           onLoaded: (composition) {
-                            if (_isTapped) {
+                            if (_isTapped && !_isThirsty) {
                               _petController?.dispose();
                               _petController = AnimationController(
                                 vsync: this,
@@ -344,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           children: [
                             _StatusDot(color: _accentColor),
                             const SizedBox(width: 8),
-                            Expanded( // ADDED: Expanded to prevent text overflow from API
+                            Expanded(
                               child: Text(
                                 _getPetDialogue(),
                                 style: GoogleFonts.poppins(
@@ -403,12 +409,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             _sectionHeader("Live Status"),
             GestureDetector(
               onTap: () {
-                // You can keep this for manual testing, but now the AI controls it!
-                setState(() => _isThirsty = !_isThirsty);
-                _triggerBubbleAnimation();
+                setState(() => _isLoading = true);
+                _fetchLiveDashboardData();
               },
               child: Icon(
-                Icons.refresh, // Changed icon to refresh since you are pulling live data
+                Icons.refresh, 
                 color: _isLoading ? AppColors.primaryGreen : Colors.white24,
                 size: 20,
               ),
@@ -427,26 +432,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Hello, Nethmika!",
-              style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14),
-            ),
-            Text(
-              // Dynamically display the garden name if loaded!
-              _dashboardData?['garden_name'] ?? "Bat Cave",
-              style: GoogleFonts.poppins(
-                color: AppColors.textMain,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1,
+        // Expanded ensures long garden names wrap instead of causing striped overflow
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Hello, Nethmika!",
+                style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14),
               ),
-            ),
-          ],
+              Text(
+                _dashboardData?['garden_name'] ?? "My Garden",
+                maxLines: 2,
+                softWrap: true,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  color: AppColors.textMain,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 16),
         Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
@@ -466,7 +479,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // UPDATED: Now maps to the OpenWeather API data!
   Widget _buildCompactStatusRow() {
     if (_isLoading) {
       return Container(
@@ -487,7 +499,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final humidity = weather != null ? "${weather['humidity']}%" : "--";
     final condition = weather != null ? "${weather['condition']}" : "--";
     
-    // Formatting city to fit nicely
     String city = weather != null ? "${weather['city']}" : "Unknown";
     if (city.length > 8) city = "${city.substring(0, 7)}..";
 
@@ -536,14 +547,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildAiInsightCard() {
-    bool hasPlant = _activePlant != null;
+    // Now displays the AI-generated Quick Tip or Task Reminder
+    String notificationText = _dashboardData?['priority_notification'] ?? 
+        "Your garden conditions are currently stable.";
+    
+    // Determine if it's a tip or a priority task based on an emoji or keyword we set
+    bool isTip = notificationText.contains("💡") || notificationText.contains("Great job") || !notificationText.contains("Reminder:");
+    String headerText = isTip ? "GARDEN INSIGHT" : "PRIORITY TASK";
+    Color headerColor = isTip ? Colors.amberAccent : AppColors.primaryGreen;
+    IconData headerIcon = isTip ? Icons.lightbulb_outline : Icons.auto_awesome;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppColors.primaryGreen.withOpacity(0.2),
+          color: headerColor.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -552,28 +572,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.primaryGreen, size: 16),
+              Icon(headerIcon, color: headerColor, size: 16),
               const SizedBox(width: 8),
-              Text(
-                hasPlant ? "DIRECTIVE" : "RECOMMENDATION",
-                style: GoogleFonts.poppins(
-                  color: AppColors.primaryGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
+              Expanded(
+                child: Text(
+                  headerText,
+                  style: GoogleFonts.poppins(
+                    color: headerColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            hasPlant
-                ? "Humidity is high. Adjust irrigation to prevent root decay."
-                : "Environmental conditions suggest Spinach will yield 15% more today.",
+            notificationText,
             style: GoogleFonts.poppins(
-              color: Colors.white70,
+              color: Colors.white,
               fontSize: 13,
-              height: 1.4,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 14),
@@ -582,8 +604,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             height: 46,
             child: ElevatedButton(
               onPressed: () {
-                setState(() => _activePlant = hasPlant ? null : "Spinach");
-                _triggerBubbleAnimation();
+                setState(() => _isLoading = true);
+                _fetchLiveDashboardData();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
@@ -593,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 elevation: 0,
               ),
               child: Text(
-                hasPlant ? "RESET" : "OPTIMIZE NOW",
+                "REFRESH STATUS",
                 style: GoogleFonts.poppins(
                   color: Colors.black,
                   fontWeight: FontWeight.w800,
@@ -687,7 +709,13 @@ class _BubbleTailPainter extends CustomPainter {
       ..close();
 
     canvas.drawPath(path, Paint()..color = fillColor..style = PaintingStyle.fill);
-    canvas.drawPath(path, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 1.5..strokeJoin = StrokeJoin.round);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = borderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeJoin = StrokeJoin.round);
   }
 
   @override

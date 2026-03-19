@@ -4,6 +4,7 @@ import 'plant_detail_screen.dart';
 import 'ai_recommendations_screen.dart';
 import 'package:mobile_app/screens/garden_creation/garden_intro_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
+import 'package:mobile_app/services/api_service.dart';
 
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
@@ -20,6 +21,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
   final List<Map<String, dynamic>> _userGardens = [];
   String? _selectedGardenId;
   String? _assignedPlantId;
+  bool _isLoadingCrops = false;
 
   late AnimationController _glowController;
   late AnimationController _staggerController;
@@ -57,6 +59,9 @@ class _MyGardenScreenState extends State<MyGardenScreen>
       parent: _staggerController,
       curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
     ));
+    
+    // NEW: Check local storage for an existing garden when the screen loads
+    _loadSavedGarden();
   }
 
   @override
@@ -66,22 +71,36 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     super.dispose();
   }
 
+  // Looks for the Garden ID we saved in SharedPreferences during creation
+  Future<void> _loadSavedGarden() async {
+    setState(() => _isLoadingCrops = true);
+    
+    final int? storedId = await ApiService.getStoredGardenId();
+    
+    if (storedId != null && mounted) {
+      setState(() {
+        _gardenCreated = true;
+        _selectedGardenId = storedId.toString();
+        if (_userGardens.isEmpty) {
+          _userGardens.add({'id': storedId.toString(), 'name': 'My Garden'});
+        }
+      });
+      // Fetch the plants for this recovered garden
+      await _fetchActiveCrops();
+    } else {
+      if (mounted) setState(() => _isLoadingCrops = false);
+    }
+  }
+
   void _openGardenCreation() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => GardenIntroScreen(
-          onGardenCreated: (gardenData) {
-            setState(() {
-              _gardenCreated = true;
-              _gardenData = gardenData;
-              final newGarden = {
-                'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                'name': gardenData['garden_name'] ?? 'My Garden',
-              };
-              _userGardens.add(newGarden);
-              _selectedGardenId = newGarden['id'];
-            });
+          onGardenCreated: (gardenData) async {
+            // After creation, wait a split second for SharedPreferences to save, then reload
+            await Future.delayed(const Duration(milliseconds: 500));
+            _loadSavedGarden();
           },
         ),
       ),
@@ -89,18 +108,101 @@ class _MyGardenScreenState extends State<MyGardenScreen>
   }
 
   Future<void> _openAiRecommendations() async {
-    final result = await Navigator.push<List<Map<String, dynamic>>>(
+    final Map<String, dynamic> dataToPass = _gardenData != null 
+        ? Map<String, dynamic>.from(_gardenData!) 
+        : {};
+    dataToPass['garden_id'] = int.tryParse(_selectedGardenId ?? '7') ?? 7;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            AiRecommendationsScreen(gardenData: _gardenData ?? {}),
+        builder: (context) => AiRecommendationsScreen(gardenData: dataToPass),
       ),
     );
-    if (result != null && result.isNotEmpty && mounted) {
+    
+    // Refresh the plant grid after returning from the AI recommendation screen
+    _fetchActiveCrops();
+  }
+
+  String _getImagePathForPlant(String plantName) {
+    final Map<String, String> imagePaths = {
+      "bauhinia acuminata": "assets/images/Plants/flowers/Bauhinia_acuminata.jpg",
+      "crape jasmine": "assets/images/Plants/flowers/crape jasmine.webp",
+      "hibiscus": "assets/images/Plants/flowers/hibiscus flower.jpg",
+      "night flowering jasmine": "assets/images/Plants/flowers/night flowering jasmine.jpg",
+      "rose": "assets/images/Plants/flowers/rose.jpg",
+      "blueberry": "assets/images/Plants/Fruits/blueberry.webp",
+      "cherry": "assets/images/Plants/Fruits/cherry.jpg",
+      "grape": "assets/images/Plants/Fruits/grape.jpg",
+      "orange": "assets/images/Plants/Fruits/orange.jpg",
+      "raspberry": "assets/images/Plants/Fruits/raspberry.jpg",
+      "strawberry": "assets/images/Plants/Fruits/strawberry.jpg",
+      "bell pepper": "assets/images/Plants/Kitchen Essentials/bell pepper.webp",
+      "potato": "assets/images/Plants/Kitchen Essentials/potato.jpg",
+      "soyabean": "assets/images/Plants/Kitchen Essentials/soyabean.jpg",
+      "tomato": "assets/images/Plants/Kitchen Essentials/tomato.jpg",
+    };
+
+    return imagePaths[plantName.toLowerCase()] ?? "assets/images/logo.png"; 
+  }
+
+  // Fetches live active crops from the backend using the active ID
+  Future<void> _fetchActiveCrops() async {
+    if (_selectedGardenId == null) return;
+    
+    setState(() => _isLoadingCrops = true);
+
+    int gardenId = int.tryParse(_selectedGardenId!) ?? 7;
+    final crops = await ApiService.getGardenCrops(gardenId);
+
+    if (mounted) {
       setState(() {
+        _isLoadingCrops = false;
         _plants.clear();
-        _plants.addAll(result);
+        if (crops != null) {
+          for (var crop in crops) {
+            _plants.add({
+              'id': crop['id'].toString(),
+              'name': crop['plant_name'],
+              'status': crop['status'] ?? 'Healthy',
+              'image': _getImagePathForPlant(crop['plant_name']),
+              'imageIsAsset': true,
+              'daily_tasks': crop['daily_tasks'] ?? [],
+              'is_linked_to_pet': crop['is_linked_to_pet'] == true,
+            });
+            // Auto-assign the pet toggle UI if this plant is linked in the database
+            if (crop['is_linked_to_pet'] == true) {
+              _assignedPlantId = crop['id'].toString();
+            }
+          }
+        }
       });
+    }
+  }
+
+  // Links the pet to a specific plant via the NestJS API
+  Future<void> _linkPet(String plantId, bool isAssigned) async {
+    if (!isAssigned) {
+      setState(() => _assignedPlantId = null);
+      return;
+    }
+
+    setState(() => _assignedPlantId = plantId);
+
+    int gardenId = int.tryParse(_selectedGardenId ?? "0") ?? 0;
+    int cropId = int.tryParse(plantId) ?? 0;
+    
+    if (gardenId > 0 && cropId > 0) {
+      bool success = await ApiService.linkPetToPlant(gardenId, cropId);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Digital Pet is now monitoring this plant!"),
+            backgroundColor: AppColors.primaryGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -118,16 +220,15 @@ class _MyGardenScreenState extends State<MyGardenScreen>
         bottom: false,
         child: !_gardenCreated
             ? _buildEmptyState(bottomPadding)
-            : _plants.isEmpty
-                ? _buildGardenReadyState(dynamicTitle, bottomPadding)
-                : _buildPlantGrid(dynamicTitle, bottomPadding),
+            : _isLoadingCrops 
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen))
+                : _plants.isEmpty
+                    ? _buildGardenReadyState(dynamicTitle, bottomPadding)
+                    : _buildPlantGrid(dynamicTitle, bottomPadding),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // EMPTY STATE — fits entirely on screen, no scroll needed
-  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildEmptyState(double bottomPadding) {
     return FadeTransition(
       opacity: _fadeAnim,
@@ -138,8 +239,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ── Header ──────────────────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -154,14 +253,10 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                   _statusBadge(),
                 ],
               ),
-
               const SizedBox(height: 28),
-
-              // ── Hero: icon badge + headline side by side ─────────────────
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Glowing icon badge
                   AnimatedBuilder(
                     animation: _glowAnim,
                     builder: (context, _) => Container(
@@ -190,10 +285,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 18),
-
-                  // Headline text
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,10 +314,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                   ),
                 ],
               ),
-
               const SizedBox(height: 28),
-
-              // ── 2×2 compact benefit tiles ────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -249,11 +338,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                           "GPS Aware", "Climate-based\nsuggestions", 3)),
                 ],
               ),
-
-              // Spacer pushes CTA to the bottom — always visible
               const Spacer(),
-
-              // ── CTA button ───────────────────────────────────────────────
               AnimatedBuilder(
                 animation: _glowAnim,
                 builder: (context, _) => GestureDetector(
@@ -292,9 +377,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
               Center(
                 child: Text(
                   "Takes less than 2 minutes · Free",
@@ -302,7 +385,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                       GoogleFonts.poppins(color: Colors.white24, fontSize: 12),
                 ),
               ),
-
               const SizedBox(height: 16),
             ],
           ),
@@ -311,7 +393,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     );
   }
 
-  // ── Compact 2-column tile ─────────────────────────────────────────────────
   Widget _compactTile(IconData icon, String title, String sub, int idx) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -397,9 +478,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // GARDEN READY (garden created, no plants yet)
-  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildGardenReadyState(String title, double bottomPadding) {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
@@ -420,9 +498,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // PLANT GRID
-  // ─────────────────────────────────────────────────────────────────────────
   Widget _buildPlantGrid(String title, double bottomPadding) {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(20, 10, 20, bottomPadding),
@@ -457,7 +532,6 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     );
   }
 
-  // ─── Shared header: garden name + "+ New Garden" button ──────────────────
   Widget _buildGardenHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 16),
@@ -512,10 +586,8 @@ class _MyGardenScreenState extends State<MyGardenScreen>
       height: 42,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        // +1 for the "Add" pill at the end
         itemCount: _userGardens.length + 1,
         itemBuilder: (context, index) {
-          // Last item = add new garden pill
           if (index == _userGardens.length) {
             return GestureDetector(
               onTap: _openGardenCreation,
@@ -553,7 +625,10 @@ class _MyGardenScreenState extends State<MyGardenScreen>
           final garden = _userGardens[index];
           final bool isSelected = _selectedGardenId == garden['id'];
           return GestureDetector(
-            onTap: () => setState(() => _selectedGardenId = garden['id']),
+            onTap: () {
+              setState(() => _selectedGardenId = garden['id']);
+              _fetchActiveCrops();
+            },
             child: Container(
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -698,11 +773,11 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                           child: Icon(Icons.pets,
                               color: AppColors.primaryGreen, size: 18)),
                     const Spacer(),
-                    Text(plant['name'],
+                    Text(plant['name'].toUpperCase(),
                         style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
                             color: AppColors.textMain,
-                            fontSize: 18)),
+                            fontSize: 16)),
                     Text(plant['status'],
                         style: GoogleFonts.poppins(
                             color: Colors.white70, fontSize: 12)),
@@ -736,8 +811,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
             child: Switch(
               value: isAssigned,
               activeColor: AppColors.primaryGreen,
-              onChanged: (val) =>
-                  setState(() => _assignedPlantId = val ? id : null),
+              onChanged: (val) => _linkPet(id, val), // Now calls the backend endpoint
             ),
           ),
         ],
