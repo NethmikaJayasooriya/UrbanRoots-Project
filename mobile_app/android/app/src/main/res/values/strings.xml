@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Urban Roots</string>
+    <string name="facebook_app_id">754421484415997</string>
+    <string name="facebook_client_token">3f4f0b8d0fa531fbe4e20d3775734ab8</string>
+    <string name="fb_login_protocol_scheme">fb754421484415997</string>
+</resources>

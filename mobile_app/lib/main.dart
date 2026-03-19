@@ -1,143 +1,93 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
-import 'leaf_disease_screen.dart';
-import 'scan_history_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:mobile_app/services/otp_service.dart';
+import 'firebase_options.dart';
 
-void main() {
-  runApp(const UrbanRootsApp());
+// Screens
+import 'screens/auth/splash_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/setup_profile_screen.dart';
+import 'screens/auth/verification_screen.dart';
+import 'package:mobile_app/screens/dashboard/nav_bar.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  runApp(const MyApp());
 }
 
-class UrbanRootsApp extends StatelessWidget {
-  const UrbanRootsApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'UrbanRoots',
-      debugShowCheckedModeBanner: false, 
+      debugShowCheckedModeBanner: false,
+      title: 'Urban Roots',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        brightness: Brightness.dark,
+        primaryColor: const Color(0xFF00E676),
+        scaffoldBackgroundColor: const Color(0xFF07160F),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00E676),
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
       ),
-      home: const DashboardScreen(),
+      home: const SplashScreenWrapper(), 
     );
   }
 }
 
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+// Wrapper to handle splash screen + navigation logic
+class SplashScreenWrapper extends StatefulWidget {
+  const SplashScreenWrapper({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<SplashScreenWrapper> createState() => _SplashScreenWrapperState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  String _serverMessage = "No data yet";
+class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    _navigateFromSplash();
+  }
 
-  Future<void> fetchBackendData() async {
-    String url;
+  void _navigateFromSplash() async {
+    // Show splash for at least 4 seconds
+    await Future.delayed(const Duration(seconds: 4));
 
-    if (kIsWeb) {
-      url = 'http://localhost:3000';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      url = 'http://10.0.2.2:3000';
-    } else {
-      url = 'http://localhost:3000';
-    }
+    final user = FirebaseAuth.instance.currentUser;
 
-    try {
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _serverMessage = "Backend says: ${response.body}";
-        });
+    if (user != null) {
+      // User logged in, check OTP verification
+      final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
+      if (loggedIn) {
+        // If they are fully verified, go to Setup Profile (or NavBar if profile is done)
+        _goToScreen(const SetupProfileScreen());
       } else {
-        setState(() {
-          _serverMessage = "Error: Server returned ${response.statusCode}";
-        });
+        _goToScreen(const VerificationScreen());
       }
-    } catch (e) {
-      setState(() {
-        _serverMessage = "Connection Failed! \nIs NestJS running?";
-      });
-      print(e);
+    } else {
+      // No user logged in
+      _goToScreen(const LoginScreen());
     }
+  }
+
+  void _goToScreen(Widget screen) {
+    if (!mounted) return; 
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("UrbanRoots v0.1")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.eco, size: 80, color: Colors.green),
-            const SizedBox(height: 20),
-            const Text(
-              "Your Digital Plant",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: Colors.grey[200],
-              child: Text(_serverMessage, textAlign: TextAlign.center),
-            ),
-            const SizedBox(height: 20),
-
-            // Test connection button
-            ElevatedButton(
-              onPressed: fetchBackendData,
-              child: const Text("Test Connection"),
-            ),
-            const SizedBox(height: 12),
-
-            // Scan Leaf button
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LeafScanScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.document_scanner_outlined),
-              label: const Text("Scan Leaf for Disease"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Scan History button
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ScanHistoryScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.history_rounded),
-              label: const Text("Scan History"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade800,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const SplashScreen();
   }
 }
