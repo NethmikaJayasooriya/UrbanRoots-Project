@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:mobile_app/marketplace/marketplace_Screen1.dart';
+import 'package:mobile_app/marketplace/marketplace_screen.dart';
 import 'package:mobile_app/marketplace/cart_model.dart';
 
 void main() {
@@ -25,7 +25,7 @@ class UrbanRootsApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         useMaterial3: true,
       ),
-      home: const Marketplace_Screen1(),
+      home: const MarketplaceScreen1(),
     );
   }
 }
