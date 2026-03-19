@@ -3,7 +3,7 @@ import { UserService, UserProfileData } from './user.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   /**
    * Endpoint for initial Profile Setup after OTP verification.
@@ -18,18 +18,20 @@ export class UserController {
     @Body('phone') phone?: string,
     @Body('authProvider') authProvider?: string,
     @Body('profilePic') profilePic?: string,
+    @Body('is_seller') is_seller?: boolean,
   ) {
     if (uid === undefined || firstName === undefined || lastName === undefined || email === undefined) {
       throw new BadRequestException('uid, firstName, lastName, and email are required for profile setup.');
     }
 
-    await this.userService.updateProfile(uid, { 
-      firstName, 
-      lastName, 
+    await this.userService.updateProfile(uid, {
+      firstName,
+      lastName,
       email,
       phone,
       authProvider,
       profilePic,
+      is_seller: is_seller ?? false,
       is_onboarded: true,
     });
     return { success: true, message: 'Profile setup complete' };
@@ -47,7 +49,7 @@ export class UserController {
     if (!uid) {
       throw new BadRequestException('uid is required to edit profile.');
     }
-    
+
     // Remove uid from profileData so we don't accidentally save it as a field if passed
     const { ...dataToUpdate } = profileData;
     delete (dataToUpdate as any).uid;
@@ -58,6 +60,20 @@ export class UserController {
 
     await this.userService.updateProfile(uid, dataToUpdate);
     return { success: true, message: 'Profile updated successfully' };
+  }
+
+  /**
+   * Endpoint for user to become a seller from the Seller Hub portal.
+   */
+  @Put('become-seller')
+  @HttpCode(HttpStatus.OK)
+  async becomeSeller(@Body('uid') uid: string) {
+    if (!uid) {
+      throw new BadRequestException('uid is required to become a seller.');
+    }
+    
+    await this.userService.updateProfile(uid, { is_seller: true });
+    return { success: true, message: 'User upgraded to seller account successfully' };
   }
 
   /**

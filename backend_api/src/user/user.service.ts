@@ -9,6 +9,7 @@ export interface UserProfileData {
   authProvider?: string;
   profilePic?: string;
   is_onboarded?: boolean;
+  is_seller?: boolean;
 }
 
 @Injectable()
@@ -30,6 +31,13 @@ export class UserService {
         ...profileData,
         updatedAt: new Date(),
       };
+      
+      // Clean undefined properties to prevent Firebase Admin SDK errors
+      Object.keys(updatePayload).forEach(key => {
+        if (updatePayload[key] === undefined) {
+          delete updatePayload[key];
+        }
+      });
       
       if (!doc.exists || !doc.data()?.createdAt) {
         updatePayload.createdAt = new Date();
