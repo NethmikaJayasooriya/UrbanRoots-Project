@@ -1,6 +1,6 @@
-// checkout_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
 import 'cart_model.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -36,27 +36,81 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
 
-      // Simulate a network request
-      await Future.delayed(const Duration(seconds: 1));
+      final total = context.read<CartModel>().totalPrice;
 
-      if (!mounted) return;
+      if (_paymentMethod == 'Cash on Delivery') {
+        // Simulate a network request
+        await Future.delayed(const Duration(seconds: 1));
+        _completeOrder();
+      } else if (_paymentMethod == 'Credit/Debit Card') {
+        Map paymentObject = {
+          "sandbox": true,
+          "merchant_id": "1234588",
+          "merchant_secret": "MTg5MzM3Mjc1ODQwNjIwMTMzODAyMTI2MzY0MjMxMTYyMzk4OTc3MA==",
+          "notify_url": "http://yourdomain.com/notify", // TODO: Replace with real webhook
+          "order_id": "Order_${DateTime.now().millisecondsSinceEpoch}",
+          "items": "UrbanRoots Order",
+          "amount": total.toStringAsFixed(2),
+          "currency": "LKR",
+          "first_name": _nameController.text.split(' ').first,
+          "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').sublist(1).join(' ') : "",
+          "email": "customer@example.com", // Optional placeholder
+          "phone": _contactController.text,
+          "address": _addressController.text,
+          "city": "Colombo", 
+          "country": "Sri Lanka",
+          "delivery_address": _addressController.text,
+          "delivery_city": "Colombo",
+          "delivery_country": "Sri Lanka",
+          "custom_1": _postalController.text,
+          "custom_2": ""
+        };
 
-      // Clear the cart
-      context.read<CartModel>().clearCart();
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order placed successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-
-      // Pop all screens until we are back at the main Marketplace screen
-      // Assuming MarketplaceScreen is the root/home of the app stack
-      Navigator.popUntil(context, (route) => route.isFirst);
+        PayHere.startPayment(
+          paymentObject,
+          (paymentId) {
+            _completeOrder();
+          },
+          (error) {
+            setState(() => _isSubmitting = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Payment Failed: $error"),
+                backgroundColor: Colors.red,
+              ),
+            );
+          },
+          () {
+            setState(() => _isSubmitting = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Payment Canceled"),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        );
+      }
     }
+  }
+
+  void _completeOrder() {
+    if (!mounted) return;
+
+    // Clear the cart
+    context.read<CartModel>().clearCart();
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Order placed successfully!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // Pop all screens until we are back at the main Marketplace screen
+    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   @override
