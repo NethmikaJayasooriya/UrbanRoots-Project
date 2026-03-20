@@ -19,7 +19,7 @@ import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
 
 class LeafDiseaseAPI {
-  static const String _baseUrl = 'http://192.168.1.4:8000'; 
+  static const String _baseUrl = 'http://192.168.1.6:8000';
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
