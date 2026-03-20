@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -17,6 +18,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
+import 'services/api_service.dart';
 
 class LeafDiseaseAPI {
   static const String _baseUrl = 'http://192.168.1.6:8000';
@@ -809,7 +811,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       alignment: Alignment.bottomCenter,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 30),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1173,14 +1175,16 @@ class DiseaseResultScreen extends StatefulWidget {
 
 class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     with SingleTickerProviderStateMixin {
-  final List<bool> _checked  = [false, false, false];
+  final Map<int, bool> _checked = {};
   final GlobalKey  _resultKey = GlobalKey(); 
   late AnimationController _barCtrl;
   late Animation<double>   _barAnim;
+  Future<String?>? _treatmentFuture;
 
   @override
   void initState() {
     super.initState();
+    _treatmentFuture = ApiService.fetchDiseaseTreatment(widget.diseaseName);
     _barCtrl =
         AnimationController(vsync: this, duration: AppDuration.bar)..forward();
     _barAnim = CurvedAnimation(parent: _barCtrl, curve: Curves.easeOut);
@@ -1303,17 +1307,45 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     );
   }
 
+  String _formatDiseaseName(String raw) {
+    if (raw.trim().toLowerCase().contains('not recognized')) return 'Unrecognized Object';
+    
+    String cleanName = raw;
+    if (cleanName.contains('___')) {
+      final parts = cleanName.split('___');
+      final crop = parts[0].replaceAll('_', ' ').trim();
+      final condition = parts[1].replaceAll('_', ' ').trim();
+      
+      if (condition.toLowerCase() == 'healthy') {
+        cleanName = 'Healthy $crop';
+      } else {
+        String c = condition;
+        if (c.toLowerCase().contains(crop.toLowerCase())) {
+          c = c.replaceAll(RegExp(crop, caseSensitive: false), '').trim();
+        }
+        cleanName = '$crop $c'.trim();
+      }
+    }
+    
+    cleanName = cleanName.replaceAll('_', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    
+    return cleanName.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
   void _shareAsText() {
     final confidenceStr = '${widget.confidence.toStringAsFixed(1)}%';
     final text = '''
 🌿 UrbanRoots — Scan Result
 
-🦠 Disease: ${widget.diseaseName}
+🦠 Disease: ${_formatDiseaseName(widget.diseaseName)}
 📊 Confidence: $confidenceStr
 
 Scanned with UrbanRoots 🌱
 ''';
-    Share.share(text.trim(), subject: 'Leaf Scan Result — ${widget.diseaseName}');
+    Share.share(text.trim(), subject: 'Leaf Scan Result — ${_formatDiseaseName(widget.diseaseName)}');
   }
 
   Future<void> _shareAsImage() async {
@@ -1455,21 +1487,53 @@ Scanned with UrbanRoots 🌱
                     ),
                     const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: AppStyles.dangerBadge,
-                      
-                      child: const Row(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: widget.diseaseName.trim().toLowerCase().contains('not recognized')
+                          ? BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: AppRadius.pillBR,
+                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                            )
+                          : widget.diseaseName.trim().toLowerCase().contains('healthy')
+                              ? BoxDecoration(
+                                  color: AppColors.neonGreen.withOpacity(0.15),
+                                  borderRadius: AppRadius.pillBR,
+                                  border: Border.all(color: AppColors.neonGreen.withOpacity(0.3)),
+                                )
+                              : AppStyles.dangerBadge,
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 14),
-                          SizedBox(width: 6),
-                          Text('Disease Detected',
-                              style: TextStyle(
-                                color:      AppColors.danger,
-                                fontSize:   11,
-                                fontWeight: FontWeight.w700,
-                              )),
+                          Icon(
+                            widget.diseaseName.trim().toLowerCase().contains('not recognized')
+                                ? Icons.question_mark_rounded
+                                : widget.diseaseName.trim().toLowerCase().contains('healthy')
+                                    ? Icons.check_circle_rounded
+                                    : Icons.warning_amber_rounded,
+                            color: widget.diseaseName.trim().toLowerCase().contains('not recognized')
+                                ? Colors.white54
+                                : widget.diseaseName.trim().toLowerCase().contains('healthy')
+                                    ? AppColors.neonGreen
+                                    : AppColors.danger,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.diseaseName.trim().toLowerCase().contains('not recognized')
+                                ? 'Unrecognized Object'
+                                : widget.diseaseName.trim().toLowerCase().contains('healthy')
+                                    ? 'Healthy Leaf'
+                                    : 'Disease Detected',
+                            style: TextStyle(
+                              color: widget.diseaseName.trim().toLowerCase().contains('not recognized')
+                                  ? Colors.white54
+                                  : widget.diseaseName.trim().toLowerCase().contains('healthy')
+                                      ? AppColors.neonGreen
+                                      : AppColors.danger,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1485,33 +1549,13 @@ Scanned with UrbanRoots 🌱
                       child: Row(
                         children: [
                           Expanded(
-                            child: Text(widget.diseaseName,
+                            child: Text(_formatDiseaseName(widget.diseaseName),
                                 style: AppText.heading),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.neonGreen.withOpacity(0.1),
-                              borderRadius: AppRadius.pillBR,
-                              border: Border.all(
-                                  color: AppColors.neonGreen.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text('Details',
-                                    style: TextStyle(
-                                      color:      AppColors.neonGreen,
-                                      fontSize:   11,
-                                      fontWeight: FontWeight.w600,
-                                    )),
-                                const SizedBox(width: 3),
-                                Icon(Icons.arrow_forward_ios_rounded,
-                                    color: AppColors.neonGreen, size: 10),
-                              ],
-                            ),
+                          AnimatedGlowingDetailsButton(
+                            text: 'Details',
+                            isPrimary: false,
                           ),
                         ],
                       ),
@@ -1541,14 +1585,121 @@ Scanned with UrbanRoots 🌱
                     const SizedBox(height: AppSpacing.xl),
                     Divider(color: Colors.white.withOpacity(0.07)),
                     const SizedBox(height: AppSpacing.lg),
-                    Text('Recommended Treatment Plan',
-                        style: AppText.subheading),
+                    if (widget.diseaseName.trim().toLowerCase().contains('not recognized')) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.02),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.04),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.psychology_alt_rounded, size: 48, color: Colors.white24),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                "That doesn't look like a leaf!",
+                                style: AppText.subheading.copyWith(color: Colors.white, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Our AI couldn't classify this image. Please make sure the leaf is clearly visible, well-lit, and in focus.",
+                                style: AppText.caption.copyWith(color: Colors.white54, height: 1.5),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else if (widget.diseaseName.trim().toLowerCase().contains('healthy')) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: AppColors.neonGreen.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.neonGreen.withOpacity(0.1)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.neonGreen.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.verified_rounded, size: 48, color: AppColors.neonGreen),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                "Your plant is perfectly healthy! 🌱",
+                                style: AppText.subheading.copyWith(color: Colors.white, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "We couldn't detect any visible signs of disease or infection. Keep up your excellent watering and care routine, your plant is doing amazing!",
+                                style: AppText.caption.copyWith(color: Colors.white54, height: 1.5),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Text('Recommended Treatment Plan',
+                          style: AppText.subheading),
                     const SizedBox(height: 12),
-                    ...[
-                      'Isolate the plant to prevent spread',
-                      'Remove and destroy all affected leaves',
-                      'Apply organic neem oil solution weekly',
-                    ].asMap().entries.map((e) => _checkItem(e.key, e.value)),
+                    FutureBuilder<String?>(
+                      future: _treatmentFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const GlowingLeafLoading();
+                        }
+                        
+                        List<String> plans = [
+                          'Isolate the plant to prevent spread',
+                          'Remove and destroy all affected leaves',
+                          'Apply organic neem oil solution weekly',
+                        ];
+
+                        if (snapshot.hasData && snapshot.data != null) {
+                          var parsedLines = snapshot.data!
+                              .split('\n')
+                              .map((l) => l.replaceAll('**', '').replaceAll('*', '').replaceAll('"', ''))
+                              .map((l) => l.replaceAll(RegExp(r'^[\-\d\.\s]+'), '').trim())
+                              .where((l) => l.isNotEmpty && l.length > 5)
+                              .take(5)
+                              .toList();
+                              
+                          if (parsedLines.isNotEmpty) {
+                            plans = parsedLines;
+                          } else {
+                            plans = [snapshot.data!.replaceAll('**', '').replaceAll('*', '').replaceAll('"', '').trim()];
+                          }
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: plans.asMap().entries.map((e) => _buildTreatmentCard(e.key, e.value)).toList(),
+                        );
+                      },
+                    ),
                     const SizedBox(height: AppSpacing.lg),
                     Container(
                       padding: AppSpacing.cardPadding,
@@ -1577,41 +1728,21 @@ Scanned with UrbanRoots 🌱
                           ),
                           GestureDetector(
                             onTap: () {},
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
-                              decoration: AppStyles.viewButton,
-                              child: Text('View',
-                                  style: TextStyle(
-                                    color:      AppColors.neonGreen,
-                                    fontSize:   12,
-                                    fontWeight: FontWeight.w700,
-                                  )),
+                            child: const AnimatedGlowingDetailsButton(
+                              text: 'View Details',
+                              isPrimary: true,
                             ),
                           ),
                         ],
                       ),
                     ),
+                    ],
                     const SizedBox(height: AppSpacing.xl),
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton.icon(
+                          child: AnimatedScanAgainButton(
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.refresh_rounded,
-                                size: 18, color: AppColors.neonGreen),
-                            label: Text('Scan Again',
-                                style: TextStyle(
-                                    color:      AppColors.neonGreen,
-                                    fontWeight: FontWeight.w600)),
-                            style: OutlinedButton.styleFrom(
-                              padding: AppSpacing.buttonPadding,
-                              side: BorderSide(
-                                  color:
-                                      AppColors.neonGreen.withOpacity(0.4)),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadius.xxlBR),
-                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1619,16 +1750,21 @@ Scanned with UrbanRoots 🌱
                           flex: 2,
                           child: ElevatedButton.icon(
                             onPressed: () {},
-                            icon: const Icon(Icons.shopping_cart_rounded,
+                            icon: const Icon(Icons.shopping_bag_rounded,
                                 size: 18, color: Colors.black),
-                            label: Text('Buy Remedy',
-                                style: AppText.buttonLabel),
+                            label: const Text('Buy Remedy',
+                                style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 15,
+                                    letterSpacing: 0.5,
+                                    fontWeight: FontWeight.w800)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.neonGreen,
-                              padding:         AppSpacing.buttonPadding,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadius.xxlBR),
-                              elevation: 0,
+                                  borderRadius: BorderRadius.circular(16)),
+                              elevation: 8,
+                              shadowColor: AppColors.neonGreen.withOpacity(0.4),
                             ),
                           ),
                         ),
@@ -1646,28 +1782,449 @@ Scanned with UrbanRoots 🌱
     );
   }
 
-  Widget _checkItem(int index, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () =>
-                setState(() => _checked[index] = !_checked[index]),
-            child: AnimatedContainer(
-              duration: AppDuration.fast,
-              width: 24, height: 24,
-              decoration: AppStyles.checkBox(checked: _checked[index]),
-              child: _checked[index]
-                  ? const Icon(Icons.check_rounded,
-                      size: 15, color: Colors.black)
-                  : null,
-            ),
+  Widget _buildTreatmentCard(int index, String text) {
+    final isChecked = _checked[index] ?? false;
+    final iconList = [
+      Icons.shield_outlined,
+      Icons.content_cut_rounded,
+      Icons.water_drop_outlined,
+      Icons.medical_services_outlined,
+    ];
+    final stepIcon = iconList[index % iconList.length];
+
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(text.hashCode ^ index),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 400 + (index * 150)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 30 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: AppText.body)),
-        ],
+        );
+      },
+      child: GestureDetector(
+        onTap: () => setState(() => _checked[index] = !isChecked),
+        child: AnimatedContainer(
+          duration: AppDuration.normal,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isChecked
+                ? AppColors.neonGreen.withOpacity(0.1)
+                : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isChecked
+                ? AppColors.neonGreen.withOpacity(0.5)
+                : Colors.white.withOpacity(0.05),
+            width: 1,
+          ),
+          boxShadow: isChecked
+              ? [
+                  BoxShadow(
+                    color: AppColors.neonGreen.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isChecked 
+                  ? AppColors.neonGreen.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isChecked ? Icons.check_circle_rounded : stepIcon,
+                color: isChecked ? AppColors.neonGreen : Colors.white70,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'STEP ${index + 1}',
+                    style: TextStyle(
+                      color: isChecked ? AppColors.neonGreen : AppColors.neonGreen.withOpacity(0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    text,
+                    maxLines: 5,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.body.copyWith(
+                      color: isChecked ? Colors.white : Colors.white.withOpacity(0.8),
+                      height: 1.5,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
+  }
+}
+
+class GlowingLeafLoading extends StatefulWidget {
+  const GlowingLeafLoading({super.key});
+  @override
+  State<GlowingLeafLoading> createState() => _GlowingLeafLoadingState();
+}
+
+class _GlowingLeafLoadingState extends State<GlowingLeafLoading> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _progress;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
+    _progress = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutSine);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48.0),
+      child: Center(
+        child: Column(
+          children: [
+            AnimatedBuilder(
+              animation: _ctrl,
+              builder: (context, child) {
+                return Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.neonGreen.withOpacity(0.1 + (math.sin(_ctrl.value * math.pi) * 0.2)),
+                        blurRadius: 40,
+                        spreadRadius: 10,
+                      )
+                    ]
+                  ),
+                  child: CustomPaint(
+                    painter: LeafEdgePainter(progress: _progress.value),
+                    size: const Size(80, 80),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 32),
+            AnimatedBuilder(
+              animation: _ctrl,
+              builder: (context, child) {
+                final pulse = (math.sin(_ctrl.value * 2 * math.pi) + 1) / 2;
+                return Text(
+                  'Synthesizing Treatment...',
+                  style: TextStyle(
+                    color: AppColors.neonGreen.withOpacity(0.5 + (pulse * 0.5)),
+                    fontSize: 12,
+                    letterSpacing: 2.0,
+                    fontWeight: FontWeight.w700
+                  )
+                );
+              }
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+class AnimatedScanAgainButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  const AnimatedScanAgainButton({super.key, required this.onPressed});
+
+  @override
+  State<AnimatedScanAgainButton> createState() => _AnimatedScanAgainButtonState();
+}
+
+class _AnimatedScanAgainButtonState extends State<AnimatedScanAgainButton> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onPressed,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.neonGreen.withOpacity(0.05),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: 4.0, 
+                      child: Transform.rotate(
+                        angle: _ctrl.value * 2 * math.pi,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.transparent,
+                                AppColors.neonGreen.withOpacity(0.4),
+                                Colors.white,
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.7, 0.9, 0.95, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.all(1.5), 
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceColor ?? const Color(0xff121212),
+                      borderRadius: BorderRadius.circular(14.5), 
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.neonGreen.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.camera_alt_rounded, size: 18, color: AppColors.neonGreen),
+                    SizedBox(width: 8),
+                    Text('Scan Again', 
+                      style: TextStyle(
+                        color: AppColors.neonGreen,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w800
+                      )
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LeafEdgePainter extends CustomPainter {
+  final double progress;
+  LeafEdgePainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    path.moveTo(size.width * 0.5, size.height * 0.95); 
+    
+    path.cubicTo(
+      size.width * 0.0, size.height * 0.8,
+      size.width * 0.1, size.height * 0.2,
+      size.width * 0.5, size.height * 0.05 
+    );
+    
+    path.cubicTo(
+      size.width * 0.9, size.height * 0.2,
+      size.width * 1.0, size.height * 0.8,
+      size.width * 0.5, size.height * 0.95 
+    );
+
+    final bgPaint = Paint()
+      ..color = AppColors.neonGreen.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, bgPaint);
+
+    final paint = Paint()
+      ..color = AppColors.neonGreen
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 4.0); 
+
+    final metrics = path.computeMetrics().toList();
+    for (var metric in metrics) {
+      final drawLength = metric.length * progress;
+      final extractPath = metric.extractPath(0.0, drawLength);
+      canvas.drawPath(extractPath, paint);
+      
+      if (progress > 0.0 && progress < 1.0) {
+        final tangent = metric.getTangentForOffset(drawLength);
+        if (tangent != null) {
+          final cometPaint = Paint()
+            ..color = Colors.white
+            ..style = PaintingStyle.fill
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8.0);
+          canvas.drawCircle(tangent.position, 6.0, cometPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant LeafEdgePainter oldDelegate) => oldDelegate.progress != progress;
+}
+
+class AnimatedGlowingDetailsButton extends StatefulWidget {
+  final String text;
+  final bool isPrimary;
+
+  const AnimatedGlowingDetailsButton({
+    super.key,
+    required this.text,
+    this.isPrimary = true,
+  });
+
+  @override
+  State<AnimatedGlowingDetailsButton> createState() => _AnimatedGlowingDetailsButtonState();
+}
+
+class _AnimatedGlowingDetailsButtonState extends State<AnimatedGlowingDetailsButton> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final glowOpacity = 0.4 + (_ctrl.value * 0.4); 
+        
+        if (widget.isPrimary) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.neonGreen,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.neonGreen.withOpacity(glowOpacity),
+                  blurRadius: 6 + (_ctrl.value * 8),
+                  spreadRadius: 1 + (_ctrl.value * 3),
+                  offset: const Offset(0, 2),
+                )
+              ]
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.text,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Colors.black),
+              ],
+            ),
+          );
+        } else {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.neonGreen.withOpacity(0.1 + (_ctrl.value * 0.1)),
+              borderRadius: AppRadius.pillBR,
+              border: Border.all(
+                  color: AppColors.neonGreen.withOpacity(0.3 + (_ctrl.value * 0.5))),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.neonGreen.withOpacity(glowOpacity * 0.3),
+                  blurRadius: 4 + (_ctrl.value * 6),
+                  spreadRadius: _ctrl.value * 2,
+                )
+              ]
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.text,
+                    style: TextStyle(
+                      color:      AppColors.neonGreen,
+                      fontSize:   11,
+                      fontWeight: FontWeight.w600,
+                    )),
+                const SizedBox(width: 3),
+                Icon(Icons.arrow_forward_ios_rounded,
+                    color: AppColors.neonGreen, size: 10),
+              ],
+            ),
+          );
+        }
+      },
+    );
+  }
+}

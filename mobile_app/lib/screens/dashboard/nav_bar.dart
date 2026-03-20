@@ -67,18 +67,23 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: _BioNavBar(
-        currentIndex: _currentIndex,
-        scannerActive: scannerActive,
-        pulseAnim: _pulseAnim,
-        pulseController: _pulseController,
-        onScanTap: () => setState(() => _currentIndex = 2),
-        onItemTapped: (index) {
-          if (index == 0 && _currentIndex == 0) {
-            HomeScreen.globalKey.currentState?.refresh();
-          }
-          setState(() => _currentIndex = index);
-        },
+      bottomNavigationBar: AnimatedSlide(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutBack,
+        offset: scannerActive ? const Offset(0, 1) : Offset.zero,
+        child: _BioNavBar(
+          currentIndex: _currentIndex,
+          scannerActive: scannerActive,
+          pulseAnim: _pulseAnim,
+          pulseController: _pulseController,
+          onScanTap: () => setState(() => _currentIndex = 2),
+          onItemTapped: (index) {
+            if (index == 0 && _currentIndex == 0) {
+              HomeScreen.globalKey.currentState?.refresh();
+            }
+            setState(() => _currentIndex = index);
+          },
+        ),
       ),
     );
   }

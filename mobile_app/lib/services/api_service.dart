@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static String get baseUrl => kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+  static String get baseUrl => kIsWeb ? 'http://localhost:3000' : 'http://192.168.1.6:3000';
 
   static Future<int?> getStoredGardenId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -165,6 +165,19 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('IoT alert post failed: $e');
+    }
+    return null;
+  }
+
+  static Future<String?> fetchDiseaseTreatment(String diseaseName) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/disease/treatment?name=$diseaseName')).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['treatment'];
+      }
+    } catch (e) {
+      debugPrint('Error fetching treatment: $e');
     }
     return null;
   }
