@@ -428,6 +428,98 @@ Return ONLY a valid JSON array of exactly 3 objects, no other text:
   }
 
   // ──────────────────────────────────────────────────────────────────────────────
+  // processIoTAlert
+  // Called by Flutter when an IoT sensor crosses a critical/warning threshold.
+  // Returns an AI-generated, plant-specific dialogue + care instruction.
+  //
+  // Wire it up in garden.controller.ts:
+  //   @Post(':id/iot-alert')
+  //   async handleIoTAlert(@Param('id') id: string, @Body() body: any) {
+  //     return this.gardenService.processIoTAlert(Number(id), body);
+  //   }
+  // ──────────────────────────────────────────────────────────────────────────────
+  async processIoTAlert(gardenId: number, alertData: {
+    alert_type: string;
+    plant_name: string;
+    temp?: number;
+    moisture?: number;
+    light?: number;
+    humidity?: number;
+  }): Promise<{ pet_dialogue: string; care_action: string }> {
+
+    // ── Instant hardcoded fallbacks — returned immediately if AI fails ─────────
+    const fallbacks: Record<string, { pet_dialogue: string; care_action: string }> = {
+      overheat:       { pet_dialogue: "I'm burning up! Get me some shade! 🔥",       care_action: "Move away from direct heat and increase ventilation immediately." },
+      frost:          { pet_dialogue: "Freezing! My cells are rupturing! ❄️",        care_action: "Move indoors or cover with frost cloth. Do not water now." },
+      overwater:      { pet_dialogue: "My roots are drowning! Stop watering! 🌊",    care_action: "Stop watering, check drainage, and let soil dry out completely." },
+      drought:        { pet_dialogue: "Dying of thirst — water me NOW! 💧",           care_action: "Water slowly at the base until water drains from the bottom." },
+      humid:          { pet_dialogue: "Fungus is coming for me! So damp! 🍄",        care_action: "Improve airflow with a fan and remove any yellowing leaves." },
+      dark:           { pet_dialogue: "Pitch dark! I can't photosynthesize! 🌑",     care_action: "Move to a brighter spot or supplement with a grow light." },
+      overheat_warn:  { pet_dialogue: "Getting hot... watch the temperature. 🌡️",    care_action: "Provide afternoon shade or increase watering slightly." },
+      cold_warn:      { pet_dialogue: "It's getting chilly... keep me warm. 🧥",     care_action: "Move away from drafts or cold windowsills." },
+      overwater_warn: { pet_dialogue: "Soil getting soggy... ease up on water. 💦",  care_action: "Skip the next watering cycle and check soil moisture before next." },
+      drought_warn:   { pet_dialogue: "Getting thirsty... water me soon. 🥤",        care_action: "Water gently at the base within the next few hours." },
+      humid_warn:     { pet_dialogue: "Very humid... please improve airflow. 🌫️",    care_action: "Increase ventilation and avoid misting the leaves." },
+      dark_warn:      { pet_dialogue: "Could use more light to grow strong! ☀️",     care_action: "Reposition the plant closer to a natural light source." },
+      signal_lost:    { pet_dialogue: "Lost contact with my sensor... 📡",            care_action: "Check the IoT device power and WiFi connection." },
+    };
+
+    const fb = fallbacks[alertData.alert_type] ?? {
+      pet_dialogue: "Something feels off right now! 😟",
+      care_action: "Check your plant's conditions immediately.",
+    };
+
+    try {
+      const sensorContext = [
+        alertData.temp     !== undefined ? `Temperature: ${alertData.temp}°C`       : null,
+        alertData.moisture !== undefined ? `Soil Moisture: ${alertData.moisture}%`  : null,
+        alertData.light    !== undefined ? `Light Level: ${alertData.light}%`       : null,
+        alertData.humidity !== undefined ? `Air Humidity: ${alertData.humidity}%`   : null,
+      ].filter(Boolean).join(', ');
+
+      const alertLabels: Record<string, string> = {
+        overheat: 'dangerously high temperature', frost: 'critically low temperature',
+        overwater: 'soil is waterlogged', drought: 'critical soil drought',
+        humid: 'critically high air humidity (fungal risk)', dark: 'critically low light',
+        overheat_warn: 'elevated temperature', cold_warn: 'low temperature',
+        overwater_warn: 'soil moisture too high', drought_warn: 'soil moisture too low',
+        humid_warn: 'high air humidity', dark_warn: 'low light level',
+      };
+
+      const prompt = `
+You are a digital plant companion AI that has just detected a hardware sensor alert.
+
+Plant species: ${alertData.plant_name}
+Alert type: ${alertLabels[alertData.alert_type] ?? alertData.alert_type}
+Live sensor readings: ${sensorContext || 'Not provided'}
+
+Generate EXACTLY this JSON object, no other text:
+{
+  "pet_dialogue": "<Urgent sentence ≤12 words from the plant pet, include emoji, must sound panicked for critical or concerned for warning>",
+  "care_action": "<ONE specific botanical care instruction tailored to ${alertData.plant_name}'s physiology for this exact alert — not generic advice>"
+}
+
+Rules:
+- pet_dialogue must directly reference the condition (not generic sadness).
+- care_action must name ${alertData.plant_name} specifically and explain WHY this condition is dangerous for it.
+- Do not use "consider" — give a direct, imperative instruction.
+      `.trim();
+
+      const result = await this.geminiModel.generateContent(prompt);
+      const data = this.safeParseJson<any>(result.response.text(), {});
+
+      return {
+        pet_dialogue: data.pet_dialogue || fb.pet_dialogue,
+        care_action:  data.care_action  || fb.care_action,
+      };
+
+    } catch {
+      // If AI times out or fails, hardcoded fallback is shown instantly
+      return fb;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────────
   // getGardenCrops
   // ──────────────────────────────────────────────────────────────────────────────
   async getGardenCrops(gardenId: number) {

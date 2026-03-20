@@ -146,4 +146,26 @@ class ApiService {
       return false;
     }
   }
+
+  /// Sends an IoT sensor alert to the backend for plant-specific AI dialogue.
+  /// Returns { pet_dialogue, care_action } or null on failure.
+  static Future<Map<String, dynamic>?> postIoTAlert(
+    int gardenId,
+    Map<String, dynamic> alertData,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/gardens/$gardenId/iot-alert'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(alertData),
+      ).timeout(const Duration(seconds: 8)); // Short timeout — pet dialogue should be fast
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data;
+      }
+    } catch (e) {
+      debugPrint('IoT alert post failed: $e');
+    }
+    return null;
+  }
 }

@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   /// Expose a GlobalKey so the parent navigation wrapper can call:
@@ -161,13 +162,53 @@ class _HomeScreenState extends State<HomeScreen>
           }
         }
       });
-      _triggerBubbleAnimation(); 
+      _triggerBubbleAnimation();
+      // Bridge IoT sensor alerts from plant_detail_screen to home pet
+      await _checkForPendingIoTAlert();
     } else if (mounted) {
       setState(() {
         _isLoading = false;
         _isRefreshSpinning = false;
       });
     }
+  }
+
+  // ── Reads IoT alert written by plant_detail_screen and bridges to home pet ──
+  Future<void> _checkForPendingIoTAlert() async {
+    if (!mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final resolved  = prefs.getBool('iot_alert_resolved') ?? true;
+      final alertMsg  = prefs.getString('iot_last_alert_message');
+      final alertPlant = prefs.getString('iot_last_alert_plant');
+      final alertTime = prefs.getString('iot_last_alert_time');
+
+      if (resolved || alertMsg == null || alertTime == null) return;
+
+      final alertDt = DateTime.tryParse(alertTime);
+      if (alertDt == null) return;
+
+      // Only surface the alert if it happened within the last 30 minutes
+      final ageMinutes = DateTime.now().difference(alertDt).inMinutes;
+      if (ageMinutes > 30) return;
+
+      if (mounted) {
+        setState(() {
+          _isThirsty = true;
+          if (_dashboardData != null) {
+            // Inject the real IoT alert into what the pet shows
+            _dashboardData!['pet_status'] = {
+              ...(_dashboardData!['pet_status'] as Map<String, dynamic>? ?? {}),
+              'message': alertMsg,
+              'is_thirsty': true,
+              'mood': 'sad',
+            };
+            _dashboardData!['priority_notification'] =
+                "🚨 ${alertPlant ?? 'Plant'} needs attention: $alertMsg";
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // ── WidgetsBindingObserver: refresh when the app resumes from background ──
