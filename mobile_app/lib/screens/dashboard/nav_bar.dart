@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile_app/core/theme/app_colors.dart';
 
-// Your local imports 
+import '../../core/theme/app_colors.dart';
 import 'Home.dart'; 
 import 'garden/my_Garden.dart';
-import 'leaf_disease_screen.dart'; // <-- ADDED: Imports your teammate's ML scanner
+import '../../leaf_disease_screen.dart'; 
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -17,10 +16,8 @@ class MainNavigationWrapper extends StatefulWidget {
 class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with SingleTickerProviderStateMixin {
   
-  // Default to 0 so the user lands on the Digital Pet Home Screen first!
   int _currentIndex = 0;
 
-  // Animation controller for the scanner button pulse effect
   AnimationController? _pulseController;
   Animation<double>? _pulseAnim;
 
@@ -48,9 +45,15 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     final bool scannerActive = _currentIndex == 2;
 
     final List<Widget> screens = [
-      const HomeScreen(), // 0: The Digital Pet screen
-      const MyGardenScreen(), // 1: The Garden layout
-      const LeafScanScreen(), // 2: <-- ADDED: The actual AI Disease Scanner!
+      const HomeScreen(), 
+      const MyGardenScreen(), 
+      
+      // Update: Pass onBackPressed to handle IndexedStack navigation
+      LeafScanScreen(
+        isActive: scannerActive,
+        onBackPressed: () => setState(() => _currentIndex = 0),
+      ), 
+      
       const Center(child: Text("Marketplace", style: TextStyle(color: Colors.white))),
       const Center(child: Text("User Profile", style: TextStyle(color: Colors.white))),
     ];
@@ -58,69 +61,68 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       extendBody: false,
+      // Update: Prevent ViewInsets assertion crash on Flutter Web
+      resizeToAvoidBottomInset: false, 
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
 
-      // Floating Action Button for the Global Leaf Scanner
-      floatingActionButton: GestureDetector(
-        onTap: () => setState(() => _currentIndex = 2),
-        child: AnimatedBuilder(
-          animation: _pulseAnim ?? const AlwaysStoppedAnimation(1.0),
-          builder: (context, child) {
-            final scale = scannerActive ? 1.0 : (_pulseAnim?.value ?? 1.0);
-            return Transform.scale(
-              scale: scale,
-              child: child,
-            );
-          },
-          child: Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: scannerActive
-                  ? null
-                  : const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [AppColors.primaryGreen, Color(0xFF00BFA5)],
-                    ),
-              color: scannerActive ? AppColors.primaryGreen : null,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryGreen.withOpacity(scannerActive ? 0.7 : 0.4),
-                  blurRadius: scannerActive ? 20 : 14,
-                  spreadRadius: scannerActive ? 4 : 1,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.energy_savings_leaf_rounded,
-                  color: Colors.black,
-                  size: 26,
-                ),
-                Text(
-                  "SCAN",
-                  style: GoogleFonts.poppins(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                    letterSpacing: 1.2,
+      // Update: Hide the FAB completely when the scanner is active
+      floatingActionButton: scannerActive 
+        ? null 
+        : GestureDetector(
+            onTap: () => setState(() => _currentIndex = 2),
+            child: AnimatedBuilder(
+              animation: _pulseAnim ?? const AlwaysStoppedAnimation(1.0),
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnim?.value ?? 1.0,
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primaryGreen, Color(0xFF00BFA5)],
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withOpacity(0.4),
+                      blurRadius: 14,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-              ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.energy_savings_leaf_rounded,
+                      color: Colors.black,
+                      size: 26,
+                    ),
+                    Text(
+                      "SCAN",
+                      style: GoogleFonts.poppins(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // The Bottom Navigation Bar with the central notch
       bottomNavigationBar: BottomAppBar(
         color: AppColors.surfaceColor,
         shape: const CircularNotchedRectangle(),
@@ -132,7 +134,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
             children: [
               _buildNavItem(Icons.home_rounded, "Home", 0),
               _buildNavItem(Icons.yard_rounded, "Garden", 1),
-              const SizedBox(width: 56), // Gap for the scanner button
+              const SizedBox(width: 56), 
               _buildNavItem(Icons.storefront_rounded, "Market", 3),
               _buildNavItem(Icons.person_outline_rounded, "Profile", 4),
             ],
@@ -142,7 +144,6 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     );
   }
 
-  // Helper method to build individual navigation tabs
   Widget _buildNavItem(IconData icon, String label, int index) {
     final bool isSelected = _currentIndex == index;
     return GestureDetector(

@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+// Update: Added foundation for kIsWeb check
+import 'package:flutter/foundation.dart'; 
 import 'package:vibration/vibration.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,14 +18,8 @@ import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
 
-// ═══════════════════════════════════════════════
-// ML API Service
-// ═══════════════════════════════════════════════
 class LeafDiseaseAPI {
-  // !! IMPORTANT: Replace X with your PC's IPv4 address
-  // Run 'ipconfig' in terminal and look for IPv4 Address under WiFi
-  // Your phone and PC must be on the same WiFi network
-  static const String _baseUrl = 'http://192.168.1.4:8000'; // ← change this IP
+  static const String _baseUrl = 'http://192.168.1.4:8000'; 
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
@@ -43,24 +39,25 @@ class LeafDiseaseAPI {
   }
 }
 
-// ── Vibration helper ──────────────────────────
 Future<void> _vibrate(List<int> pattern) async {
+  // Update: Safely handle vibration on web
+  if (kIsWeb) return; 
   final hasVibrator = await Vibration.hasVibrator() ?? false;
   if (!hasVibrator) return;
-  // pattern: [delay, vibrate, delay, vibrate...]
   Vibration.vibrate(pattern: pattern);
 }
 
-// ═══════════════════════════════════════════════
-// Flash Mode Enum
-// ═══════════════════════════════════════════════
 enum FlashOption { off, on, auto }
 
 // ═══════════════════════════════════════════════
 // SCREEN 1 — Leaf Scan Screen
 // ═══════════════════════════════════════════════
 class LeafScanScreen extends StatefulWidget {
-  const LeafScanScreen({super.key});
+  final bool isActive; 
+  // Update: Callback for handling navigation inside IndexedStack
+  final VoidCallback? onBackPressed; 
+
+  const LeafScanScreen({super.key, this.isActive = true, this.onBackPressed}); 
 
   @override
   State<LeafScanScreen> createState() => _LeafScanScreenState();
@@ -68,26 +65,23 @@ class LeafScanScreen extends StatefulWidget {
 
 class _LeafScanScreenState extends State<LeafScanScreen>
     with TickerProviderStateMixin {
-  // ── Camera state ───────────────────────────
   CameraController?       _camController;
   List<CameraDescription> _cameras = [];
   int  _camIndex    = 0;
   bool _cameraReady = false;
   bool _analyzing   = false;
-  bool _torchOn     = false; // manual torch for lighting up the leaf
+  bool _torchOn     = false; 
   FlashOption _flash = FlashOption.off;
 
-  // ── Zoom state ─────────────────────────────
   double _currentZoom   = 1.0;
   double _baseZoom      = 1.0;
   double _minZoom       = 1.0;
   double _maxZoom       = 8.0;
   bool   _showZoomBadge = false;
 
-  // ── Animations ─────────────────────────────
   late AnimationController _pulseCtrl;
   late Animation<double>   _pulseAnim;
-  late Animation<double>   _glowAnim;  // ✅ pulsing glow for shutter
+  late Animation<double>   _glowAnim;  
 
   late AnimationController _rippleCtrl;
   late Animation<double>   _rippleAnim;
@@ -95,8 +89,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   late AnimationController _cornerCtrl;
   late Animation<double>   _cornerAnim;
 
-
-  // ── Flash helpers ──────────────────────────
   IconData get _flashIcon => switch (_flash) {
         FlashOption.off  => Icons.flash_off_rounded,
         FlashOption.on   => Icons.flash_on_rounded,
@@ -115,12 +107,24 @@ class _LeafScanScreenState extends State<LeafScanScreen>
         FlashOption.auto => 'Auto',
       };
 
-  // ── Lifecycle ──────────────────────────────
   @override
   void initState() {
     super.initState();
     _initAnimations();
-    _startCamera();
+    
+    if (widget.isActive) {
+      _startCamera();
+    }
+  }
+
+  @override
+  void didUpdateWidget(LeafScanScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _startCamera();
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _stopCamera();
+    }
   }
 
   void _initAnimations() {
@@ -128,7 +132,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       ..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.93, end: 1.0).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    // ✅ Glow pulses between low and high opacity in sync with scale
     _glowAnim = Tween<double>(begin: 0.15, end: 0.55).animate(
         CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
@@ -142,7 +145,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       ..repeat(reverse: true);
     _cornerAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
         CurvedAnimation(parent: _cornerCtrl, curve: Curves.easeInOut));
-
   }
 
   @override
@@ -155,8 +157,23 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     super.dispose();
   }
 
-  // ── Camera init ────────────────────────────
   Future<void> _startCamera() async {
+    // Update: Safely handle permissions for Web platform
+    if (kIsWeb) {
+      try {
+        _cameras = await availableCameras();
+        if (_cameras.isEmpty) {
+          _showCameraError('No cameras found on this device.');
+          return;
+        }
+        await _initController(_camIndex);
+      } catch (e) {
+        debugPrint('Camera start error: $e');
+        _showCameraError('Failed to start camera. Please try again.');
+      }
+      return;
+    }
+
     final status = await Permission.camera.request();
 
     if (status.isGranted) {
@@ -179,7 +196,17 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     }
   }
 
-  // ── Camera error snackbar ──────────────────
+  Future<void> _stopCamera() async {
+    await _camController?.dispose();
+    _camController = null;
+    if (mounted) {
+      setState(() {
+        _cameraReady = false;
+        _torchOn = false;
+      });
+    }
+  }
+
   void _showCameraError(String message) {
     if (!mounted) return;
     setState(() => _cameraReady = false);
@@ -192,7 +219,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Permission settings dialog ─────────────
   void _showPermissionSettingsDialog() {
     if (!mounted) return;
     showDialog(
@@ -238,10 +264,11 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       await ctrl.initialize();
       if (!mounted) return;
 
-      // Always force flash OFF when camera starts or flips
-      await ctrl.setFlashMode(FlashMode.off);
+      // Web might throw errors setting flash
+      if (!kIsWeb) {
+        await ctrl.setFlashMode(FlashMode.off);
+      }
 
-      // Load zoom limits from device
       final minZoom = await ctrl.getMinZoomLevel();
       final maxZoom = await ctrl.getMaxZoomLevel();
 
@@ -261,29 +288,22 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     }
   }
 
-  // ── Flash cycle ────────────────────────────
-  // Flash only fires DURING photo capture — never stays on continuously
   Future<void> _cycleFlash() async {
-    if (_camController == null || !_cameraReady) return;
+    if (_camController == null || !_cameraReady || kIsWeb) return;
     final next =
         FlashOption.values[(_flash.index + 1) % FlashOption.values.length];
     setState(() => _flash = next);
-
-    // Always keep hardware flash OFF between shots
-    // The correct flash mode is applied only at capture time
     await _camController!.setFlashMode(FlashMode.off);
   }
 
-  // ── Torch toggle (manual light for dark areas) ───
   Future<void> _toggleTorch() async {
-    if (_camController == null || !_cameraReady) return;
+    if (_camController == null || !_cameraReady || kIsWeb) return;
     final next = !_torchOn;
     await _camController!.setFlashMode(
         next ? FlashMode.torch : FlashMode.off);
     setState(() => _torchOn = next);
   }
 
-  // ── Zoom helpers ───────────────────────────
   Future<void> _setZoom(double zoom) async {
     if (_camController == null || !_cameraReady) return;
     final clamped = zoom.clamp(_minZoom, _maxZoom);
@@ -304,7 +324,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     });
   }
 
-  // ── Call API and save to history ──────────
   Future<Map<String, dynamic>> _callAPIAndSave(String imagePath) async {
     try {
       final result      = await LeafDiseaseAPI.predict(imagePath);
@@ -347,11 +366,10 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     return 'Medium';
   }
 
-  // ── Gallery picker ─────────────────────────
   Future<void> _pickFromGallery() async {
     try {
-      // Request storage permission on older Android versions
-      if (Platform.isAndroid) {
+      // Update: Guarded Platform._operatingSystem error for Web
+      if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.photos.request();
         if (status.isDenied || status.isPermanentlyDenied) {
           _showCameraError('Gallery permission denied. Please allow access in Settings.');
@@ -366,7 +384,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 
       setState(() => _analyzing = true);
 
-      // Real API call to FastAPI ML model
       final result = await _callAPIAndSave(picked.path);
 
       await _vibrate([0, 80, 150, 80]);
@@ -387,7 +404,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     }
   }
 
-  // ── Capture & analyze ──────────────────────
   Future<void> _capture() async {
     if (!_cameraReady || _camController == null || _analyzing) return;
 
@@ -396,34 +412,27 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 
     XFile? photo;
     try {
-      // Manually control flash:
-      // Auto-focus and lock exposure before capture for better quality
-      try {
-        await _camController!.setFocusMode(FocusMode.auto);
-        await _camController!.setExposureMode(ExposureMode.auto);
-        await Future.delayed(const Duration(milliseconds: 300));
-      } catch (_) {}
+      if (!kIsWeb) {
+        try {
+          await _camController!.setFocusMode(FocusMode.auto);
+          await _camController!.setExposureMode(ExposureMode.auto);
+          await Future.delayed(const Duration(milliseconds: 300));
+        } catch (_) {}
 
-      // Turn torch ON right before capture (if On or Auto mode)
-      if (_flash == FlashOption.on) {
-        await _camController!.setFlashMode(FlashMode.torch);
-      } else if (_flash == FlashOption.auto) {
-        await _camController!.setFlashMode(FlashMode.torch);
-      }
-      // Small delay so torch is fully on before shutter
-      if (_flash != FlashOption.off) {
-        await Future.delayed(const Duration(milliseconds: 150));
+        if (_flash == FlashOption.on) {
+          await _camController!.setFlashMode(FlashMode.torch);
+        } else if (_flash == FlashOption.auto) {
+          await _camController!.setFlashMode(FlashMode.torch);
+        }
+        if (_flash != FlashOption.off) {
+          await Future.delayed(const Duration(milliseconds: 150));
+        }
       }
 
       photo = await _camController!.takePicture();
+      if (!kIsWeb) await _camController!.setFlashMode(FlashMode.off);
 
-      // Turn flash OFF immediately after shutter — no delay
-      await _camController!.setFlashMode(FlashMode.off);
-
-      // Real API call to FastAPI ML model
       final result = await _callAPIAndSave(photo.path);
-
-      // ✅ Double vibrate — scan complete success feedback
       await _vibrate([0, 80, 150, 80]);
 
       if (!mounted) return;
@@ -437,18 +446,18 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     } catch (e) {
       debugPrint('Capture error: $e');
     } finally {
-      // Safety net — force flash OFF even if anything above failed
-      try {
-        await _camController?.setFlashMode(FlashMode.off);
-      } catch (_) {}
+      if (!kIsWeb) {
+        try {
+          await _camController?.setFlashMode(FlashMode.off);
+        } catch (_) {}
+      }
       if (mounted) setState(() {
         _analyzing = false;
-        _torchOn   = false; // reset torch UI state too
+        _torchOn   = false; 
       });
     }
   }
 
-  // ── Slide up route ─────────────────────────
   Route _slideRoute(Widget page) {
     return PageRouteBuilder(
       pageBuilder:        (_, __, ___) => page,
@@ -462,11 +471,13 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Build ──────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    if (!widget.isActive) return Container(color: AppColors.bgColor);
+
     return Scaffold(
       backgroundColor: AppColors.bgColor,
+      resizeToAvoidBottomInset: false, 
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -486,7 +497,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Camera Preview ─────────────────────────
   Widget _buildCameraPreview() {
     if (!_cameraReady || _camController == null) {
       return Container(
@@ -532,7 +542,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                 ),
               ),
             ),
-            // Zoom badge
             Positioned(
               top: 100, left: 0, right: 0,
               child: AnimatedOpacity(
@@ -574,7 +583,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Vignette ───────────────────────────────
   Widget _buildVignette() {
     return Container(
       decoration: BoxDecoration(
@@ -587,7 +595,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Top Bar ────────────────────────────────
   Widget _buildTopBar() {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     return Positioned(
@@ -604,7 +611,14 @@ class _LeafScanScreenState extends State<LeafScanScreen>
           children: [
             _iconBtn(
               icon:  Icons.arrow_back_ios_new_rounded,
-              onTap: () => Navigator.maybePop(context),
+              // Update: Use the callback to return to the home tab if provided
+              onTap: () {
+                if (widget.onBackPressed != null) {
+                  widget.onBackPressed!(); 
+                } else {
+                  Navigator.maybePop(context);
+                }
+              },
             ),
             Container(
               padding: const EdgeInsets.symmetric(
@@ -658,7 +672,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Scan Frame ─────────────────────────────
   Widget _buildScanFrame() {
     const frameSize = 270.0;
     return Center(
@@ -687,7 +700,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                     _corner(bottom: -1, right: -1, opacity: _cornerAnim.value),
                   ]),
                 ),
-                // Ripple 1
                 AnimatedBuilder(
                   animation: _rippleAnim,
                   builder: (_, __) {
@@ -710,7 +722,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                     );
                   },
                 ),
-                // Ripple 2
                 AnimatedBuilder(
                   animation: _rippleAnim,
                   builder: (_, __) {
@@ -793,7 +804,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Bottom Bar ─────────────────────────────
   Widget _buildBottomBar() {
     return Align(
       alignment: Alignment.bottomCenter,
@@ -847,11 +857,9 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Shutter button ─────────────────────────
   Widget _buildShutterButton() {
     return GestureDetector(
       onTap: () async {
-        // Try heavy impact for stronger feedback
         await _vibrate([0, 60]);
         _capture();
       },
@@ -881,7 +889,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.neonGreen, width: 3),
-                    // ✅ Glow opacity pulses in sync with scale
                     boxShadow: [
                       BoxShadow(
                         color:        AppColors.neonGreen.withOpacity(
@@ -914,7 +921,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     );
   }
 
-  // ── Helpers ────────────────────────────────
   Widget _iconBtn({
     required IconData     icon,
     required VoidCallback onTap,
@@ -1048,9 +1054,6 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   }
 }
 
-// ═══════════════════════════════════════════════
-// Scan Line Animation
-// ═══════════════════════════════════════════════
 class _ScanLine extends StatefulWidget {
   final double frameSize;
   const _ScanLine({required this.frameSize});
@@ -1092,9 +1095,6 @@ class _ScanLineState extends State<_ScanLine>
   }
 }
 
-// ═══════════════════════════════════════════════
-// Corner Painter
-// ═══════════════════════════════════════════════
 class _CornerPainter extends CustomPainter {
   final bool   drawTop, drawBottom, drawLeft, drawRight;
   final Color  color;
@@ -1153,6 +1153,7 @@ class _CornerPainter extends CustomPainter {
 
 // ═══════════════════════════════════════════════
 // SCREEN 2 — Disease Result Screen
+// (This section remains unchanged from your previous correct code)
 // ═══════════════════════════════════════════════
 class DiseaseResultScreen extends StatefulWidget {
   final String imagePath;
@@ -1173,7 +1174,7 @@ class DiseaseResultScreen extends StatefulWidget {
 class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     with SingleTickerProviderStateMixin {
   final List<bool> _checked  = [false, false, false];
-  final GlobalKey  _resultKey = GlobalKey(); // for screenshot capture
+  final GlobalKey  _resultKey = GlobalKey(); 
   late AnimationController _barCtrl;
   late Animation<double>   _barAnim;
 
@@ -1191,7 +1192,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     super.dispose();
   }
 
-  // ── Share popup ───────────────────────────
   void _showShareOptions() {
     showModalBottomSheet(
       context:       context,
@@ -1207,7 +1207,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
             Center(
               child: Container(
                 width: 40, height: 4,
@@ -1224,7 +1223,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
                 style: AppText.caption),
             const SizedBox(height: 20),
 
-            // Share as text
             _shareOptionTile(
               icon:     Icons.text_fields_rounded,
               color:    AppColors.neonGreen,
@@ -1237,7 +1235,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
             ),
             const SizedBox(height: 12),
 
-            // Share as image
             _shareOptionTile(
               icon:     Icons.image_rounded,
               color:    const Color(0xFF69B4FF),
@@ -1250,7 +1247,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
             ),
             const SizedBox(height: 12),
 
-            // Cancel
             SizedBox(
               width: double.infinity,
               child: TextButton(
@@ -1265,7 +1261,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     );
   }
 
-  // ── Share option tile ──────────────────────
   Widget _shareOptionTile({
     required IconData     icon,
     required Color        color,
@@ -1308,7 +1303,6 @@ class _DiseaseResultScreenState extends State<DiseaseResultScreen>
     );
   }
 
-  // ── Share as text ──────────────────────────
   void _shareAsText() {
     final confidenceStr = '${widget.confidence.toStringAsFixed(1)}%';
     final text = '''
@@ -1322,10 +1316,8 @@ Scanned with UrbanRoots 🌱
     Share.share(text.trim(), subject: 'Leaf Scan Result — ${widget.diseaseName}');
   }
 
-  // ── Share as image (screenshot) ───────────
   Future<void> _shareAsImage() async {
     try {
-      // Capture the result panel as image
       final boundary = _resultKey.currentContext?.findRenderObject()
           as RenderRepaintBoundary?;
       if (boundary == null) return;
@@ -1337,12 +1329,10 @@ Scanned with UrbanRoots 🌱
 
       final bytes = byteData.buffer.asUint8List();
 
-      // Save to temp file
       final dir  = await getTemporaryDirectory();
       final file = File('${dir.path}/scan_result.png');
       await file.writeAsBytes(bytes);
 
-      // Share the image file
       await Share.shareXFiles(
         [XFile(file.path)],
         text:    'My leaf scan result from UrbanRoots 🌿',
@@ -1357,6 +1347,7 @@ Scanned with UrbanRoots 🌱
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgColor,
+      resizeToAvoidBottomInset: false, 
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -1371,7 +1362,6 @@ Scanned with UrbanRoots 🌱
               top: 0, left: 0, right: 0, height: 150,
               child: Container(decoration: AppStyles.topGradient)),
 
-          // Fixed top bar — always pinned to top using Positioned + MediaQuery
           Positioned(
             top:   0,
             left:  0,
@@ -1396,7 +1386,6 @@ Scanned with UrbanRoots 🌱
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Back button
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
@@ -1407,7 +1396,6 @@ Scanned with UrbanRoots 🌱
                     ),
                   ),
 
-                  // Title — always visible at top
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
@@ -1428,7 +1416,6 @@ Scanned with UrbanRoots 🌱
                     ),
                   ),
 
-                  // Share button  now functional
                   GestureDetector(
                     onTap: _showShareOptions,
                     child: Container(
@@ -1443,7 +1430,6 @@ Scanned with UrbanRoots 🌱
             ),
           ),
 
-          // Result panel
           DraggableScrollableSheet(
             initialChildSize: 0.62,
             minChildSize:     0.48,
@@ -1472,12 +1458,20 @@ Scanned with UrbanRoots 🌱
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: AppStyles.dangerBadge,
-                      child: const Text('⚠  Disease Detected',
-                          style: TextStyle(
-                            color:      AppColors.danger,
-                            fontSize:   11,
-                            fontWeight: FontWeight.w700,
-                          )),
+                      
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 14),
+                          SizedBox(width: 6),
+                          Text('Disease Detected',
+                              style: TextStyle(
+                                color:      AppColors.danger,
+                                fontSize:   11,
+                                fontWeight: FontWeight.w700,
+                              )),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     GestureDetector(
@@ -1644,7 +1638,7 @@ Scanned with UrbanRoots 🌱
                   ],
                 ),
               ),
-              ),  // RepaintBoundary
+              ), 
             ),
           ),
         ],

@@ -18,26 +18,22 @@ class GardenStrategyScreen extends StatefulWidget {
   State<GardenStrategyScreen> createState() => _GardenStrategyScreenState();
 }
 
-class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
+class _GardenStrategyScreenState extends State<GardenStrategyScreen>
+    with SingleTickerProviderStateMixin {
   String _containerSize = "Medium";
   String _experienceLevel = "Beginner";
   String _selectedGoal = "Max Yield";
   final List<String> _selectedCrops = [];
 
+  // Tracks the active category tab index
+  int _activeCategoryIndex = 0;
+
+  late TabController _tabController;
+
   final List<Map<String, dynamic>> _containerOptions = [
     {"name": "Small", "size": "< 6\"", "icon": Icons.local_florist},
     {"name": "Medium", "size": "10-12\"", "icon": Icons.grass},
     {"name": "Large", "size": "Ground", "icon": Icons.landscape},
-  ];
-
-  final List<Map<String, dynamic>> _cropCategories = [
-    {"name": "Leafy Greens", "icon": Icons.eco},
-    {"name": "Vegetables", "icon": Icons.local_dining},
-    {"name": "Yams & Roots", "icon": Icons.grass},
-    {"name": "Herbs & Spices", "icon": Icons.local_florist},
-    {"name": "Flowers", "icon": Icons.filter_vintage},
-    {"name": "Fruits", "icon": Icons.apple},
-    {"name": "Medicinal", "icon": Icons.medical_services_outlined},
   ];
 
   final List<Map<String, dynamic>> _goalOptions = [
@@ -46,11 +42,89 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
     {"name": "Low Care", "icon": Icons.timer},
   ];
 
+  // ─── CORE FIX ──────────────────────────────────────────────────────────────
+  // Plant names exactly match the backend's supportedCrops list so that
+  // target_crops in the AI prompt contains precise, actionable plant names
+  // instead of vague category labels that the AI cannot map to anything.
+  // ───────────────────────────────────────────────────────────────────────────
+  final List<Map<String, dynamic>> _plantCategories = [
+    {
+      "category": "Flowers",
+      "emoji": "🌸",
+      "color": const Color(0xFFFF6B9D),
+      "plants": [
+        {"name": "crape jasmine",           "icon": Icons.local_florist},
+        {"name": "Bauhinia acuminata",       "icon": Icons.filter_vintage},
+        {"name": "Hibiscus",                 "icon": Icons.spa},
+        {"name": "night flowering jasmine",  "icon": Icons.nights_stay_outlined},
+        {"name": "rose",                     "icon": Icons.favorite_border},
+      ],
+    },
+    {
+      "category": "Fruits",
+      "emoji": "🍓",
+      "color": const Color(0xFFFF8C42),
+      "plants": [
+        {"name": "blueberry",   "icon": Icons.circle},
+        {"name": "cherry",      "icon": Icons.favorite},
+        {"name": "grape",       "icon": Icons.bubble_chart},
+        {"name": "strawberry",  "icon": Icons.star_border},
+        {"name": "raspberry",   "icon": Icons.grain},
+        {"name": "orange",      "icon": Icons.brightness_5_outlined},
+      ],
+    },
+    {
+      "category": "Kitchen",
+      "emoji": "🥦",
+      "color": const Color(0xFF4CAF50),
+      "plants": [
+        {"name": "bell pepper", "icon": Icons.eco},
+        {"name": "tomato",      "icon": Icons.circle_outlined},
+        {"name": "soyabean",    "icon": Icons.grass},
+        {"name": "potato",      "icon": Icons.fiber_manual_record},
+      ],
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+      length: _plantCategories.length,
+      vsync: this,
+    )..addListener(() {
+        if (!_tabController.indexIsChanging) {
+          setState(() => _activeCategoryIndex = _tabController.index);
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   void _toggleCrop(String crop) {
     setState(() {
       _selectedCrops.contains(crop)
           ? _selectedCrops.remove(crop)
           : _selectedCrops.add(crop);
+    });
+  }
+
+  // Selects / deselects all plants in the active category
+  void _toggleSelectAll(List<dynamic> plants) {
+    final names = plants.map((p) => p["name"] as String).toList();
+    final allSelected = names.every((n) => _selectedCrops.contains(n));
+    setState(() {
+      if (allSelected) {
+        _selectedCrops.removeWhere((c) => names.contains(c));
+      } else {
+        for (final n in names) {
+          if (!_selectedCrops.contains(n)) _selectedCrops.add(n);
+        }
+      }
     });
   }
 
@@ -150,6 +224,7 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ── Section 1: Container Size ────────────────────────────
                     _sectionHeader("1. Container Size"),
                     const SizedBox(height: 12),
                     Row(
@@ -157,13 +232,12 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                         bool isSelected = _containerSize == opt["name"];
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(
-                                () => _containerSize = opt["name"]),
+                            onTap: () =>
+                                setState(() => _containerSize = opt["name"]),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(right: 8),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppColors.primaryGreen.withOpacity(0.05)
@@ -213,58 +287,11 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    _sectionHeader("2. Target Crops"),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 10,
-                      children: _cropCategories.map((cropData) {
-                        String cropName = cropData["name"];
-                        IconData cropIcon = cropData["icon"];
-                        bool isSelected = _selectedCrops.contains(cropName);
-                        return GestureDetector(
-                          onTap: () => _toggleCrop(cropName),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primaryGreen
-                                  : AppColors.surfaceColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: isSelected
-                                  ? Border.all(
-                                      color: AppColors.primaryGreen, width: 2)
-                                  : Border.all(color: Colors.white10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(cropIcon,
-                                    size: 16,
-                                    color: isSelected
-                                        ? Colors.black
-                                        : Colors.white70),
-                                const SizedBox(width: 8),
-                                Text(
-                                  cropName,
-                                  style: GoogleFonts.poppins(
-                                    color: isSelected
-                                        ? Colors.black
-                                        : Colors.white70,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                    // ── Section 2: Target Crops (UPGRADED) ──────────────────
+                    _buildTargetCropsSection(),
                     const SizedBox(height: 28),
 
+                    // ── Section 3: Gardening Goal ────────────────────────────
                     _sectionHeader("3. Gardening Goal"),
                     const SizedBox(height: 12),
                     Row(
@@ -272,8 +299,8 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                         bool isSelected = _selectedGoal == goal["name"];
                         return Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(
-                                () => _selectedGoal = goal["name"]),
+                            onTap: () =>
+                                setState(() => _selectedGoal = goal["name"]),
                             child: Container(
                               margin: const EdgeInsets.only(right: 8),
                               padding:
@@ -315,6 +342,7 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
                     ),
                     const SizedBox(height: 28),
 
+                    // ── Section 4: Experience Level ──────────────────────────
                     _sectionHeader("4. Experience Level"),
                     const SizedBox(height: 12),
                     Container(
@@ -394,6 +422,318 @@ class _GardenStrategyScreenState extends State<GardenStrategyScreen> {
         ),
       ),
     );
+  }
+
+  // ─── UPGRADED TARGET CROPS SECTION ─────────────────────────────────────────
+  Widget _buildTargetCropsSection() {
+    final categoryData = _plantCategories[_activeCategoryIndex];
+    final List<dynamic> plants = categoryData["plants"];
+    final Color accentColor = categoryData["color"];
+    final allSelected = plants.every(
+      (p) => _selectedCrops.contains(p["name"] as String),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header row: label + selection count badge
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _sectionHeader("2. Target Crops"),
+            if (_selectedCrops.isNotEmpty)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  "${_selectedCrops.length} selected",
+                  style: GoogleFonts.poppins(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          "Pick the specific plants you want to grow. This directly guides the AI.",
+          style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 11),
+        ),
+        const SizedBox(height: 14),
+
+        // Category tab pills
+        SizedBox(
+          height: 38,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _plantCategories.length,
+            itemBuilder: (context, index) {
+              final cat = _plantCategories[index];
+              final isActive = _activeCategoryIndex == index;
+
+              // Count selected in this category
+              final List<dynamic> catPlants = cat["plants"];
+              final int selectedCount = catPlants
+                  .where((p) => _selectedCrops.contains(p["name"] as String))
+                  .length;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _activeCategoryIndex = index);
+                  _tabController.animateTo(index);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? (cat["color"] as Color).withOpacity(0.15)
+                        : AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isActive
+                          ? (cat["color"] as Color)
+                          : Colors.white10,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        cat["emoji"],
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        cat["category"],
+                        style: GoogleFonts.poppins(
+                          color: isActive
+                              ? (cat["color"] as Color)
+                              : Colors.white38,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (selectedCount > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: cat["color"] as Color,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            "$selectedCount",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Plant cards panel
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child: Container(
+            key: ValueKey(_activeCategoryIndex),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // "Select All" row
+                GestureDetector(
+                  onTap: () => _toggleSelectAll(plants),
+                  child: Row(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        height: 18,
+                        width: 18,
+                        decoration: BoxDecoration(
+                          color: allSelected
+                              ? accentColor
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: allSelected ? accentColor : Colors.white30,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: allSelected
+                            ? const Icon(Icons.check,
+                                size: 11, color: Colors.white)
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        allSelected ? "Deselect all" : "Select all",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white54,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Divider(color: Colors.white10, height: 1),
+                const SizedBox(height: 12),
+
+                // Plant chips grid
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 10,
+                  children: plants.map((plantData) {
+                    final String plantName = plantData["name"];
+                    final IconData icon = plantData["icon"];
+                    final bool isSelected = _selectedCrops.contains(plantName);
+
+                    return GestureDetector(
+                      onTap: () => _toggleCrop(plantName),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? accentColor.withOpacity(0.18)
+                              : AppColors.backgroundColor,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected ? accentColor : Colors.white12,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isSelected ? Icons.check_circle : icon,
+                              size: 14,
+                              color: isSelected ? accentColor : Colors.white38,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              // Capitalise first letter for display
+                              _toDisplayName(plantName),
+                              style: GoogleFonts.poppins(
+                                color: isSelected ? accentColor : Colors.white60,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Mini preview of all selected plants across all categories
+        if (_selectedCrops.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGreen.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(14),
+              border:
+                  Border.all(color: AppColors.primaryGreen.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome,
+                        color: AppColors.primaryGreen, size: 13),
+                    const SizedBox(width: 6),
+                    Text(
+                      "AI will prioritise these for you",
+                      style: GoogleFonts.poppins(
+                        color: AppColors.primaryGreen,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 5,
+                  children: _selectedCrops.map((name) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color:
+                            AppColors.primaryGreen.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _toDisplayName(name),
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primaryGreen,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // Capitalise the first letter of each word for display only.
+  // The original lowercase name is what's stored/sent to the backend.
+  String _toDisplayName(String name) {
+    return name
+        .split(' ')
+        .map((w) => w.isEmpty
+            ? w
+            : '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
   }
 
   Widget _sectionHeader(String title) {
