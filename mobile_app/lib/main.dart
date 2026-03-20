@@ -8,7 +8,7 @@ import 'firebase_options.dart';
 
 // Service & Model Imports
 import 'services/auth_service.dart';
-import 'screens/dashboard/cart_model.dart'; // Import your CartModel
+import 'marketplace/cart_model.dart'; // Import your CartModel
 
 // Screen Imports
 import 'screens/auth/splash_screen.dart';

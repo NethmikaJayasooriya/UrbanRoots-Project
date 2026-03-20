@@ -6,7 +6,8 @@ import 'package:mobile_app/core/theme/app_colors.dart';
 import 'Home.dart'; 
 import 'garden/my_Garden.dart';
 //Import your marketplace screen
-import 'marketplace_screen.dart'; 
+import 'package:mobile_app/marketplace/marketplace_screen.dart'; 
+import 'package:mobile_app/features/profile/screens/profile_screen.dart'; 
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -51,7 +52,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
       const MyGardenScreen(),
       const Center(child: Text("Global Leaf Health Scanner", style: TextStyle(color: Colors.white))),
       const MarketplaceScreen1(), // Real Marketplace now active!
-      const Center(child: Text("User Profile", style: TextStyle(color: Colors.white))),
+      const ProfileScreen(), // User Profile including Seller Hub
     ];
 
     return Scaffold(
