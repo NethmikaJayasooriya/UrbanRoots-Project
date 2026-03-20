@@ -1,4 +1,4 @@
-name: mobile_app # Changed to match your internal imports!
+name: mobile_app 
 description: "UrbanRoots Smart Garden Application"
 
 publish_to: 'none'
@@ -31,6 +31,10 @@ dependencies:
   google_sign_in: ^6.2.2
   image_picker: ^1.2.1
   lottie: ^3.3.2
+  shared_preferences: ^2.3.0
+  cloud_firestore: ^6.1.3
+  firebase_storage: ^13.0.2
+  supabase_flutter: ^2.12.0
 
 dev_dependencies:
   flutter_test:
@@ -48,6 +52,7 @@ flutter:
     - assets/animations/pet_idle.json
     - assets/animations/pet_happy.json
     - assets/animations/pet_sad.json
+
    
   fonts:
     - family: FiraSans

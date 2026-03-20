@@ -1,13 +1,28 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GardenModule } from './garden/garden.module';
-import { GardensModule } from './gardens/gardens.module';
+
+// Root App
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+// Garden & Weather Features
+import { GardensModule } from './gardens/gardens.module'; // (Kept the plural one!)
 import { WeatherModule } from './weather/weather.module';
+
+// Auth & User Profile Features
+import { AuthModule } from './auth/auth.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { OtpModule } from './otp/otp.module';
+import { PasswordModule } from './password/password.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
+    // 1. Loads the .env file globally
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // 2. Connects to Supabase using the .env variables
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -19,15 +34,23 @@ import { WeatherModule } from './weather/weather.module';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true, // SET THIS TO TRUE ONCE
+        synchronize: true, // Auto-creates tables in Supabase based on entities
         ssl: {
-          rejectUnauthorized: false,
+          rejectUnauthorized: false, // REQUIRED for Supabase connections
         },
       }),
     }),
-    GardenModule,
+
+    // 3. Feature Modules
     GardensModule,
     WeatherModule,
+    AuthModule,
+    FirebaseModule,
+    OtpModule,
+    UserModule,
+    PasswordModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
