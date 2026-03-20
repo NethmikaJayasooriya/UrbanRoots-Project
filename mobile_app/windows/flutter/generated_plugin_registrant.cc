@@ -11,12 +11,9 @@
 #include <file_selector_windows/file_selector_windows.h>
 #include <firebase_auth/firebase_auth_plugin_c_api.h>
 #include <firebase_core/firebase_core_plugin_c_api.h>
-<<<<<<< HEAD
-#include <geolocator_windows/geolocator_windows.h>
-=======
 #include <firebase_storage/firebase_storage_plugin_c_api.h>
+#include <geolocator_windows/geolocator_windows.h>
 #include <url_launcher_windows/url_launcher_windows.h>
->>>>>>> feature/User-profile-creation
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   AppLinksPluginCApiRegisterWithRegistrar(
@@ -29,13 +26,10 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FirebaseAuthPluginCApi"));
   FirebaseCorePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseCorePluginCApi"));
-<<<<<<< HEAD
-  GeolocatorWindowsRegisterWithRegistrar(
-      registry->GetRegistrarForPlugin("GeolocatorWindows"));
-=======
   FirebaseStoragePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseStoragePluginCApi"));
+  GeolocatorWindowsRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("GeolocatorWindows"));
   UrlLauncherWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("UrlLauncherWindows"));
->>>>>>> feature/User-profile-creation
 }

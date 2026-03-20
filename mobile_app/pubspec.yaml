@@ -22,10 +22,7 @@ dependencies:
   http: ^1.6.0
   js: ^0.6.7
   
-  # Local Storage (Added for Unique Garden Sessions)
-  shared_preferences: ^2.2.3
-  
-  # Firebase & Authentication
+  # Firebase, Authentication & Local Storage
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   google_sign_in: ^6.2.2
@@ -53,7 +50,6 @@ flutter:
     - assets/animations/pet_happy.json
     - assets/animations/pet_sad.json
 
-   
   fonts:
     - family: FiraSans
       fonts:
