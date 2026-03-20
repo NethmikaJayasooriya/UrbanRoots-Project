@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // <-- ADDED THIS IMPORT!
 import 'package:mobile_app/services/otp_service.dart';
 import 'firebase_options.dart';
+
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/setup_profile_screen.dart';
@@ -14,6 +16,12 @@ import 'screens/dashboard/nav_bar.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize Supabase for Image Storage
+  await Supabase.initialize(
+    url: 'https://lbdyfmhetidvimwawvmi.supabase.co', // Make sure to paste your URL!
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZHlmbWhldGlkdmltd2F3dm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NjE3NzUsImV4cCI6MjA4ODUzNzc3NX0.a0PspBWet3hxAsbHlfnS5IlCZd3jsZwoTx-_0lI_ZnE', // Make sure to paste your Anon Key!
+  );
 
   runApp(const MyApp());
 }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // <-- REPLACED FIREBASE STORAGE WITH SUPABASE
 
 // IMPORTANT: Adjust these import paths to match your actual folder structure
 import 'package:mobile_app/core/theme/app_colors.dart';
@@ -27,7 +27,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   bool _isSubmitting = false;
 
   // --- Image Picker Logic ---
-  File? _profileImage;
+  XFile? _profileImage; // Use XFile for cross-platform support
   final ImagePicker _picker = ImagePicker();
 
   // Opens camera or gallery and saves the file to state
@@ -39,20 +39,19 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
       );
 
       if (pickedFile != null) {
-        // FIX: Ensure the widget is still mounted before setting state
         if (!mounted) return;
         setState(() {
-          _profileImage = File(pickedFile.path);
+          _profileImage = pickedFile;
         });
       }
     } catch (e) {
       debugPrint("Failed to pick image: $e");
 
-      // FIX: Check mounted before using context to show the SnackBar
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Failed to get image. Check permissions."),
+          backgroundColor: AppColors.danger,
         ),
       );
     }
@@ -140,31 +139,35 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     super.dispose();
   }
 
+  // --- NEW SUPABASE UPLOAD LOGIC ---
   Future<String?> _uploadProfileImageIfNeeded(String uid) async {
     // Return existing photo URL if no new image selected
     if (_profileImage == null) {
       return FirebaseAuth.instance.currentUser?.photoURL;
     }
 
-    // Skip image upload on web - profile picture is optional
-    if (kIsWeb) {
-      debugPrint("Image upload skipped on web platform - profile picture is optional");
-      return null;
-    }
-
     try {
-      final file = _profileImage!;
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('profile_pictures')
-          .child('${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final supabase = Supabase.instance.client;
+      final fileExtension = _profileImage!.name.split('.').last;
+      final fileName = '${uid}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+      
+      // readAsBytes works perfectly on Web, Android, and iOS
+      final imageBytes = await _profileImage!.readAsBytes();
 
-      final snapshot = await storageRef.putFile(file);
-      final downloadUrl = await snapshot.ref.getDownloadURL();
-      debugPrint("Profile image uploaded successfully: $downloadUrl");
+      // Upload to the 'profile_pictures' bucket in Supabase
+      await supabase.storage.from('profile_pictures').uploadBinary(
+        fileName,
+        imageBytes,
+        fileOptions: const FileOptions(upsert: true), 
+      );
+
+      // Get the public URL to save in the PostgreSQL database
+      final downloadUrl = supabase.storage.from('profile_pictures').getPublicUrl(fileName);
+      
+      debugPrint("Profile image uploaded to Supabase: $downloadUrl");
       return downloadUrl;
     } catch (e) {
-      debugPrint("Failed to upload profile image: $e");
+      debugPrint("Failed to upload profile image to Supabase: $e");
       // Don't fail the entire profile setup if image upload fails
       return null;
     }
@@ -204,13 +207,11 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
             await user.updatePhotoURL(profilePicUrl);
           } catch (photoError) {
             debugPrint("Warning: Could not update Firebase Auth profile photo: $photoError");
-            // Continue anyway - profile photo update is not critical
           }
         }
       } catch (imageError) {
         debugPrint("Warning: Image upload failed, continuing without profile picture: $imageError");
         profilePicUrl = null;
-        // Continue with profile setup even if image upload fails
       }
 
       debugPrint("Attempting to save profile for UID: ${user.uid}");
@@ -230,7 +231,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
 
       if (!mounted) return;
       
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile completed successfully!'),
@@ -239,7 +239,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         ),
       );
 
-      // Redirect to Garden Profile/Introduction Screen
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -266,7 +265,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Just mark defaults or minimal info
         await AuthService.setupProfile(
           uid: user.uid,
           firstName: '',
@@ -275,7 +273,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         );
       } catch (e) {
         debugPrint("Background profile skip error: $e");
-        // We continue to redirect anyway, as skipping shouldn't block the user
       }
     }
 
@@ -290,11 +287,16 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final currentPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
-    final ImageProvider? avatarImage = _profileImage != null
-        ? FileImage(_profileImage!)
-        : ((currentPhotoUrl != null && currentPhotoUrl.isNotEmpty)
-              ? NetworkImage(currentPhotoUrl)
-              : null);
+    
+    // Properly display the image regardless of platform (Web or Mobile)
+    ImageProvider? avatarImage;
+    if (_profileImage != null) {
+      avatarImage = kIsWeb 
+          ? NetworkImage(_profileImage!.path) as ImageProvider
+          : FileImage(File(_profileImage!.path));
+    } else if (currentPhotoUrl != null && currentPhotoUrl.isNotEmpty) {
+      avatarImage = NetworkImage(currentPhotoUrl);
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -336,7 +338,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                           color: AppColors.primaryGreen,
                           width: 2,
                         ),
-                        // Dynamically show the picked image if it exists
                         image: avatarImage != null
                             ? DecorationImage(
                                 image: avatarImage,
@@ -344,7 +345,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                               )
                             : null,
                       ),
-                      // Only show the placeholder icon if no image is selected
                       child: avatarImage == null
                           ? const Icon(
                               Icons.person,
@@ -361,7 +361,7 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
                         border: Border.all(
                           color: AppColors.backgroundColor,
                           width: 3,
-                        ), // Creates a cutout effect
+                        ), 
                       ),
                       child: const Icon(
                         Icons.edit,

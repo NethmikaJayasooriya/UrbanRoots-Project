@@ -8,9 +8,8 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { OtpModule } from './otp/otp.module';
-import { UserModule } from './user/user.module';
-import { SupabaseModule } from './supabase/supabase.module';
 import { PasswordModule } from './password/password.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -41,7 +40,6 @@ import { PasswordModule } from './password/password.module';
     FirebaseModule,
     OtpModule,
     UserModule,
-    SupabaseModule,
     PasswordModule,
   ],
   controllers: [AppController],

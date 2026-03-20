@@ -1,7 +1,7 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { OtpService } from '../otp/otp.service';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
-import { SupabaseService } from '../supabase/supabase.service';
+import { OtpService } from '../otp/otp.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class AuthService {
@@ -10,7 +10,8 @@ export class AuthService {
   constructor(
     private readonly otpService: OtpService,
     private readonly firebaseService: FirebaseService,
-    private readonly supabaseService: SupabaseService,
+    // INJECT OUR NEW USER SERVICE INSTEAD!
+    private readonly userService: UserService,
   ) {}
 
   /**
@@ -18,13 +19,10 @@ export class AuthService {
    */
   async requestLoginOtp(email: string): Promise<void> {
     try {
-      // Check if user exists in Firebase Auth to confirm they have an account
       await this.firebaseService.auth.getUserByEmail(email);
-      // Valid user, send OTP
       await this.otpService.generateAndSendOtp(email);
       this.logger.log(`Login OTP sent to ${email}`);
     } catch (error) {
-      // If error.code === 'auth/user-not-found', user doesn't exist
       if (error.code === 'auth/user-not-found') {
         throw new NotFoundException('No account found with this email. Please sign up first.');
       }
@@ -37,18 +35,11 @@ export class AuthService {
    */
   async requestSignupOtp(email: string): Promise<void> {
     try {
-      const user = await this.firebaseService.auth.getUserByEmail(email);
-      
-      // If user exists, they might be in the middle of signup.
-      // We'll allow sending a "signup" OTP anyway, as it's used for verification.
-      // If they are already fully onboarded, we could block it, but for now 
-      // let's just send the OTP to avoid the "already exists" dead-end.
+      await this.firebaseService.auth.getUserByEmail(email);
       await this.otpService.generateAndSendOtp(email);
       this.logger.log(`Signup OTP sent to existing user ${email} (continuing flow)`);
-
     } catch (error) {
       if (error.code === 'auth/user-not-found') {
-        // User does not exist, send OTP for signup
         await this.otpService.generateAndSendOtp(email);
         this.logger.log(`Signup OTP sent to new user ${email}`);
       } else {
@@ -63,7 +54,6 @@ export class AuthService {
   async requestPasswordResetOtp(email: string): Promise<void> {
     try {
       await this.firebaseService.auth.getUserByEmail(email);
-      // Exists, send OTP
       await this.otpService.generateAndSendOtp(email);
       this.logger.log(`Password reset OTP sent to ${email}`);
     } catch (error) {
@@ -74,36 +64,23 @@ export class AuthService {
     }
   }
 
-  /**
-   * Verify any OTP.
-   * If valid, returns true. The frontend can then proceed based on context
-   * (e.g. log the user in using custom token, proceed to setup profile, or allow password resets).
-   */
   async verifyOtp(email: string, otp: string): Promise<boolean> {
     return this.otpService.verifyOtp(email, otp);
   }
 
-  /**
-   * Helper: After OTP is verified for a NEW signup or login, 
-   * ensure the user's base Firestore document exists AND sync to Supabase.
-   */
   async syncUserToFirestore(uid: string, email: string, provider: string): Promise<void> {
     try {
-      // Sync to Firestore
       const userRef = this.firebaseService.firestore.collection('users').doc(uid);
       await userRef.set(
         {
           email: email,
           authProvider: provider,
           createdAt: new Date(),
-          // We do *not* save the password here! 
-          // Firebase Auth handles storing the password securely.
         },
-        { merge: true } // Merge so we don't overwrite if it already exists
+        { merge: true }
       );
       this.logger.log(`User synced to Firestore: ${uid}`);
 
-      // Also sync to Supabase (non-blocking)
       await this.syncUserToSupabase(uid, email, provider);
     } catch (error) {
       this.logger.error(`Error syncing user to Firestore: ${error.message}`);
@@ -113,7 +90,6 @@ export class AuthService {
 
   /**
    * Sync a user to Supabase after successful authentication.
-   * This is called automatically during signup/login flow.
    */
   async syncUserToSupabase(
     uid: string,
@@ -124,25 +100,20 @@ export class AuthService {
     profilePicUrl?: string,
   ): Promise<void> {
     try {
-      await this.supabaseService.syncFirebaseUserToSupabase(
-        uid,
+      // ROUTE THIS THROUGH OUR NEW TYPEORM FUNCTION
+      await this.userService.updateProfile(uid, {
         email,
+        authProvider: authProvider || 'email/password',
         firstName,
         lastName,
-        profilePicUrl,
-        authProvider || 'email/password',
-      );
-      this.logger.log(`User synced to Supabase: ${uid}`);
+        profilePic: profilePicUrl,
+      });
+      this.logger.log(`User synced to Supabase via TypeORM: ${uid}`);
     } catch (error) {
       this.logger.warn(`Supabase sync warning (non-blocking): ${error.message}`);
-      // Don't throw - Supabase sync should not block the main authentication flow
     }
   }
 
-  /**
-   * Directly update a user's password in Firebase Auth.
-   * This should only be called after successful OTP verification.
-   */
   async updatePassword(email: string, newPassword: string): Promise<void> {
     try {
       const user = await this.firebaseService.auth.getUserByEmail(email);
@@ -156,18 +127,10 @@ export class AuthService {
     }
   }
 
-  /**
-   * Check if an email was recently verified via OTP.
-   * Used by the reset-password flow to confirm prior verification
-   * without re-consuming the OTP.
-   */
   isEmailRecentlyVerified(email: string): boolean {
     return this.otpService.isEmailVerified(email);
   }
 
-  /**
-   * Clear the verified status for an email after consuming it.
-   */
   clearVerifiedEmail(email: string): void {
     this.otpService.clearVerifiedEmail(email);
   }
