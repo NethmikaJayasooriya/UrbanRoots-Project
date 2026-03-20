@@ -616,6 +616,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.19.0"
   js:
     dependency: "direct main"
     description:
@@ -712,7 +720,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.17.0"
-<<<<<<< HEAD
   mime:
     dependency: transitive
     description:
@@ -729,6 +736,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.6"
+  nested:
+    dependency: transitive
+    description:
+      name: nested
+      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   objective_c:
     dependency: transitive
     description:
@@ -753,16 +768,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.1"
-=======
-  nested:
-    dependency: transitive
-    description:
-      name: nested
-      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
->>>>>>> feature/marketplace
   path:
     dependency: transitive
     description:
@@ -771,7 +776,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-<<<<<<< HEAD
   path_provider:
     dependency: transitive
     description:
@@ -820,6 +824,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  payhere_mobilesdk_flutter:
+    dependency: "direct main"
+    description:
+      name: payhere_mobilesdk_flutter
+      sha256: cd12fe33428830da22c154379e301533e1427360143050378b644242171fd145
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   petitparser:
     dependency: transitive
     description:
@@ -836,16 +848,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.6"
-=======
-  payhere_mobilesdk_flutter:
-    dependency: "direct main"
-    description:
-      name: payhere_mobilesdk_flutter
-      sha256: cd12fe33428830da22c154379e301533e1427360143050378b644242171fd145
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
->>>>>>> feature/marketplace
   plugin_platform_interface:
     dependency: transitive
     description:
@@ -854,7 +856,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-<<<<<<< HEAD
   pointycastle:
     dependency: transitive
     description:
@@ -879,6 +880,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.0"
+  provider:
+    dependency: "direct main"
+    description:
+      name: provider
+      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.5+1"
   pub_semver:
     dependency: transitive
     description:
@@ -967,16 +976,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-=======
-  provider:
-    dependency: "direct main"
-    description:
-      name: provider
-      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.5+1"
->>>>>>> feature/marketplace
   sky_engine:
     dependency: transitive
     description: flutter
