@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
+/// Handles communication with the backend API to retrieve and update user profile information.
+
 class ProfileService {
   static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 

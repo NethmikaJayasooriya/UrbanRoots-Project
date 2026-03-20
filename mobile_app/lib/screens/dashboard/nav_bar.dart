@@ -5,9 +5,8 @@ import 'package:mobile_app/core/theme/app_colors.dart';
 
 import 'Home.dart'; 
 import 'garden/my_Garden.dart';
-//Import your marketplace screen
-import 'package:mobile_app/marketplace/marketplace_screen.dart'; 
-import 'package:mobile_app/features/profile/screens/profile_screen.dart'; 
+import 'package:mobile_app/screens/dashboard/Marketplace/marketplace_screen.dart'; 
+import 'package:mobile_app/screens/dashboard/UserProfile/profile_screen.dart'; 
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -20,6 +19,8 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
     with SingleTickerProviderStateMixin {
   
   int _currentIndex = 0;
+  
+  // Controls the pulsing animation of the central floating action button scanner
   AnimationController? _pulseController;
   Animation<double>? _pulseAnim;
 
@@ -46,22 +47,24 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper>
   Widget build(BuildContext context) {
     final bool scannerActive = _currentIndex == 2;
 
-    //  Plugged in MarketplaceScreen1() at index 3
+    // Define the sequence of screens for the navigation bar
     final List<Widget> screens = [
       const HomeScreen(), 
       const MyGardenScreen(),
       const Center(child: Text("Global Leaf Health Scanner", style: TextStyle(color: Colors.white))),
-      const MarketplaceScreen1(), // Real Marketplace now active!
-      const ProfileScreen(), // User Profile including Seller Hub
+      const MarketplaceScreen1(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
+      // IndexedStack preserves the state of the screens underneath (e.g. Map, Gardens)
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
 
+      // Custom Floating Action Button representing the central scanner feature
       floatingActionButton: GestureDetector(
         onTap: () => setState(() => _currentIndex = 2),
         child: AnimatedBuilder(

@@ -1,14 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart'; // Added for state management
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'firebase_options.dart';
 
 // Service & Model Imports
 import 'services/auth_service.dart';
-import 'marketplace/cart_model.dart'; // Import your CartModel
+import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
 
 // Screen Imports
 import 'screens/auth/splash_screen.dart';
@@ -38,6 +38,8 @@ void main() async {
   );
 }
 
+/// The root widget of the application.
+/// Configures the global Material 3 theme and sets the initial route to the splash screen.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -75,6 +77,10 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
     _navigateFromSplash();
   }
 
+  /// Handles the core authentication routing logic.
+  /// Checks if a user is logged into Firebase, verifies their OTP session state,
+  /// and ensures they have completed the profile onboarding flow before granting
+  /// access to the main application dashboard.
   void _navigateFromSplash() async {
     // Splash screen delay
     await Future.delayed(const Duration(seconds: 4));
@@ -82,7 +88,7 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // Logic for authenticated users
+      // User has a valid Firebase token; verify OTP and Database onboarding statuses
       final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
       if (loggedIn) {
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);

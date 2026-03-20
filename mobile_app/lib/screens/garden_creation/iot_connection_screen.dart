@@ -49,6 +49,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
     super.dispose();
   }
 
+  // Simulates a Bluetooth/WiFi scan for nearby IoT sensors
   void _startScan() async {
     await Future.delayed(const Duration(seconds: 3));
     if (mounted) {
@@ -57,6 +58,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
     }
   }
 
+  // Simulates establishing a connection to the selected IoT hardware
   void _connectDevice() async {
     setState(() => _isConnecting = true);
     await Future.delayed(const Duration(seconds: 2));
@@ -67,6 +69,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
     }
   }
 
+  // Prompts the user for additional environmental context not covered by the sensor
   void _showWindConfigDialog(BuildContext context) {
     bool localWindState = false;
 

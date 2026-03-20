@@ -1,30 +1,17 @@
 // marketplace_screen.dart
-//
-// CHANGES IN THIS VERSION:
-//   1. Product class — added a `description` field (optional, nullable)
-//   2. _buildProductCard — the entire card is now wrapped in GestureDetector
-//      so tapping anywhere on it navigates to ProductDetailScreen
-//   3. Import added for product_detail_screen.dart
-//
-// Everything else (grid layout, cart badge, search bar, category chips)
-// is unchanged from the previous version.
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'cart_model.dart';
 import 'shopping_Cart.dart';
-import 'product_detail_screen.dart'; // NEW: import the detail screen
+import 'product_detail_screen.dart';
 
-// ─── Product ──────────────────────────────────────────────────────────────────
-// CHANGED: Added optional `description` field.
-// This is nullable so existing Product instances don't need to be updated —
-// ProductDetailScreen falls back to a built-in description map if null.
+// Represents an item available in the marketplace
 class Product {
   final String name;
   final String category;
   final double price;
-  final String? description; // NEW — optional product description
-  final String? imageUrl;    // NEW — reserved for when your backend serves images
+  final String? description;
+  final String? imageUrl;
 
   const Product({
     required this.name,
@@ -167,20 +154,14 @@ class MarketplaceScreen1 extends StatelessWidget {
     );
   }
 
-  // ── _buildProductCard ──────────────────────────────────────────────────────
-  // CHANGED: Wrapped the entire card in a GestureDetector.
-  // Tapping anywhere on the card now navigates to ProductDetailScreen.
-  // The "Add to Cart" button uses its own onPressed and calls
-  // e.stopPropagation equivalent via the ElevatedButton's own gesture handling —
-  // Flutter handles this automatically since ElevatedButton absorbs the tap.
+  // Builds a tappable product card displaying the item's details and add-to-cart button.
   Widget _buildProductCard(BuildContext context, Product product) {
     return GestureDetector(
-      // NEW: onTap navigates to the product detail screen for this product
+      // Navigates to the product detail screen when the card is tapped
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            // Pass the tapped product into the detail screen
             builder: (_) => ProductDetailScreen(product: product),
           ),
         );
@@ -191,8 +172,6 @@ class MarketplaceScreen1 extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
-            BoxShadow(
-              // CHANGED: withOpacity → withValues (deprecated in Flutter 3.27+)
               color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
             )
@@ -239,8 +218,7 @@ class MarketplaceScreen1 extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // Add to Cart button — ElevatedButton absorbs its own tap
-                  // so tapping it does NOT also trigger the GestureDetector above
+                  // Add to cart functionality
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -251,7 +229,6 @@ class MarketplaceScreen1 extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8)),
                       ),
                       onPressed: () {
-                        // read() — inside callback, not build()
                         context.read<CartModel>().addItem(
                               CartItem(
                                 name: product.name,

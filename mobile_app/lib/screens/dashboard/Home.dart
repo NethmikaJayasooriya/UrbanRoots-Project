@@ -18,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _dashboardData;
   bool _isLoading = true;
 
+  // Animation controllers for the Digital Pet and UI elements
   AnimationController? _petController;
   late AnimationController _bubbleController;
   late AnimationController _glowController;
@@ -75,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fetchLiveDashboardData();
   }
 
+  // Fetches live data from the backend to determine pet mood and dashboard stats
   Future<void> _fetchLiveDashboardData() async {
     final int? storedId = await ApiService.getStoredGardenId();
     
@@ -125,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // Triggers the happy animation when the user taps on the Digital Pet
   void _handlePetTap() async {
     if (_isTapped) return;
     _triggerHappyJump();
@@ -150,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _bubbleController.forward();
   }
 
+  // Determines which Lottie animation to play based on the pet's current state
   String _getPetAnimation() {
     if (_isThirsty) return 'assets/animations/pet_sad.json';
     if (_isTapped) return 'assets/animations/pet_happy.json';

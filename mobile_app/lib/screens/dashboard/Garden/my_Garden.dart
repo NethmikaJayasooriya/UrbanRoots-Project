@@ -60,7 +60,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
       curve: const Interval(0.0, 0.8, curve: Curves.easeOut),
     ));
     
-    // NEW: Check local storage for an existing garden when the screen loads
+    // Check local storage for an existing garden when the screen loads
     _loadSavedGarden();
   }
 
@@ -107,6 +107,8 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     );
   }
 
+  /// Opens the AI Recommendations flow for the current garden.
+  /// Passes the existing garden data to tailor the recommendations.
   Future<void> _openAiRecommendations() async {
     final Map<String, dynamic> dataToPass = _gardenData != null 
         ? Map<String, dynamic>.from(_gardenData!) 
@@ -124,6 +126,8 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     _fetchActiveCrops();
   }
 
+  /// Helper to map a plant name to its corresponding local asset image.
+  /// Ensures offline availability for core crop libraries.
   String _getImagePathForPlant(String plantName) {
     final Map<String, String> imagePaths = {
       "bauhinia acuminata": "assets/images/Plants/flowers/Bauhinia_acuminata.jpg",

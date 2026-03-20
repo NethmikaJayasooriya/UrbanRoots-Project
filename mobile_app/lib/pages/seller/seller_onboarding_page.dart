@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_app/pages/seller/seller_page.dart';
 import 'package:mobile_app/style.dart';
+
+/// Collects business details and regulatory documents required to register a new Seller.
 
 class SellerOnboardingPage extends StatefulWidget {
   const SellerOnboardingPage({super.key});
@@ -33,6 +36,12 @@ class _State extends State<SellerOnboardingPage> {
         content: Text("Application submitted! We'll review within 24h."),
         backgroundColor: Color(0xFF166534),
       ));
+      
+      // Navigate to the Dashboard after submitting
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SellerPage()),
+      );
     }
   }
 

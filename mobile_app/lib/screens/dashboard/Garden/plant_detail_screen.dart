@@ -29,6 +29,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     }
   }
 
+  /// Toggles the completion status of a daily task.
+  /// Updates local UI state immediately, then synchronizes the new task list via the API.
   Future<void> _toggleTask(Map<String, dynamic> task) async {
     setState(() => task['isDone'] = !task['isDone']);
     

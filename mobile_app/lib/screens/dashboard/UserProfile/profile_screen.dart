@@ -7,7 +7,7 @@ import 'rate_app_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'help_support_screen.dart';
 import 'subscriptions_billing_screen.dart';
-import 'package:mobile_app/pages/seller/seller_page.dart';
+import 'package:mobile_app/pages/seller/seller_onboarding_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -125,7 +125,7 @@ class ProfileScreen extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const SellerPage(),
+                                  builder: (_) => const SellerOnboardingPage(),
                                 ),
                               );
                             },
