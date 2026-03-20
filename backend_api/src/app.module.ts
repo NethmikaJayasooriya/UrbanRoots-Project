@@ -7,7 +7,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 // Garden & Weather Features
-import { GardensModule } from './gardens/gardens.module'; // (Kept the plural one!)
+import { GardensModule } from './gardens/gardens.module';
 import { WeatherModule } from './weather/weather.module';
 
 // Auth & User Profile Features
@@ -22,7 +22,7 @@ import { UserModule } from './user/user.module';
     // 1. Loads the .env file globally
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // 2. Connects to Supabase using the .env variables
+    // 2. Connects to Supabase/Postgres using Async configuration
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -33,15 +33,15 @@ import { UserModule } from './user/user.module';
         username: config.get<string>('DB_USERNAME'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: true, // Auto-creates tables in Supabase based on entities
+        autoLoadEntities: true, // This automatically loads 'User' and other entities
+        synchronize: true, // Auto-creates tables in Supabase (Development only)
         ssl: {
-          rejectUnauthorized: false, // REQUIRED for Supabase connections
+          rejectUnauthorized: false, // Required for Supabase
         },
       }),
     }),
 
-    // 3. Feature Modules
+    // 3. Merged Feature Modules
     GardensModule,
     WeatherModule,
     AuthModule,
@@ -53,4 +53,4 @@ import { UserModule } from './user/user.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
