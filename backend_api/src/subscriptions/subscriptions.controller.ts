@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Controller('subscriptions')
@@ -10,8 +10,14 @@ export class SubscriptionsController {
     return this.subscriptionsService.getMySubscription();
   }
 
-  @Patch('me')
-  updateMySubscription(@Body() body: { selectedPlan?: string }) {
-    return this.subscriptionsService.updateMySubscription(body);
+  @Post('start-membership')
+  startMembership(
+    @Body()
+    body: {
+      selectedPlan: string;
+      paymentMethod: string;
+    },
+  ) {
+    return this.subscriptionsService.startMembership(body);
   }
 }

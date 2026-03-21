@@ -10,6 +10,7 @@ import { SellerModule } from './seller/seller.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { StreaksModule } from './streaks/streaks.module';
+<<<<<<< HEAD
 
 import { UserModule } from './user/user.module';
 import { FirebaseModule } from './firebase/firebase.module';
@@ -18,6 +19,11 @@ import { User } from './user/entities/user.entity';
 @Module({
   imports: [
 <<<<<<< HEAD
+=======
+
+@Module({
+  imports: [
+>>>>>>> b1868ab (save remaining profile dashboard changes)
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
     ProfileModule,
@@ -29,6 +35,7 @@ import { User } from './user/entities/user.entity';
     PreferencesModule,
     SubscriptionsModule,
     StreaksModule,
+<<<<<<< HEAD
 =======
     //Load the Config Module first
     ConfigModule.forRoot({
@@ -54,6 +61,8 @@ import { User } from './user/entities/user.entity';
     UserModule,
     FirebaseModule,
 >>>>>>> e58905b0f1a824cbe080fcb14f8709f217b345ea
+=======
+>>>>>>> b1868ab (save remaining profile dashboard changes)
   ],
 })
 export class AppModule {}

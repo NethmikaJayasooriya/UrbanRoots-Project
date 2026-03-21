@@ -356,6 +356,26 @@ class ApiService {
 
   // ================= SUBSCRIPTIONS =================
 
+  static Future<Map<String, dynamic>> startSubscriptionMembership({
+    required String selectedPlan,
+    required String paymentMethod,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/subscriptions/start-membership'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'selectedPlan': selectedPlan,
+        'paymentMethod': paymentMethod,
+      }),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to start membership: ${response.body}');
+    }
+  }
+
   static Future<Map<String, dynamic>> getSubscription() async {
     final response = await http.get(Uri.parse('$baseUrl/subscriptions/me'));
 

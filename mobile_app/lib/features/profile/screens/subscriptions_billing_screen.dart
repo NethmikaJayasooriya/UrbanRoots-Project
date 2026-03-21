@@ -13,6 +13,7 @@ class SubscriptionsBillingScreen extends StatefulWidget {
 class _SubscriptionsBillingScreenState
     extends State<SubscriptionsBillingScreen> {
   String selectedPlan = "monthly";
+  String? _paymentMethod;
   bool _isLoadingSubscription = true;
   bool _isSavingSubscription = false;
 
@@ -33,9 +34,11 @@ class _SubscriptionsBillingScreenState
       if (!mounted) return;
 
       final plan = (data['selected_plan'] ?? 'monthly').toString();
+      final paymentMethod = data['payment_method']?.toString();
 
       setState(() {
         selectedPlan = _normalizePlan(plan);
+        _paymentMethod = paymentMethod;
         _isLoadingSubscription = false;
       });
     } catch (e) {
@@ -64,39 +67,90 @@ class _SubscriptionsBillingScreenState
     return '${plan[0].toUpperCase()}${plan.substring(1)}';
   }
 
-  Future<void> _selectPlan(String plan) async {
-    if (_isSavingSubscription || selectedPlan == plan) return;
-
-    final previousPlan = selectedPlan;
-
-    setState(() {
-      selectedPlan = plan;
-      _isSavingSubscription = true;
-    });
-
-    try {
-      await ApiService.updateSubscription(plan);
-
-      if (!mounted) return;
-
-      setState(() {
-        _isSavingSubscription = false;
-      });
-
-      _toast('${_capitalizePlan(plan)} plan selected');
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        selectedPlan = previousPlan;
-        _isSavingSubscription = false;
-      });
-
-      _toast('Failed to update subscription: $e');
+  String _paymentLabel(String method) {
+    switch (method) {
+      case 'card':
+        return 'Card';
+      case 'paypal':
+        return 'PayPal';
+      case 'apple_pay':
+        return 'Apple Pay';
+      case 'google_pay':
+        return 'Google Pay';
+      default:
+        return method;
     }
   }
 
-  Future<void> _startProMembership() async {
+  void _selectPlanOnly(String plan) {
+    if (_isSavingSubscription) return;
+
+    setState(() {
+      selectedPlan = plan;
+    });
+  }
+
+  Future<void> _openPaymentMethodSheet() async {
+    if (_isSavingSubscription) return;
+
+    final method = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Choose Payment Method',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _PaymentMethodTile(
+                  title: 'Credit / Debit Card',
+                  icon: Icons.credit_card_rounded,
+                  onTap: () => Navigator.pop(context, 'card'),
+                ),
+                const SizedBox(height: 10),
+                _PaymentMethodTile(
+                  title: 'PayPal',
+                  icon: Icons.account_balance_wallet_rounded,
+                  onTap: () => Navigator.pop(context, 'paypal'),
+                ),
+                const SizedBox(height: 10),
+                _PaymentMethodTile(
+                  title: 'Apple Pay',
+                  icon: Icons.phone_iphone_rounded,
+                  onTap: () => Navigator.pop(context, 'apple_pay'),
+                ),
+                const SizedBox(height: 10),
+                _PaymentMethodTile(
+                  title: 'Google Pay',
+                  icon: Icons.android_rounded,
+                  onTap: () => Navigator.pop(context, 'google_pay'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (method == null) return;
+
+    await _startProMembership(method);
+  }
+
+  Future<void> _startProMembership(String paymentMethod) async {
     if (_isSavingSubscription) return;
 
     setState(() {
@@ -104,16 +158,20 @@ class _SubscriptionsBillingScreenState
     });
 
     try {
-      await ApiService.updateSubscription(selectedPlan);
+      await ApiService.startSubscriptionMembership(
+        selectedPlan: selectedPlan,
+        paymentMethod: paymentMethod,
+      );
 
       if (!mounted) return;
 
       setState(() {
+        _paymentMethod = paymentMethod;
         _isSavingSubscription = false;
       });
 
       _toast(
-        'Pro membership started with ${_capitalizePlan(selectedPlan)} plan',
+        'Pro membership started with ${_capitalizePlan(selectedPlan)} plan via ${_paymentLabel(paymentMethod)}',
       );
     } catch (e) {
       if (!mounted) return;
@@ -230,13 +288,24 @@ class _SubscriptionsBillingScreenState
                                 const _CheckLine(
                                   text: "Customized Character Access",
                                 ),
+                                if (_paymentMethod != null) ...[
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Selected Payment Method: ${_paymentLabel(_paymentMethod!)}',
+                                    style: const TextStyle(
+                                      color: AppColors.accent,
+                                      fontSize: 12.8,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 16),
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
                                     onPressed: _isSavingSubscription
                                         ? null
-                                        : _startProMembership,
+                                        : _openPaymentMethodSheet,
                                     style: ElevatedButton.styleFrom(
                                       elevation: 0,
                                       backgroundColor: AppColors.accent,
@@ -254,7 +323,7 @@ class _SubscriptionsBillingScreenState
                                     ),
                                     child: Text(
                                       _isSavingSubscription
-                                          ? "Saving..."
+                                          ? "Processing..."
                                           : "Start Pro Membership",
                                     ),
                                   ),
@@ -269,7 +338,7 @@ class _SubscriptionsBillingScreenState
                             suffix: "/7 days",
                             selected: selectedPlan == "weekly",
                             badge: null,
-                            onTap: () => _selectPlan("weekly"),
+                            onTap: () => _selectPlanOnly("weekly"),
                           ),
                           const SizedBox(height: 12),
                           _PlanTile(
@@ -278,7 +347,7 @@ class _SubscriptionsBillingScreenState
                             suffix: "/month",
                             selected: selectedPlan == "monthly",
                             badge: "BEST VALUE",
-                            onTap: () => _selectPlan("monthly"),
+                            onTap: () => _selectPlanOnly("monthly"),
                           ),
                           const SizedBox(height: 12),
                           _PlanTile(
@@ -287,7 +356,7 @@ class _SubscriptionsBillingScreenState
                             suffix: "/year",
                             selected: selectedPlan == "annual",
                             badge: null,
-                            onTap: () => _selectPlan("annual"),
+                            onTap: () => _selectPlanOnly("annual"),
                           ),
                           const SizedBox(height: 26),
                           const Text(
@@ -706,7 +775,7 @@ class _CartItem extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 9),
+        const SizedBox(width: 10),
         Text(
           price,
           style: const TextStyle(
@@ -726,5 +795,51 @@ class _DividerLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(height: 1, thickness: 1, color: AppColors.border);
+  }
+}
+
+class _PaymentMethodTile extends StatelessWidget {
+  const _PaymentMethodTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
   }
 }
