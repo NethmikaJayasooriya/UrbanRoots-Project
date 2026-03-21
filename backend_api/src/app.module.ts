@@ -4,6 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1823ea291d5656955397d4cf7d7e5d97a1b06878
 
 @Module({
   imports: [
