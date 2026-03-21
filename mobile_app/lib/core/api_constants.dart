@@ -1,8 +1,10 @@
 // lib/core/api_constants.dart
 
+import 'package:flutter/foundation.dart';
+
 class ApiConstants {
 
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static final String baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
 
   // ── Products ───────────────────────────────────────────────
   static const String products          = '/products';

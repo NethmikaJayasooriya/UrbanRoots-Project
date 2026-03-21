@@ -48,15 +48,19 @@ class _State extends State<AddProductPage> {
     setState(() => _loading = true);
 
     try {
+      final bool isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(widget.sellerId);
+      String imageUrl = '';
+      if (_imageFile != null) {
+        imageUrl = await ApiService.instance.uploadProductImage(_imageFile!);
+      }
+
       final payload = {
-        'seller_id': widget.sellerId,
+        if (isUuid) 'seller_id': widget.sellerId,
         'name': _nameCtrl.text.trim(),
         'category': _selectedCategory,
         'description': _descCtrl.text.trim(),
         'price': double.parse(_priceCtrl.text.trim()),
-        // TODO: replace with actual uploaded image URL once
-        //       storage upload is implemented
-        'image_url': _imageFile?.name ?? '',
+        'image_url': imageUrl,
         'is_active': true,
       };
 

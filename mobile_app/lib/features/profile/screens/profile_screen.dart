@@ -47,8 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoadingStreak = false;
       });
-
-      _toast('Failed to load streak: $e');
+      // Handle silently since streaks API is not fully implemented yet
     }
   }
 

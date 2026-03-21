@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
 import 'package:mobile_app/core/api_constants.dart';
 import 'package:mobile_app/models/products.dart';
 import 'package:mobile_app/models/sale.dart';
@@ -124,6 +125,33 @@ class ApiService {
   // ──────────────────────────────────────────────────────────────
   //  PRODUCTS
   // ──────────────────────────────────────────────────────────────
+
+  /// Upload a raw product image file and return the generated remote URL
+  Future<String> uploadProductImage(PlatformFile file) async {
+    try {
+      final uri = _uri('/products/upload');
+      final request = http.MultipartRequest('POST', uri);
+      
+      if (file.bytes != null) {
+        request.files.add(http.MultipartFile.fromBytes(
+          'image', file.bytes!, filename: file.name,
+        ));
+      } else if (file.path != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'image', file.path!,
+        ));
+      } else {
+        throw const ApiException(0, 'Invalid file pick');
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = _parse(response) as Map<String, dynamic>;
+      return data['imageUrl'] as String;
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
 
   Future<List<Products>> getProducts(String sellerId) async {
     try {

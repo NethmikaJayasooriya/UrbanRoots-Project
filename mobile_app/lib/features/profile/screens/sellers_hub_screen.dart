@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/api/api_service.dart';
 import 'seller_onboarding_screen.dart';
+import '../../../pages/seller/seller_page.dart';
+import '../../../models/seller.dart';
 
 class SellersHubScreen extends StatefulWidget {
   const SellersHubScreen({super.key});
@@ -122,7 +124,7 @@ class _SellersHubScreenState extends State<SellersHubScreen> {
     }
 
     if (step == 'completed') {
-      return 'Seller Setup Complete';
+      return 'Open Seller Dashboard';
     }
 
     return 'Continue Onboarding';
@@ -134,7 +136,21 @@ class _SellersHubScreenState extends State<SellersHubScreen> {
     }
 
     if (step == 'completed') {
-      return () => _toast('Your seller onboarding is already complete.');
+      return () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SellerPage(
+              seller: Seller(
+                id: _seller?['id'] ?? 'PLACEHOLDER',
+                uid: _seller?['uid'] ?? 'PLACEHOLDER',
+                rating: 0,
+                isVerified: true,
+              ),
+            ),
+          ),
+        );
+      };
     }
 
     return _continueOnboarding;

@@ -13,6 +13,7 @@ import 'package:mobile_app/models/seller.dart';
 //import 'package:mobile_app/pages/seller/seller_products_page.dart';
 //import 'package:mobile_app/pages/seller/sales_page.dart';
 import 'package:mobile_app/pages/seller/seller_page.dart';
+import 'package:mobile_app/pages/main_navigation.dart';
 
 void main() {
   runApp(
@@ -30,22 +31,8 @@ class UrbanRootsApp extends StatelessWidget {
     return MaterialApp(
       title: 'UrbanRoots',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        useMaterial3: true,
-      ),
-      home: const MarketplaceScreen1(),
-      debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: SellerPage(
-        seller: Seller(
-          id: 'PLACEHOLDER',
-          uid: 'PLACEHOLDER',
-          rating: 0,
-          isVerified: false,
-        ),
-      ),
+      home: const MainNavigation(),
     );
   }
 }

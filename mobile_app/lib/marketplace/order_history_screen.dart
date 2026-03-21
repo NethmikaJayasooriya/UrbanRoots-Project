@@ -191,7 +191,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text('${item['quantity']}x ${item['name']}', style: const TextStyle(color: MarketplaceTheme.textWhite)),
-                          Text('Rs. ${((item['price'] as num) * (item['quantity'] as num)).toStringAsFixed(0)}', style: const TextStyle(color: MarketplaceTheme.textGray)),
+                          Text('Rs. ${(
+                            (double.tryParse(item['price']?.toString() ?? '0') ?? 0.0) * 
+                            (double.tryParse(item['quantity']?.toString() ?? '0') ?? 0.0)
+                          ).toStringAsFixed(0)}', style: const TextStyle(color: MarketplaceTheme.textGray)),
                         ],
                       ),
                     )),
@@ -201,7 +204,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   children: [
                     const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite, fontSize: 16)),
                     Text(
-                      'Rs. ${(order['totalAmount'] as num).toStringAsFixed(2)}',
+                      'Rs. ${(double.tryParse(order['totalAmount']?.toString() ?? '0') ?? 0.0).toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.primaryGreen, fontSize: 16),
                     ),
                   ],

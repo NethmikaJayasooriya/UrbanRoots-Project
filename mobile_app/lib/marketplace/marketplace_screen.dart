@@ -58,9 +58,9 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
         loadedProducts.add(Product(
           name: p['name'],
           category: p['category'],
-          price: (p['price'] as num).toDouble(),
+          price: double.tryParse(p['price']?.toString() ?? '0') ?? 0.0,
           description: p['description'],
-          imageUrl: p['imageUrl'],
+          imageUrl: p['imageUrl'] ?? p['image_url'],
           placeholderIcon: _getIconForCategory(p['category']),
         ));
       }
@@ -232,15 +232,20 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
                             style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 16),
                           ),
                         )
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(16.0),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.68,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
+                  : RefreshIndicator(
+                      color: MarketplaceTheme.primaryGreen,
+                      onRefresh: _loadProducts,
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        itemCount: _filteredProducts.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.68,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemBuilder: (context, index) => _buildProductCard(context, _filteredProducts[index], index),
                       ),
-                      itemBuilder: (context, index) => _buildProductCard(context, _filteredProducts[index], index),
                     ),
             ),
           ],

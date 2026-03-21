@@ -6,6 +6,7 @@ import 'package:mobile_app/pages/seller/add_product_page.dart';
 import 'package:mobile_app/pages/seller/view_product_page.dart';
 import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/style.dart';
+import 'package:mobile_app/marketplace/marketplace_theme.dart';
 
 class SellerProductsPage extends StatefulWidget {
   // TODO: replace with real seller ID from auth session
@@ -253,121 +254,120 @@ class _State extends State<SellerProductsPage> {
       );
     }
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: MarketplaceTheme.primaryGreen,
       onRefresh: _loadProducts,
-      child: ListView.separated(
+      child: GridView.builder(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: filtered.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _ProductTile(
-          product: filtered[i],
-          onEdit: () => _openEdit(filtered[i]),
-          onToggle: () => _toggleActive(filtered[i]),
-          onDelete: () => _confirmDelete(filtered[i]),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.68,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
         ),
+        itemBuilder: (context, index) => _buildProductCard(context, filtered[index], index),
       ),
     );
   }
-}
 
-// ── Product tile ───────────────────────────────────────────────
-class _ProductTile extends StatelessWidget {
-  final Products product;
-  final VoidCallback onEdit;
-  final VoidCallback onToggle;
-  final VoidCallback onDelete;
+  Widget _buildProductCard(BuildContext context, Products product, int index) {
+    final int baseDuration = 400;
+    final int staggeredDuration = baseDuration + (index * 80);
 
-  const _ProductTile({
-    required this.product,
-    required this.onEdit,
-    required this.onToggle,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final p = product;
-    return AnimatedOpacity(
-      opacity: p.isActive ? 1.0 : 0.55,
-      duration: const Duration(milliseconds: 250),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          leading: _ProductImage(url: p.imageUrl),
-          title: Row(
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: staggeredDuration),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 40 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: GestureDetector(
+        onTap: () => _openEdit(product),
+        child: Container(
+          decoration: MarketplaceTheme.glassBox(radius: 16),
+          child: Stack(
             children: [
-              Expanded(
-                child: Text(p.name,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textMain)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Image Area
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              child: _buildImage(product.imageUrl!),
+                            )
+                          : const Center(
+                              child: Icon(Icons.eco_rounded, size: 54, color: MarketplaceTheme.primaryGreen),
+                            ),
+                    ),
+                  ),
+                  // Details Area
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: MarketplaceTheme.textWhite),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '\$${product.price.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.w900, color: MarketplaceTheme.primaryGreen, fontSize: 13),
+                            ),
+                            _StatusBadge(isActive: product.isActive),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _StatusBadge(isActive: p.isActive),
+              // Floating Action Menu Overlay
+              Positioned(
+                top: 4, right: 4,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: _ActionMenu(
+                    isActive: product.isActive,
+                    onEdit: () => _openEdit(product),
+                    onToggle: () => _toggleActive(product),
+                    onDelete: () => _confirmDelete(product),
+                  ),
+                ),
+              ),
             ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 3),
-              Text(p.category,
-                  style: const TextStyle(
-                      fontSize: 11, color: Colors.white38)),
-              const SizedBox(height: 2),
-              Text(p.description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 12, color: Colors.white54)),
-              const SizedBox(height: 4),
-              Text('\$${p.price.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary)),
-            ],
-          ),
-          trailing: _ActionMenu(
-            isActive: p.isActive,
-            onEdit: onEdit,
-            onToggle: onToggle,
-            onDelete: onDelete,
           ),
         ),
       ),
     );
   }
-}
 
-class _ProductImage extends StatelessWidget {
-  final String url;
-  const _ProductImage({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    final isNetwork = url.startsWith('http');
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: isNetwork
-          ? Image.network(url,
-              width: 56, height: 56, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _placeholder())
-          : Image.asset(url,
-              width: 56, height: 56, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _placeholder()),
-    );
+  Widget _buildImage(String url) {
+    if (url.startsWith('http')) {
+      return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.eco_rounded, color: MarketplaceTheme.primaryGreen));
+    }
+    return Image.asset(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.eco_rounded, color: MarketplaceTheme.primaryGreen));
   }
-
-  Widget _placeholder() => Container(
-        width: 56, height: 56, color: Colors.white10,
-        child: const Icon(Icons.image_outlined, color: Colors.white38),
-      );
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -380,19 +380,20 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: isActive
-            ? AppColors.primary.withOpacity(0.12)
+            ? MarketplaceTheme.primaryGreen.withOpacity(0.12)
             : Colors.redAccent.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isActive ? AppColors.primary : Colors.redAccent,
+          color: isActive ? MarketplaceTheme.primaryGreen : Colors.redAccent,
           width: 0.6,
         ),
       ),
       child: Text(
         isActive ? 'Active' : 'Inactive',
         style: TextStyle(
-          fontSize: 10,
-          color: isActive ? AppColors.primary : Colors.redAccent,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: isActive ? MarketplaceTheme.primaryGreen : Colors.redAccent,
         ),
       ),
     );
@@ -416,7 +417,7 @@ class _ActionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       color: AppColors.surfaceColor,
-      icon: const Icon(Icons.more_vert, color: Colors.white54, size: 20),
+      icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
       onSelected: (v) {
         if (v == 'edit') onEdit();
         if (v == 'toggle') onToggle();

@@ -33,19 +33,19 @@ class Seller {
 
   factory Seller.fromJson(Map<String, dynamic> json) {
     return Seller(
-      id:              json['id'] as String,
-      uid:             json['uid'] as String,
-      brandName:       json['brand_name'] as String?,
-      businessEmail:   json['business_email'] as String?,
-      phone:           json['phone'] as String?,
-      businessAddress: json['business_address'] as String?,
-      logoUrl:         json['logo_url'] as String?,
-      accountName:     json['account_name'] as String?,
-      accountNumber:   json['account_number'] as String?,
-      bank:            json['bank'] as String?,
-      branch:          json['branch'] as String?,
-      rating:          double.parse(json['rating'].toString()),
-      isVerified:      json['is_verified'] as bool? ?? false,
+      id:              json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      uid:             json['uid']?.toString() ?? '',
+      brandName:       json['brand_name']?.toString(),
+      businessEmail:   json['business_email']?.toString(),
+      phone:           json['phone']?.toString(),
+      businessAddress: json['business_address']?.toString(),
+      logoUrl:         json['logo_url']?.toString(),
+      accountName:     json['account_name']?.toString(),
+      accountNumber:   json['account_number']?.toString(),
+      bank:            json['bank']?.toString(),
+      branch:          json['branch']?.toString(),
+      rating:          double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      isVerified:      json['is_verified'] == true || json['is_verified'] == 'true' || json['is_verified'] == 1,
     );
   }
 
