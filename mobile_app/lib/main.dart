@@ -4,7 +4,6 @@ import 'app_theme.dart';
 //import 'package:mobile_app/pages/seller/update_seller_details.dart';
 
 //import 'package:mobile_app/models/products.dart';
-
 //import 'package:mobile_app/pages/seller/add_product_page.dart';
 //import 'package:mobile_app/pages/seller/view_product_page.dart';
 //import 'package:mobile_app/pages/seller/seller_products_page.dart';
