@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:mobile_app/services/profile_service.dart';
+import '../../../shared/api/api_service.dart';
+// Note: If you need the ProfileService instead of ApiService, uncomment the line below.
+// import '../services/profile_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -11,48 +14,145 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final firstName = TextEditingController(text: "Alex");
-  final lastName = TextEditingController(text: "Rivers");
-  final email = TextEditingController(text: "alex@email.com");
-  final phone = TextEditingController(text: "+94 77 123 4567");
+  final firstName = TextEditingController();
+  final lastName = TextEditingController();
+  final email = TextEditingController();
+  final phone = TextEditingController();
 
+  // Combined state variables from both branches
   bool _isLoading = false;
+  final ImagePicker _picker = ImagePicker();
+  File? _profileImage;
 
-  void _save() async {
+  Future<void> _save() async {
     setState(() => _isLoading = true);
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session expired")));
+    try {
+      // Using ApiService from the HEAD branch.
+      await ApiService.updateProfile(
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+        email: email.text.trim(),
+        phone: phone.text.trim(),
+      );
+
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      return;
-    }
 
-    final success = await ProfileService.updateProfile(
-      uid: user.uid,
-      firstName: firstName.text.trim(),
-      lastName: lastName.text.trim(),
-      email: email.text.trim(),
-      phone: phone.text.trim(),
-    );
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? "Profile updated in Supabase & Firestore!" : "Failed to update profile",
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Profile updated successfully!",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: AppColors.accent,
         ),
-        backgroundColor: success ? AppColors.accent : Colors.redAccent,
-      ),
-    );
+      );
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to update profile: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
-  void _editProfileImage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Edit profile picture tapped")),
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _profileImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to pick image: $e")));
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Choose Profile Picture",
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _BottomSheetOption(
+                      icon: Icons.photo_library_outlined,
+                      title: "Choose from Gallery",
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _BottomSheetOption(
+                      icon: Icons.camera_alt_outlined,
+                      title: "Take a Photo",
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                    ),
+                    if (_profileImage != null) ...[
+                      const SizedBox(height: 10),
+                      _BottomSheetOption(
+                        icon: Icons.delete_outline_rounded,
+                        title: "Remove Photo",
+                        isDanger: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _profileImage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -125,22 +225,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     color: AppColors.border,
                                     width: 2,
                                   ),
+                                  image: _profileImage != null
+                                      ? DecorationImage(
+                                          image: FileImage(_profileImage!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 52,
-                                    color: AppColors.muted,
-                                  ),
-                                ),
+                                child: _profileImage == null
+                                    ? const Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 52,
+                                          color: AppColors.muted,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
-
                             Positioned(
                               right: 4,
                               bottom: 8,
                               child: InkWell(
-                                onTap: _editProfileImage,
+                                onTap: _showImagePickerOptions,
                                 borderRadius: BorderRadius.circular(999),
                                 child: Container(
                                   width: 38,
@@ -211,7 +318,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _save,
+                        onPressed: _isLoading ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: Colors.black,
@@ -220,19 +327,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        child: _isLoading 
-                          ? const SizedBox(
-                              height: 22, 
-                              width: 22, 
-                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
-                            )
-                          : const Text(
-                              "SAVE CHANGES",
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.black,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "SAVE CHANGES",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
                       ),
                     ),
 
@@ -310,6 +420,55 @@ class _InputField extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BottomSheetOption extends StatelessWidget {
+  const _BottomSheetOption({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.isDanger = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool isDanger;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bg.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isDanger ? Colors.redAccent : AppColors.accent,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                color: isDanger ? Colors.redAccent : AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

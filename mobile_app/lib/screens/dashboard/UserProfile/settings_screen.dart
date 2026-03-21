@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 import 'edit_profile_screen.dart';
 import 'privacy_data_screen.dart';
 
@@ -12,9 +13,68 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool smartReminders = true;
+  bool _isLoadingPreferences = true;
+  bool _isSavingPreferences = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final data = await ApiService.getPreferences();
+
+      if (!mounted) return;
+
+      setState(() {
+        smartReminders = (data['smart_reminders'] ?? true) as bool;
+        _isLoadingPreferences = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingPreferences = false;
+      });
+
+      _toast('Failed to load preferences: $e');
+    }
+  }
+
+  Future<void> _updateSmartReminders(bool value) async {
+    if (_isSavingPreferences) return;
+
+    final previousValue = smartReminders;
+
+    setState(() {
+      smartReminders = value;
+      _isSavingPreferences = true;
+    });
+
+    try {
+      await ApiService.updatePreferences({'smart_reminders': value});
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSavingPreferences = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        smartReminders = previousValue;
+        _isSavingPreferences = false;
+      });
+
+      _toast('Failed to update smart reminders: $e');
+    }
   }
 
   @override
@@ -26,80 +86,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Header(
-                      title: "Settings",
-                      onBack: () => Navigator.of(context).maybePop(),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    const _SectionLabel("ACCOUNT & PRIVACY"),
-                    const SizedBox(height: 12),
-
-                    _GroupCard(
-                      children: [
-                        _NavRow(
-                          icon: Icons.person_outline_rounded,
-                          title: "Personal Info",
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const EditProfileScreen(),
+            child: _isLoadingPreferences
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Header(
+                            title: "Settings",
+                            onBack: () => Navigator.of(context).maybePop(),
+                          ),
+                          const SizedBox(height: 30),
+                          const _SectionLabel("ACCOUNT & PRIVACY"),
+                          const SizedBox(height: 12),
+                          _GroupCard(
+                            children: [
+                              _NavRow(
+                                icon: Icons.person_outline_rounded,
+                                title: "Personal Info",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const EditProfileScreen(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-
-                        const _DividerLine(),
-
-                        _NavRow(
-                          icon: Icons.lock_outline_rounded,
-                          title: "Privacy & Data",
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const PrivacyDataScreen(),
+                              const _DividerLine(),
+                              _NavRow(
+                                icon: Icons.lock_outline_rounded,
+                                title: "Privacy & Data",
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const PrivacyDataScreen(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 22),
+                          const _SectionLabel("APP PREFERENCES"),
+                          const SizedBox(height: 12),
+                          _GroupCard(
+                            children: [
+                              _SwitchRow(
+                                icon: Icons.notifications_active_outlined,
+                                title: "Smart Reminders",
+                                value: smartReminders,
+                                onChanged: _updateSmartReminders,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 28),
+                          _LogoutButton(onTap: () => _toast("Logout tapped")),
+                          const SizedBox(height: 220),
+                        ],
+                      ),
                     ),
-
-                    const SizedBox(height: 22),
-
-                    const _SectionLabel("APP PREFERENCES"),
-                    const SizedBox(height: 12),
-
-                    _GroupCard(
-                      children: [
-                        _SwitchRow(
-                          icon: Icons.notifications_active_outlined,
-                          title: "Smart Reminders",
-                          value: smartReminders,
-                          onChanged: (v) => setState(() => smartReminders = v),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 28),
-
-                    _LogoutButton(onTap: () => _toast("Logout tapped")),
-
-                    const SizedBox(height: 220),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
         ),
       ),
@@ -264,7 +315,7 @@ class _SwitchRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: AppColors.accent,
             inactiveTrackColor: AppColors.border,
           ),

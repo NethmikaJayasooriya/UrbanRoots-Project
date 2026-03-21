@@ -1,15 +1,165 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
+import 'seller_onboarding_screen.dart';
+import '../../../pages/seller/seller_page.dart';
+import '../../../models/seller.dart';
 
-class SellersHubScreen extends StatelessWidget {
+class SellersHubScreen extends StatefulWidget {
   const SellersHubScreen({super.key});
 
-  void _toast(BuildContext context, String msg) {
+  @override
+  State<SellersHubScreen> createState() => _SellersHubScreenState();
+}
+
+class _SellersHubScreenState extends State<SellersHubScreen> {
+  Map<String, dynamic>? _seller;
+  bool _isLoading = true;
+  bool _isStarting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSeller();
+  }
+
+  void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _loadSeller() async {
+    try {
+      final data = await ApiService.getSeller();
+
+      if (!mounted) return;
+
+      setState(() {
+        _seller = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load seller hub: $e')));
+    }
+  }
+
+  Future<void> _startOnboarding() async {
+    if (_isStarting) return;
+
+    try {
+      setState(() {
+        _isStarting = true;
+      });
+
+      await ApiService.startSeller();
+
+      if (!mounted) return;
+
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const SellerOnboardingScreen()),
+      );
+
+      if (!mounted) return;
+
+      await _loadSeller();
+
+      if (result == true) {
+        _toast('Seller onboarding updated');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _toast('Failed to start onboarding: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStarting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _continueOnboarding() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const SellerOnboardingScreen()),
+    );
+
+    if (!mounted) return;
+
+    await _loadSeller();
+
+    if (result == true) {
+      _toast('Seller onboarding updated');
+    }
+  }
+
+  _ProgressState _identityState(String step) {
+    if (step == 'identity') return _ProgressState.active;
+    return _ProgressState.done;
+  }
+
+  _ProgressState _shopState(String step) {
+    if (step == 'shop') return _ProgressState.active;
+    if (step == 'payout' || step == 'completed') return _ProgressState.done;
+    return _ProgressState.locked;
+  }
+
+  _ProgressState _payoutState(String step) {
+    if (step == 'payout') return _ProgressState.active;
+    if (step == 'completed') return _ProgressState.done;
+    return _ProgressState.locked;
+  }
+
+  String _heroButtonText(String step) {
+    if (_seller == null) {
+      return _isStarting ? 'Starting...' : 'Get Started';
+    }
+
+    if (step == 'completed') {
+      return 'Open Seller Dashboard';
+    }
+
+    return 'Continue Onboarding';
+  }
+
+  VoidCallback _heroButtonAction(String step) {
+    if (_seller == null) {
+      return _startOnboarding;
+    }
+
+    if (step == 'completed') {
+      return () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SellerPage(
+              seller: Seller(
+                id: _seller?['id'] ?? 'PLACEHOLDER',
+                uid: _seller?['uid'] ?? 'PLACEHOLDER',
+                rating: 0,
+                isVerified: true,
+              ),
+            ),
+          ),
+        );
+      };
+    }
+
+    return _continueOnboarding;
   }
 
   @override
   Widget build(BuildContext context) {
+    final String step = (_seller?['onboarding_step'] ?? 'identity').toString();
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -17,116 +167,108 @@ class SellersHubScreen extends StatelessWidget {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 34),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _TopBar(
-                      title: "UrbanRoots Seller Hub",
-                      onClose: () => Navigator.of(context).maybePop(),
-                      onHelp: () => _toast(context, "Help tapped"),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Hero card
-                    _HeroCard(
-                      title: "Grow your business\nwith UrbanRoots",
-                      subtitle:
-                          "Join our exclusive community of local plant enthusiasts and botanical experts.",
-                      buttonText: "Get Started",
-                      onPressed: () => _toast(context, "Get Started tapped"),
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    const Text(
-                      "Onboarding Progress",
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    _Card(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 34),
                       child: Column(
-                        children: const [
-                          _ProgressRow(
-                            state: _ProgressState.done,
-                            title: "Identity Verification",
-                            subtitle: "Completed",
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _TopBar(
+                            title: "UrbanRoots Seller Hub",
+                            onClose: () => Navigator.of(context).maybePop(),
+                            onHelp: () => _toast("Seller support coming soon"),
                           ),
-                          _DividerLine(),
-                          _ProgressRow(
-                            state: _ProgressState.active,
-                            title: "Shop Details",
-                            subtitle: "In Progress — Tell us about your plants",
+                          const SizedBox(height: 16),
+                          _HeroCard(
+                            title: "Grow your business\nwith UrbanRoots",
+                            subtitle:
+                                "Join our exclusive community of local plant enthusiasts and botanical experts.",
+                            buttonText: _heroButtonText(step),
+                            onPressed: _heroButtonAction(step),
                           ),
-                          _DividerLine(),
-                          _ProgressRow(
-                            state: _ProgressState.locked,
-                            title: "Payout Method",
-                            subtitle: "Locked until shop details are verified",
+                          const SizedBox(height: 22),
+                          const Text(
+                            "Onboarding Progress",
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.2,
+                            ),
                           ),
+                          const SizedBox(height: 12),
+                          _Card(
+                            child: Column(
+                              children: [
+                                _ProgressRow(
+                                  state: _identityState(step),
+                                  title: "Identity Verification",
+                                  subtitle: step == 'identity'
+                                      ? "In Progress — Verify your identity"
+                                      : "Completed",
+                                ),
+                                const _DividerLine(),
+                                _ProgressRow(
+                                  state: _shopState(step),
+                                  title: "Shop Details",
+                                  subtitle: (step == 'shop')
+                                      ? "In Progress — Tell us about your plants"
+                                      : (step == 'payout' ||
+                                            step == 'completed')
+                                      ? "Completed"
+                                      : "Locked until identity is verified",
+                                ),
+                                const _DividerLine(),
+                                _ProgressRow(
+                                  state: _payoutState(step),
+                                  title: "Payout Method",
+                                  subtitle: step == 'payout'
+                                      ? "In Progress — Set up payments"
+                                      : step == 'completed'
+                                      ? "Completed"
+                                      : "Locked until shop details are verified",
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          const Text(
+                            "Why sell here?",
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const _ReasonCard(
+                            icon: Icons.people_alt_rounded,
+                            title: "Reach Local Buyers",
+                            body:
+                                "Connect with thousands of plant lovers in your immediate neighborhood.",
+                          ),
+                          const SizedBox(height: 12),
+                          const _ReasonCard(
+                            icon: Icons.spa_rounded,
+                            title: "Care-as-a-Service",
+                            body:
+                                "Automated plant care reminders for your buyers to ensure success.",
+                          ),
+                          const SizedBox(height: 28),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 22),
-
-                    const Text(
-                      "Why sell here?",
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const _ReasonCard(
-                      icon: Icons.people_alt_rounded,
-                      title: "Reach Local Buyers",
-                      body:
-                          "Connect with thousands of plant lovers in your immediate neighborhood.",
-                    ),
-                    const SizedBox(height: 12),
-                    const _ReasonCard(
-                      icon: Icons.auto_awesome_rounded,
-                      title: "AI-Powered Pricing",
-                      body:
-                          "Our smart engine suggests the best price based on rarity and health.",
-                    ),
-                    const SizedBox(height: 12),
-                    const _ReasonCard(
-                      icon: Icons.spa_rounded,
-                      title: "Care-as-a-Service",
-                      body:
-                          "Automated plant care reminders for your buyers to ensure success.",
-                    ),
-
-                    const SizedBox(height: 28),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
         ),
       ),
     );
   }
 }
-
-/* -------------------- Top Bar -------------------- */
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
@@ -181,8 +323,6 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/* -------------------- Hero -------------------- */
-
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.title,
@@ -204,11 +344,10 @@ class _HeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
-        // Subtle "leafy" feel without images
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.card, AppColors.bg.withAlpha(120)],
+          colors: [AppColors.card, AppColors.bg.withValues(alpha: 0.47)],
         ),
       ),
       child: Column(
@@ -236,7 +375,7 @@ class _HeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            width: 160,
+            width: 190,
             child: ElevatedButton(
               onPressed: onPressed,
               style: ElevatedButton.styleFrom(
@@ -260,8 +399,6 @@ class _HeroCard extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Cards -------------------- */
 
 class _Card extends StatelessWidget {
   const _Card({required this.child});
@@ -291,8 +428,6 @@ class _DividerLine extends StatelessWidget {
     return Divider(height: 1, thickness: 1, color: AppColors.border);
   }
 }
-
-/* -------------------- Onboarding Progress -------------------- */
 
 enum _ProgressState { done, active, locked }
 
@@ -333,7 +468,7 @@ class _ProgressRow extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: AppColors.bg.withAlpha(55),
+              color: AppColors.bg.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
@@ -371,8 +506,6 @@ class _ProgressRow extends StatelessWidget {
   }
 }
 
-/* -------------------- Why Sell Here -------------------- */
-
 class _ReasonCard extends StatelessWidget {
   const _ReasonCard({
     required this.icon,
@@ -401,7 +534,7 @@ class _ReasonCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.bg.withAlpha(55),
+              color: AppColors.bg.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.border),
             ),

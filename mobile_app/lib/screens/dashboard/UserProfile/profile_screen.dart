@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
@@ -9,8 +10,70 @@ import 'help_support_screen.dart';
 import 'subscriptions_billing_screen.dart';
 import 'package:mobile_app/pages/seller/seller_onboarding_page.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isLoadingStreak = true;
+  int _currentStreak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStreak();
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _loadStreak() async {
+    try {
+      final data = await ApiService.getMyStreak();
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentStreak = (data['current_streak'] ?? 0) as int;
+        _isLoadingStreak = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingStreak = false;
+      });
+      // Handle silently since streaks API is not fully implemented yet
+    }
+  }
+
+  Future<void> _completeTodayTaskForTesting() async {
+    try {
+      final data = await ApiService.completeTodayStreak();
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentStreak = (data['current_streak'] ?? 0) as int;
+      });
+
+      final alreadyCompletedToday =
+          (data['alreadyCompletedToday'] ?? false) as bool;
+
+      if (alreadyCompletedToday) {
+        _toast('Today is already counted for your streak');
+      } else {
+        _toast('Streak updated successfully');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _toast('Failed to complete today task: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +93,6 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     const SizedBox(height: 30),
 
-                    // 👤 Profile Avatar
                     Container(
                       width: 110,
                       height: 110,
@@ -69,27 +131,54 @@ class ProfileScreen extends StatelessWidget {
 
                     const SizedBox(height: 22),
 
-                    // 📊 Stats Row
                     Row(
-                      children: const [
-                        Expanded(
+                      children: [
+                        const Expanded(
                           child: _StatCard(
                             value: "12",
                             label: "PLANTS\nGROWING",
                           ),
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
+                        const SizedBox(width: 12),
+                        const Expanded(
                           child: _StatCard(
                             value: "3",
                             label: "GARDENS\nMANAGED",
                           ),
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: _StatCard(value: "15", label: "STREAK\nDAYS"),
+                          child: _StatCard(
+                            value: _isLoadingStreak
+                                ? "..."
+                                : _currentStreak.toString(),
+                            label: "STREAK\nDAYS",
+                          ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _completeTodayTaskForTesting,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        child: const Text("Complete Today Task (Test)"),
+                      ),
                     ),
 
                     const SizedBox(height: 26),
@@ -109,7 +198,6 @@ class ProfileScreen extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    // 📦 Menu Card
                     Container(
                       decoration: BoxDecoration(
                         color: AppColors.card,
@@ -131,7 +219,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.notifications_none,
                             title: "Notifications",
@@ -145,7 +232,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.settings_outlined,
                             title: "Settings",
@@ -159,7 +245,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.star_outline,
                             title: "Rate App",
@@ -173,7 +258,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.credit_card_outlined,
                             title: "Subscriptions & Billing",
@@ -188,7 +272,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.description_outlined,
                             title: "Terms & Conditions",
@@ -202,7 +285,6 @@ class ProfileScreen extends StatelessWidget {
                             },
                           ),
                           const _MenuDivider(),
-
                           _MenuItem(
                             icon: Icons.help_outline,
                             title: "Help & Support",
@@ -318,6 +400,6 @@ class _MenuDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(height: 1, thickness: 1, color: AppColors.border);
+    return const Divider(height: 1, thickness: 1, color: AppColors.border);
   }
 }

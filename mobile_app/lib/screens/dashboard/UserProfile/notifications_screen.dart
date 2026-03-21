@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -9,68 +10,173 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final List<NotificationItem> _items = [
-    NotificationItem(
-      section: NotificationSection.today,
-      title: 'Watering Reminder',
-      message:
-          'Your Monstera Adansonii needs watering. Soil moisture is below 20%.',
-      timeLabel: '2H AGO',
-      icon: Icons.inventory_2_outlined,
-      iconBg: const Color(0xFF132B35),
-      isUnread: true,
-      actionLabel: 'Done',
-      actionType: NotificationActionType.markDone,
-    ),
-    NotificationItem(
-      section: NotificationSection.today,
-      title: 'New Achievement!',
-      message: "You've reached a 15-day streak!\nKeep those plants thriving.",
-      timeLabel: '5H AGO',
-      icon: Icons.auto_awesome_outlined,
-      iconBg: const Color(0xFF2B2A14),
-      isUnread: false,
-    ),
-    NotificationItem(
-      section: NotificationSection.yesterday,
-      title: 'Garden Tip',
-      message:
-          'Check out our new guide on "Winter Care for Indoor Succulents".',
-      timeLabel: '1D AGO',
-      icon: Icons.menu_book_outlined,
-      iconBg: const Color(0xFF122B1D),
-      isUnread: false,
-    ),
-    NotificationItem(
-      section: NotificationSection.yesterday,
-      title: 'Subscription Renewed',
-      message: 'Your monthly Pro subscription was successfully renewed.',
-      timeLabel: '1D AGO',
-      icon: Icons.bolt_outlined,
-      iconBg: const Color(0xFF23183A),
-      isUnread: false,
-    ),
-  ];
+  List<NotificationItem> _items = [];
+  bool isLoading = true;
+  bool isUpdating = false;
 
-  void _markAllRead() {
-    setState(() {
-      for (final n in _items) {
-        n.isUnread = false;
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    loadNotifications();
   }
 
-  void _handleAction(NotificationItem item) {
+  Future<void> loadNotifications() async {
+    try {
+      final data = await ApiService.getNotifications();
+
+      if (!mounted) return;
+
+      setState(() {
+        _items = data.map<NotificationItem>((n) {
+          return NotificationItem(
+            id: n['id'],
+            section: (n['section'] ?? 'today') == 'yesterday'
+                ? NotificationSection.yesterday
+                : NotificationSection.today,
+            title: n['title'] ?? '',
+            message: n['message'] ?? '',
+            timeLabel: n['time_label'] ?? '',
+            icon: _mapIcon(n['icon_name']),
+            iconBg: _mapIconBg(n['icon_name']),
+            isUnread: !(n['is_read'] ?? false),
+            actionLabel: n['action_label'],
+            actionType: n['action_type'] == 'mark_done'
+                ? NotificationActionType.markDone
+                : null,
+          );
+        }).toList();
+
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load notifications: $e')),
+      );
+    }
+  }
+
+  IconData _mapIcon(String? iconName) {
+    switch (iconName) {
+      case 'inventory_2_outlined':
+        return Icons.inventory_2_outlined;
+      case 'auto_awesome_outlined':
+        return Icons.auto_awesome_outlined;
+      case 'menu_book_outlined':
+        return Icons.menu_book_outlined;
+      case 'bolt_outlined':
+        return Icons.bolt_outlined;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  Color _mapIconBg(String? iconName) {
+    switch (iconName) {
+      case 'inventory_2_outlined':
+        return const Color(0xFF132B35);
+      case 'auto_awesome_outlined':
+        return const Color(0xFF2B2A14);
+      case 'menu_book_outlined':
+        return const Color(0xFF122B1D);
+      case 'bolt_outlined':
+        return const Color(0xFF23183A);
+      default:
+        return const Color(0xFF132B35);
+    }
+  }
+
+  Future<void> _markAllRead() async {
+    if (isUpdating || _items.isEmpty) return;
+
+    try {
+      setState(() => isUpdating = true);
+
+      await ApiService.markAllNotificationsRead();
+
+      if (!mounted) return;
+      setState(() {
+        _items.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All notifications cleared')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to clear notifications: $e')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => isUpdating = false);
+    }
+  }
+
+  Future<void> _removeSingleNotification(NotificationItem item) async {
+    if (isUpdating) return;
+
+    try {
+      setState(() => isUpdating = true);
+
+      await ApiService.markNotificationRead(item.id);
+
+      if (!mounted) return;
+      setState(() {
+        _items.removeWhere((n) => n.id == item.id);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update notification: $e')),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => isUpdating = false);
+    }
+  }
+
+  Future<void> _handleAction(NotificationItem item) async {
+    if (isUpdating) return;
+
     if (item.actionType == NotificationActionType.markDone) {
-      setState(() => item.isUnread = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Marked as done')));
+      try {
+        setState(() => isUpdating = true);
+
+        await ApiService.markNotificationRead(item.id);
+
+        if (!mounted) return;
+        setState(() {
+          _items.removeWhere((n) => n.id == item.id);
+        });
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Notification removed')));
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to mark notification: $e')),
+        );
+      } finally {
+        if (!mounted) return;
+        setState(() => isUpdating = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final today = _items.where((e) => e.section == NotificationSection.today);
     final yesterday = _items.where(
       (e) => e.section == NotificationSection.yesterday,
@@ -80,13 +186,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Align(
-          alignment: Alignment.topCenter, // ✅ force to top
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                // ✅ MUCH smaller top padding so it starts near top
                 padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,47 +199,94 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     _Header(
                       onBack: () => Navigator.of(context).maybePop(),
                       onMarkAllRead: _markAllRead,
+                      hasNotifications: _items.isNotEmpty,
                     ),
-
-                    // ✅ smaller gap after header
                     const SizedBox(height: 35),
 
-                    if (today.isNotEmpty) ...[
-                      const _SectionLabel('TODAY'),
-                      const SizedBox(height: 10),
-                      _GroupCard(
-                        children: today
-                            .map(
-                              (n) => _GroupRow(
-                                item: n,
-                                onTap: () => setState(() => n.isUnread = false),
-                                onAction: n.actionLabel == null
-                                    ? null
-                                    : () => _handleAction(n),
+                    if (_items.isEmpty) ...[
+                      const SizedBox(height: 80),
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 78,
+                              height: 78,
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.border),
                               ),
-                            )
-                            .toList(),
+                              child: const Icon(
+                                Icons.notifications_off_outlined,
+                                color: AppColors.muted,
+                                size: 34,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'No notifications',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'You’re all caught up for now.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                    ] else ...[
+                      if (today.isNotEmpty) ...[
+                        const _SectionLabel('TODAY'),
+                        const SizedBox(height: 10),
+                        _GroupCard(
+                          children: today
+                              .map(
+                                (n) => _GroupRow(
+                                  item: n,
+                                  onTap: () async {
+                                    await _removeSingleNotification(n);
+                                  },
+                                  onAction: n.actionLabel == null
+                                      ? null
+                                      : () async {
+                                          await _handleAction(n);
+                                        },
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (yesterday.isNotEmpty) ...[
+                        const _SectionLabel('YESTERDAY'),
+                        const SizedBox(height: 10),
+                        _GroupCard(
+                          children: yesterday
+                              .map(
+                                (n) => _GroupRow(
+                                  item: n,
+                                  onTap: () async {
+                                    await _removeSingleNotification(n);
+                                  },
+                                  onAction: null,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                     ],
 
-                    if (yesterday.isNotEmpty) ...[
-                      const _SectionLabel('YESTERDAY'),
-                      const SizedBox(height: 10),
-                      _GroupCard(
-                        children: yesterday
-                            .map(
-                              (n) => _GroupRow(
-                                item: n,
-                                onTap: () => setState(() => n.isUnread = false),
-                                onAction: null,
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-
-                    // ✅ BIG bottom empty space (so bottom looks free)
                     const SizedBox(height: 220),
                   ],
                 ),
@@ -147,13 +299,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-/* -------------------- Header -------------------- */
-
 class _Header extends StatelessWidget {
-  const _Header({required this.onBack, required this.onMarkAllRead});
+  const _Header({
+    required this.onBack,
+    required this.onMarkAllRead,
+    required this.hasNotifications,
+  });
 
   final VoidCallback onBack;
-  final VoidCallback onMarkAllRead;
+  final Future<void> Function() onMarkAllRead;
+  final bool hasNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -183,23 +338,24 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        TextButton(
-          onPressed: onMarkAllRead,
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.accent,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        if (hasNotifications)
+          TextButton(
+            onPressed: () async {
+              await onMarkAllRead();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.accent,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            ),
+            child: const Text(
+              'Mark all read',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
           ),
-          child: const Text(
-            'Mark all read',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          ),
-        ),
       ],
     );
   }
 }
-
-/* -------------------- Section Label -------------------- */
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
@@ -218,8 +374,6 @@ class _SectionLabel extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Group Card -------------------- */
 
 class _GroupCard extends StatelessWidget {
   const _GroupCard({required this.children});
@@ -246,7 +400,7 @@ class _GroupCard extends StatelessWidget {
       out.add(items[i]);
       if (i != items.length - 1) {
         out.add(
-          Container(height: 1, color: AppColors.border.withValues(alpha: 0.65)),
+          Container(height: 1, color: AppColors.border.withOpacity(0.65)),
         );
       }
     }
@@ -254,19 +408,19 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-/* -------------------- Row -------------------- */
-
 class _GroupRow extends StatelessWidget {
   const _GroupRow({required this.item, required this.onTap, this.onAction});
 
   final NotificationItem item;
-  final VoidCallback onTap;
-  final VoidCallback? onAction;
+  final Future<void> Function() onTap;
+  final Future<void> Function()? onAction;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: () async {
+        await onTap();
+      },
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
         child: Row(
@@ -328,7 +482,9 @@ class _GroupRow extends StatelessWidget {
                     const SizedBox(height: 10),
                     _ActionButton(
                       label: item.actionLabel!,
-                      onPressed: onAction!,
+                      onPressed: () async {
+                        await onAction!();
+                      },
                     ),
                   ],
                 ],
@@ -364,14 +520,16 @@ class _IconBox extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   const _ActionButton({required this.label, required this.onPressed});
   final String label;
-  final VoidCallback onPressed;
+  final Future<void> Function() onPressed;
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: () async {
+          await onPressed();
+        },
         style: ElevatedButton.styleFrom(
           elevation: 0,
           backgroundColor: AppColors.actionBg,
@@ -390,14 +548,13 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-/* -------------------- Data Model -------------------- */
-
 enum NotificationSection { today, yesterday }
 
 enum NotificationActionType { markDone }
 
 class NotificationItem {
   NotificationItem({
+    required this.id,
     required this.section,
     required this.title,
     required this.message,
@@ -409,15 +566,14 @@ class NotificationItem {
     this.actionType,
   });
 
+  final String id;
   final NotificationSection section;
   final String title;
   final String message;
   final String timeLabel;
   final IconData icon;
   final Color iconBg;
-
   bool isUnread;
-
   final String? actionLabel;
   final NotificationActionType? actionType;
 }
