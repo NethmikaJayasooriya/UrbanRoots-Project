@@ -8,6 +8,9 @@ export class Order {
   @Column()
   orderId: string; // e.g. ORD-12345
 
+  @Column({ nullable: true })
+  customerPhone: string; // Used for order tracking
+
   @Column('jsonb')
   customerDetails: any; // name, address, phone
 

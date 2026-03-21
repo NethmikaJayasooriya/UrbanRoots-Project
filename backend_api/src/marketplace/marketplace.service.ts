@@ -18,14 +18,14 @@ export class MarketplaceService implements OnModuleInit {
     if (count === 0) {
       console.log('Seeding initial products into PostgreSQL...');
       const initialProducts = [
-        { name: 'Tomato Seeds', category: 'Seeds', price: 250.0, description: 'High-yield tomato seeds suitable for urban gardens.', placeholderIcon: 'spa_rounded' },
-        { name: 'Organic Fertilizer', category: 'Fertilizers', price: 900.0, description: '100% organic compost fertilizer, 2kg bag.', placeholderIcon: 'eco_rounded' },
-        { name: 'Indoor Fern', category: 'Indoor', price: 1200.0, description: 'Low-maintenance indoor fern for better air quality.', placeholderIcon: 'local_florist_rounded' },
-        { name: 'Gardening Gloves', category: 'Tools', price: 450.0, description: 'Durable, weather-resistant gardening gloves.', placeholderIcon: 'hardware_rounded' },
-        { name: 'Watering Can', category: 'Tools', price: 850.0, description: 'Ergonomic 2L watering can with a detachable spout.', placeholderIcon: 'hardware_rounded' },
-        { name: 'Basil Plant', category: 'Plants', price: 350.0, description: 'Fresh basil plant, perfect for your kitchen window.', placeholderIcon: 'local_florist_rounded' },
-        { name: 'Chili Seeds', category: 'Seeds', price: 150.0, description: 'Spicy Kochchi chili seeds.', placeholderIcon: 'spa_rounded' },
-        { name: 'Neem Oil (Pesticide)', category: 'Care', price: 650.0, description: 'Natural pest control for organic farming.', placeholderIcon: 'spa_rounded' },
+        { name: 'Tomato Seeds', category: 'Seeds', price: 250.0, description: 'High-yield tomato seeds suitable for urban gardens.', imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'spa_rounded' },
+        { name: 'Organic Fertilizer', category: 'Fertilizers', price: 900.0, description: '100% organic compost fertilizer, 2kg bag.', imageUrl: 'https://images.unsplash.com/photo-1599839619722-39751411ea63?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'eco_rounded' },
+        { name: 'Indoor Fern', category: 'Indoor', price: 1200.0, description: 'Low-maintenance indoor fern for better air quality.', imageUrl: 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'local_florist_rounded' },
+        { name: 'Gardening Gloves', category: 'Tools', price: 450.0, description: 'Durable, weather-resistant gardening gloves.', imageUrl: 'https://images.unsplash.com/photo-1416879598056-0cbb04922b0a?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'hardware_rounded' },
+        { name: 'Watering Can', category: 'Tools', price: 850.0, description: 'Ergonomic 2L watering can with a detachable spout.', imageUrl: 'https://images.unsplash.com/photo-1585072044322-9599d1461164?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'hardware_rounded' },
+        { name: 'Basil Plant', category: 'Plants', price: 350.0, description: 'Fresh basil plant, perfect for your kitchen window.', imageUrl: 'https://images.unsplash.com/photo-1608681290619-a1d2f00f0aa0?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'local_florist_rounded' },
+        { name: 'Chili Seeds', category: 'Seeds', price: 150.0, description: 'Spicy Kochchi chili seeds.', imageUrl: 'https://images.unsplash.com/photo-1588015383566-1caba908be59?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'spa_rounded' },
+        { name: 'Neem Oil (Pesticide)', category: 'Care', price: 650.0, description: 'Natural pest control for organic farming.', imageUrl: 'https://images.unsplash.com/photo-1611078712165-4f5195e87aed?q=80&w=800&auto=format&fit=crop', placeholderIcon: 'spa_rounded' },
       ];
       for (const p of initialProducts) {
         await this.productRepo.save(this.productRepo.create(p));
@@ -102,6 +102,7 @@ export class MarketplaceService implements OnModuleInit {
     const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const newOrder = this.orderRepo.create({
       orderId,
+      customerPhone: orderData.phone,
       customerDetails: {
         name: orderData.name,
         address: orderData.address,
@@ -134,4 +135,12 @@ export class MarketplaceService implements OnModuleInit {
     }
     return 'FAILED';
   }
+
+  async getOrdersByPhone(phone: string) {
+    return this.orderRepo.find({
+      where: { customerPhone: phone },
+      order: { createdAt: 'DESC' },
+    });
+  }
 }
+

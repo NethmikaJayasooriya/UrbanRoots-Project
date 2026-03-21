@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'cart_model.dart';
 import 'marketplace_theme.dart';
 import 'marketplace_api.dart';
@@ -35,16 +36,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isProcessing = true);
 
     try {
+      final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
       final orderData = {
-        'name': _nameController.text,
-        'address': _addressController.text,
-        'phone': _phoneController.text,
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'phone': rawPhone,
         'totalAmount': total,
         'paymentMethod': _paymentMethod,
         'items': context.read<CartModel>().items.map((e) => e.toJson()).toList(),
       };
 
       final orderId = await MarketplaceApi.createOrder(orderData);
+
+      // Save phone securely for order tracking later!
+      final prefs = await SharedPreferences.getInstance();
+      List<String> userPhones = prefs.getStringList('user_phones') ?? [];
+      if (!userPhones.contains(rawPhone)) {
+        userPhones.add(rawPhone);
+        await prefs.setStringList('user_phones', userPhones);
+      }
+      await prefs.setString('user_phone', rawPhone); // Legacy tracking
 
       if (_paymentMethod == 'cod') {
         if (!mounted) return;

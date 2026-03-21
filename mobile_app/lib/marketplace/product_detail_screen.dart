@@ -68,6 +68,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
           category: p['category'],
           price: (p['price'] as num).toDouble(),
           description: p['description'],
+          imageUrl: p['imageUrl'],
           placeholderIcon: _getIconForCategory(p['category']),
         )).toList();
         _isLoadingRelated = false;
@@ -210,15 +211,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
           ],
         ),
       ),
-      child: Center(
-        child: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(bounds),
-          child: Icon(widget.product.placeholderIcon, size: 140, color: Colors.white),
-        ),
+      child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
+          ? Image.network(
+              widget.product.imageUrl!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) => _buildHeroPlaceholder(),
+            )
+          : _buildHeroPlaceholder(),
+    );
+  }
+
+  Widget _buildHeroPlaceholder() {
+    return Center(
+      child: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(bounds),
+        child: Icon(widget.product.placeholderIcon, size: 140, color: Colors.white),
       ),
     );
   }
@@ -407,16 +420,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
                               color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                             ),
-                            child: Center(
-                              child: ShaderMask(
-                                shaderCallback: (bounds) => const LinearGradient(
-                                  colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ).createShader(bounds),
-                                child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
-                              ),
-                            ),
+                            child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                                ? ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                    child: Image.network(
+                                      product.imageUrl!,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder: (context, error, stackTrace) => Center(
+                                        child: ShaderMask(
+                                          shaderCallback: (bounds) => const LinearGradient(
+                                            colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ).createShader(bounds),
+                                          child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: ShaderMask(
+                                      shaderCallback: (bounds) => const LinearGradient(
+                                        colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(bounds),
+                                      child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                                    ),
+                                  ),
                           ),
                         ),
                         Padding(

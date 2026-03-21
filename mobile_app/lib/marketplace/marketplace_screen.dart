@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'cart_model.dart';
 import 'shopping_Cart.dart';
 import 'product_detail_screen.dart';
+import 'order_history_screen.dart';
 import 'marketplace_theme.dart';
 import 'marketplace_api.dart';
 
@@ -59,6 +60,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
           category: p['category'],
           price: (p['price'] as num).toDouble(),
           description: p['description'],
+          imageUrl: p['imageUrl'],
           placeholderIcon: _getIconForCategory(p['category']),
         ));
       }
@@ -106,6 +108,12 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
         title: const Text('UrbanRoots Market',
             style: TextStyle(fontWeight: FontWeight.w800, color: MarketplaceTheme.textWhite, letterSpacing: 1.2)),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
+            },
+            icon: const Icon(Icons.receipt_long_rounded, color: MarketplaceTheme.primaryGreen),
+          ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -262,16 +270,35 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
                   color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                child: Center(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
-                    child: Icon(product.placeholderIcon, size: 54, color: Colors.white),
-                  ),
-                ),
+                child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Image.network(
+                          product.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: ShaderMask(
+                              shaderCallback: (bounds) => const LinearGradient(
+                                colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ).createShader(bounds),
+                              child: Icon(product.placeholderIcon, size: 54, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => const LinearGradient(
+                            colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ).createShader(bounds),
+                          child: Icon(product.placeholderIcon, size: 54, color: Colors.white),
+                        ),
+                      ),
               ),
             ),
             // Details area

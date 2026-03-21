@@ -15,6 +15,11 @@ export class MarketplaceController {
     return await this.marketplaceService.createOrder(orderData);
   }
 
+  @Get('orders/:phone')
+  async getOrdersByPhone(@Param('phone') phone: string) {
+    return await this.marketplaceService.getOrdersByPhone(phone);
+  }
+
   @Post('payhere/notify')
   async handlePayHereNotification(@Body() payload: any) {
     return await this.marketplaceService.handlePayHereNotification(payload);

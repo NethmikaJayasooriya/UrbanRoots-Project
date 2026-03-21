@@ -18,6 +18,9 @@ export class Product {
   description: string;
 
   @Column({ nullable: true })
+  imageUrl: string;
+
+  @Column({ nullable: true })
   placeholderIcon: string; // Storing string representation of icons, e.g. 'spa_rounded'
 
   @CreateDateColumn()
