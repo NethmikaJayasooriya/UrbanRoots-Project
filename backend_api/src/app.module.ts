@@ -6,7 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// Feature Modules (From your merge)
+// Feature Modules
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { SupabaseModule } from './common/supabase/supabase.module';
 import { ProfileModule } from './profile/profile.module';
@@ -17,31 +17,42 @@ import { SupportModule } from './support/support.module';
 import { SellerModule } from './seller/seller.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ProductsModule } from './products/products.module';
+import { SalesModule } from './sales/sales.module';
+import { SellersModule } from './sellers/sellers.module';
+import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    // Load environment variables
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    // ── Env Configuration ──────────────────────────────────
+    ConfigModule.forRoot({ isGlobal: true }),
 
-    // Connect to your Database (IoT Data Storage)
+    // ── Database (Supabase / Postgres) ─────────────────────
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (cfg: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT') || 5432,
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
+        host: cfg.get<string>('DB_HOST'),
+        port: cfg.get<number>('DB_PORT') || 5432,
+        username: cfg.get<string>('DB_USER') || cfg.get<string>('DB_USERNAME'),
+        password: cfg.get<string>('DB_PASS') || cfg.get<string>('DB_PASSWORD'),
+        database: cfg.get<string>('DB_NAME'),
+        // SSL is usually required for Supabase remote connections
+        ssl: { rejectUnauthorized: false },
         autoLoadEntities: true,
-        synchronize: true, // Auto-creates tables based on your code
+        // Set to false if your tables are already managed in Supabase dashboard
+        synchronize: false,
       }),
     }),
 
-    // All your specific modules
+    // ── Feature Modules ────────────────────────────────────
+    UsersModule,
+    SellersModule,
+    ProductsModule,
+    SalesModule,
+    BeneficiariesModule,
     MarketplaceModule,
     SupabaseModule,
     ProfileModule,
