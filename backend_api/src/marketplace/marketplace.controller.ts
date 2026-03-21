@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { MarketplaceService } from './marketplace.service';
 
 @Controller('marketplace')
@@ -19,4 +19,15 @@ export class MarketplaceController {
   handlePayHereNotification(@Body() payload: any) {
     return this.marketplaceService.handlePayHereNotification(payload);
   }
+
+  @Get('products/:productId/reviews')
+  getReviews(@Param('productId') productId: string) {
+    return this.marketplaceService.getReviews(productId);
+  }
+
+  @Post('products/:productId/reviews')
+  addReview(@Param('productId') productId: string, @Body() reviewData: any) {
+    return this.marketplaceService.addReview(productId, reviewData);
+  }
 }
+

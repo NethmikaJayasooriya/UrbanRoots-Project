@@ -16,9 +16,43 @@ export class MarketplaceService {
   // In-memory orders map for now.
   private readonly orders = new Map<string, any>();
 
+  // In-memory reviews map: productId -> array of reviews
+  private readonly reviews = new Map<string, any[]>();
+
   getProducts() {
-    return this.products;
+    return this.products.map(product => {
+      const productReviews = this.reviews.get(product.name) || [];
+      const reviewCount = productReviews.length;
+      let averageRating = 0;
+      if (reviewCount > 0) {
+        averageRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount;
+      }
+      return {
+        ...product,
+        rating: averageRating,
+        reviewCount,
+      };
+    });
   }
+
+  getReviews(productId: string) {
+    return this.reviews.get(productId) || [];
+  }
+
+  addReview(productId: string, reviewData: any) {
+    const productReviews = this.reviews.get(productId) || [];
+    const newReview = {
+      id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      productId,
+      originalName: 'User', // Placeholder since there is no auth
+      ...reviewData,
+      createdAt: new Date(),
+    };
+    productReviews.push(newReview);
+    this.reviews.set(productId, productReviews);
+    return newReview;
+  }
+
 
   createOrder(orderData: any) {
     const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;

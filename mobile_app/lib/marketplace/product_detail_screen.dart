@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'cart_model.dart';
 import 'marketplace_screen.dart';
 import 'marketplace_theme.dart';
+import 'marketplace_api.dart';
+
 
 class Review {
   final String author;
@@ -31,10 +33,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
 
-  final List<Review> _reviews = [
-    const Review(author: 'Amal P.', rating: 5, comment: 'Germinated within a week! Very healthy seeds.', date: 'Feb 2025'),
-    const Review(author: 'Dilini R.', rating: 4, comment: 'Great quality, but took a while to sprout.', date: 'Jan 2025'),
-  ];
+  List<Review> _reviews = [];
+  bool _isLoadingReviews = true;
+
 
   final _commentController = TextEditingController();
   int _selectedRating = 0;
@@ -49,7 +50,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
     _animController.forward();
+    _loadReviews();
   }
+
+  Future<void> _loadReviews() async {
+    try {
+      final reviewData = await MarketplaceApi.fetchReviews(widget.product.name);
+      if (!mounted) return;
+      setState(() {
+        _reviews = (reviewData as List).map((r) => Review(
+          author: r['originalName'] ?? 'User',
+          rating: r['rating'] ?? 5,
+          comment: r['comment'] ?? '',
+          date: 'Recently',
+        )).toList();
+        _reviews = _reviews.reversed.toList();
+        _isLoadingReviews = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingReviews = false;
+      });
+      print('Error loading reviews: $e');
+    }
+  }
+
 
   @override
   void dispose() {
@@ -246,7 +272,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
           ],
         ),
         const SizedBox(height: 16),
-        if (_reviews.isEmpty)
+        if (_isLoadingReviews)
+          const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: MarketplaceTheme.primaryGreen)))
+        else if (_reviews.isEmpty)
+
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
@@ -412,22 +441,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
       return;
     }
     setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(seconds: 1));
-    final newReview = Review(
-      author: 'You',
-      rating: _selectedRating,
-      comment: _commentController.text.trim(),
-      date: 'Right now',
-    );
-    setState(() {
-      _reviews.insert(0, newReview);
-      _selectedRating = 0;
-      _commentController.clear();
-      _isSubmitting = false;
-    });
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('Review submitted!', style: TextStyle(color: MarketplaceTheme.darkGreen, fontWeight: FontWeight.bold)), backgroundColor: MarketplaceTheme.lightGreen, behavior: SnackBarBehavior.floating),
-    );
+    
+    try {
+      final reviewData = {
+        'rating': _selectedRating,
+        'comment': _commentController.text.trim()
+      };
+      await MarketplaceApi.submitReview(widget.product.name, reviewData);
+      
+      final newReview = Review(
+        author: 'You',
+        rating: _selectedRating,
+        comment: _commentController.text.trim(),
+        date: 'Right now',
+      );
+      
+      if (!mounted) return;
+      setState(() {
+        _reviews.insert(0, newReview); // inject instantly for responsive UI
+        _selectedRating = 0;
+        _commentController.clear();
+        _isSubmitting = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Review submitted!', style: TextStyle(color: MarketplaceTheme.darkGreen, fontWeight: FontWeight.bold)), backgroundColor: MarketplaceTheme.lightGreen, behavior: SnackBarBehavior.floating),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+      );
+    }
   }
+
 }

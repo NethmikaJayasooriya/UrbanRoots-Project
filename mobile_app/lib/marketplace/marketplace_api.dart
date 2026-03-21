@@ -35,4 +35,37 @@ class MarketplaceApi {
       throw Exception('Error creating order: $e');
     }
   }
+
+  static Future<List<dynamic>> fetchReviews(String productId) async {
+    try {
+      final encodedId = Uri.encodeComponent(productId);
+      final response = await http.get(Uri.parse('$baseUrl/marketplace/products/$encodedId/reviews'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load reviews');
+      }
+    } catch (e) {
+      throw Exception('Error fetching reviews: $e');
+    }
+  }
+
+  static Future<dynamic> submitReview(String productId, Map<String, dynamic> reviewData) async {
+    try {
+      final encodedId = Uri.encodeComponent(productId);
+      final response = await http.post(
+        Uri.parse('$baseUrl/marketplace/products/$encodedId/reviews'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(reviewData),
+      );
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to submit review');
+      }
+    } catch (e) {
+      throw Exception('Error submitting review: $e');
+    }
+  }
 }
+

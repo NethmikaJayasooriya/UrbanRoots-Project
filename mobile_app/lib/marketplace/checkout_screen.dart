@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
-import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
 import 'cart_model.dart';
 import 'marketplace_theme.dart';
 import 'marketplace_api.dart';
