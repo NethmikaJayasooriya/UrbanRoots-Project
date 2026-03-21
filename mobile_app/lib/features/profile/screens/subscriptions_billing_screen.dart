@@ -706,7 +706,7 @@ class _CartItem extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 9),
         Text(
           price,
           style: const TextStyle(
