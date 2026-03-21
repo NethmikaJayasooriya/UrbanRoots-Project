@@ -240,8 +240,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
                       ),
-                      itemCount: _filteredProducts.length,
-                      itemBuilder: (context, index) => _buildProductCard(context, _filteredProducts[index]),
+                      itemBuilder: (context, index) => _buildProductCard(context, _filteredProducts[index], index),
                     ),
             ),
           ],
@@ -250,19 +249,36 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
     );
   }
 
-  Widget _buildProductCard(BuildContext context, Product product) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+  Widget _buildProductCard(BuildContext context, Product product, int index) {
+    // Increase duration slightly for subsequent items to create a cascading effect
+    final int baseDuration = 400;
+    final int staggeredDuration = baseDuration + (index * 80);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: staggeredDuration),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 40 * (1 - value)),
+          child: Opacity(
+            opacity: value,
+            child: child,
+          ),
         );
       },
-      child: Container(
-        decoration: MarketplaceTheme.glassBox(radius: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+          );
+        },
+        child: Container(
+          decoration: MarketplaceTheme.glassBox(radius: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Image area
             Expanded(
               child: Container(
@@ -271,20 +287,23 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: Image.network(
-                          product.imageUrl!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ).createShader(bounds),
-                              child: Icon(product.placeholderIcon, size: 54, color: Colors.white),
+                    ? Hero(
+                        tag: 'product-image-${product.name}',
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                          child: Image.network(
+                            product.imageUrl!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds),
+                                child: Icon(product.placeholderIcon, size: 54, color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
@@ -363,6 +382,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
           ],
         ),
       ),
+    ),
     );
   }
 }

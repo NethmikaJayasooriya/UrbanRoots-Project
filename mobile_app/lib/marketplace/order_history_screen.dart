@@ -86,7 +86,21 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   padding: const EdgeInsets.all(16),
                   itemCount: _orders.length,
                   itemBuilder: (context, index) {
-                    return _buildOrderCard(_orders[index]);
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 400 + (index * 100)),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 30 * (1 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildOrderCard(_orders[index]),
+                    );
                   },
                 ),
     );

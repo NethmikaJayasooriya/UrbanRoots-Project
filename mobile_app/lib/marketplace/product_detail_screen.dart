@@ -212,12 +212,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
         ),
       ),
       child: widget.product.imageUrl != null && widget.product.imageUrl!.isNotEmpty
-          ? Image.network(
-              widget.product.imageUrl!,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) => _buildHeroPlaceholder(),
+          ? Hero(
+              tag: 'product-image-${widget.product.name}',
+              child: Image.network(
+                widget.product.imageUrl!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (context, error, stackTrace) => _buildHeroPlaceholder(),
+              ),
             )
           : _buildHeroPlaceholder(),
     );
@@ -399,78 +402,91 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
               itemCount: _relatedProducts.length,
               itemBuilder: (context, index) {
                 final product = _relatedProducts[index];
-                return GestureDetector(
-                  onTap: () {
-                    // Push a new route so the user navigates into the related product
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+                return TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0, end: 1),
+                  duration: Duration(milliseconds: 300 + (index * 100)),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(40 * (1 - value), 0),
+                      child: Opacity(
+                        opacity: value,
+                        child: child,
+                      ),
                     );
                   },
-                  child: Container(
-                    width: 140,
-                    margin: const EdgeInsets.only(right: 16),
-                    decoration: MarketplaceTheme.glassBox(radius: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                            ),
-                            child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                    child: Image.network(
-                                      product.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      errorBuilder: (context, error, stackTrace) => Center(
-                                        child: ShaderMask(
-                                          shaderCallback: (bounds) => const LinearGradient(
-                                            colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ).createShader(bounds),
-                                          child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+                      );
+                    },
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: MarketplaceTheme.glassBox(radius: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              ),
+                              child: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                                  ? ClipRRect(
+                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                      child: Image.network(
+                                        product.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        errorBuilder: (context, error, stackTrace) => Center(
+                                          child: ShaderMask(
+                                            shaderCallback: (bounds) => const LinearGradient(
+                                              colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ).createShader(bounds),
+                                            child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                                          ),
                                         ),
                                       ),
+                                    )
+                                  : Center(
+                                      child: ShaderMask(
+                                        shaderCallback: (bounds) => const LinearGradient(
+                                          colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ).createShader(bounds),
+                                        child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                                      ),
                                     ),
-                                  )
-                                : Center(
-                                    child: ShaderMask(
-                                      shaderCallback: (bounds) => const LinearGradient(
-                                        colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ).createShader(bounds),
-                                      child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
-                                    ),
-                                  ),
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite, fontSize: 13),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Rs. ${product.price.toStringAsFixed(0)}',
-                                style: const TextStyle(color: MarketplaceTheme.lightGreen, fontWeight: FontWeight.w900, fontSize: 13),
-                              ),
-                            ],
+                          Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite, fontSize: 13),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Rs. ${product.price.toStringAsFixed(0)}',
+                                  style: const TextStyle(color: MarketplaceTheme.lightGreen, fontWeight: FontWeight.w900, fontSize: 13),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
