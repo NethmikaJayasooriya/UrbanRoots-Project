@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 
 class RateAppScreen extends StatefulWidget {
   const RateAppScreen({super.key});
@@ -12,14 +13,85 @@ class _RateAppScreenState extends State<RateAppScreen> {
   int selectedStars = 0;
   final TextEditingController _commentController = TextEditingController();
 
-  void _submit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Rating submitted ($selectedStars★)")),
-    );
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingReview();
+  }
+
+  Future<void> _loadExistingReview() async {
+    try {
+      final review = await ApiService.getMyReview();
+
+      if (review != null) {
+        selectedStars = review['stars'] ?? 0;
+        _commentController.text = review['feedback_text'] ?? '';
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to load review: $e")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _submit() async {
+    if (selectedStars == 0 || _isSubmitting) return;
+
+    try {
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      await ApiService.submitReview(
+        stars: selectedStars,
+        feedbackText: _commentController.text,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Your feedback has been saved")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to submit feedback: $e")));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -34,7 +106,6 @@ class _RateAppScreenState extends State<RateAppScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    /// HEADER (same size as notifications/settings)
                     Row(
                       children: [
                         InkResponse(
@@ -54,7 +125,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
                           "Rate App",
                           style: TextStyle(
                             color: AppColors.text,
-                            fontSize: 26, // ✅ matched
+                            fontSize: 26,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.3,
                           ),
@@ -64,7 +135,6 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                     const SizedBox(height: 30),
 
-                    /// CARD
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(18, 22, 18, 22),
@@ -76,12 +146,11 @@ class _RateAppScreenState extends State<RateAppScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          /// Icon Circle
                           Container(
                             width: 58,
                             height: 58,
                             decoration: BoxDecoration(
-                              color: AppColors.bg.withOpacity(0.25),
+                              color: AppColors.bg.withValues(alpha: 0.25),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: AppColors.border,
@@ -97,13 +166,12 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 18),
 
-                          /// Title (Reduced size)
                           const Text(
                             "Enjoying UrbanRoots?",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.text,
-                              fontSize: 20, // ✅ reduced
+                              fontSize: 20,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.2,
                             ),
@@ -111,13 +179,12 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 10),
 
-                          /// Subtitle (Reduced)
                           const Text(
                             "Your feedback helps us grow the best\ncommunity for urban gardeners.",
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AppColors.muted,
-                              fontSize: 13, // ✅ reduced
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               height: 1.4,
                             ),
@@ -125,14 +192,13 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 22),
 
-                          /// Stars (smaller)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(5, (i) {
                               final index = i + 1;
                               return IconButton(
                                 splashRadius: 20,
-                                iconSize: 34, // ✅ reduced
+                                iconSize: 34,
                                 onPressed: () {
                                   setState(() => selectedStars = index);
                                 },
@@ -148,10 +214,9 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 20),
 
-                          /// Section Label (same as notifications)
-                          Align(
+                          const Align(
                             alignment: Alignment.centerLeft,
-                            child: const Text(
+                            child: Text(
                               "LEAVE A COMMENT (OPTIONAL)",
                               style: TextStyle(
                                 color: AppColors.accent,
@@ -164,11 +229,10 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 12),
 
-                          /// Comment box
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: AppColors.bg.withOpacity(0.25),
+                              color: AppColors.bg.withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: AppColors.border,
@@ -202,11 +266,12 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 24),
 
-                          /// Submit button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: selectedStars == 0 ? null : _submit,
+                              onPressed: (selectedStars == 0 || _isSubmitting)
+                                  ? null
+                                  : _submit,
                               style: ElevatedButton.styleFrom(
                                 elevation: 0,
                                 backgroundColor: AppColors.accent,
@@ -218,10 +283,10 @@ class _RateAppScreenState extends State<RateAppScreen> {
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                               ),
-                              child: const Text(
-                                "Submit Rating",
-                                style: TextStyle(
-                                  fontSize: 15, // ✅ reduced
+                              child: Text(
+                                _isSubmitting ? "Saving..." : "Save Feedback",
+                                style: const TextStyle(
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -230,14 +295,13 @@ class _RateAppScreenState extends State<RateAppScreen> {
 
                           const SizedBox(height: 12),
 
-                          /// Maybe Later
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.muted,
-                                side: BorderSide(
+                                side: const BorderSide(
                                   color: AppColors.border,
                                   width: 1,
                                 ),
@@ -261,7 +325,6 @@ class _RateAppScreenState extends State<RateAppScreen> {
                       ),
                     ),
 
-                    /// Leave bottom free space (like other screens)
                     const SizedBox(height: 240),
                   ],
                 ),

@@ -1,11 +1,115 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 
-class TermsConditionsScreen extends StatelessWidget {
+class TermsConditionsScreen extends StatefulWidget {
   const TermsConditionsScreen({super.key});
 
   @override
+  State<TermsConditionsScreen> createState() => _TermsConditionsScreenState();
+}
+
+class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
+  bool _isLoading = true;
+  bool _isSubmitting = false;
+  bool _alreadyAccepted = false;
+  String _version = '2026-03-01';
+  String? _acceptedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTermsStatus();
+  }
+
+  Future<void> _loadTermsStatus() async {
+    try {
+      final data = await ApiService.getCurrentTerms();
+
+      if (!mounted) return;
+
+      setState(() {
+        _version = (data['version'] ?? '2026-03-01').toString();
+        _alreadyAccepted = data['alreadyAccepted'] == true;
+        _acceptedAt = data['acceptedAt']?.toString();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load terms: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _acceptTerms() async {
+    if (_isSubmitting || _alreadyAccepted) return;
+
+    try {
+      setState(() {
+        _isSubmitting = true;
+      });
+
+      final response = await ApiService.acceptTerms(_version);
+
+      if (!mounted) return;
+
+      final acceptance = response['acceptance'];
+
+      setState(() {
+        _alreadyAccepted = true;
+        _acceptedAt =
+            acceptance?['accepted_at']?.toString() ??
+            DateTime.now().toIso8601String();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Terms accepted successfully')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to accept terms: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
+  String _formatAcceptedDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) {
+      return '';
+    }
+
+    try {
+      final date = DateTime.parse(dateString).toLocal();
+      final year = date.year.toString().padLeft(4, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      final day = date.day.toString().padLeft(2, '0');
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$year-$month-$day  $hour:$minute';
+    } catch (_) {
+      return dateString;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -15,7 +119,6 @@ class TermsConditionsScreen extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 420),
             child: Column(
               children: [
-                // Scrollable content
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -28,10 +131,29 @@ class TermsConditionsScreen extends StatelessWidget {
                             title: 'Terms & Conditions',
                             onBack: () => Navigator.of(context).maybePop(),
                           ),
-
                           const SizedBox(height: 18),
+                          _MetaText('Last Updated: $_version'),
+                          const SizedBox(height: 8),
 
-                          const _MetaText('Last Updated: March 01, 2026'),
+                          Text(
+                            _alreadyAccepted
+                                ? 'Already accepted'
+                                : 'Accept the terms and conditions',
+                            style: TextStyle(
+                              color: _alreadyAccepted
+                                  ? AppColors.accent
+                                  : AppColors.text,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+
+                          if (_alreadyAccepted && _acceptedAt != null) ...[
+                            const SizedBox(height: 6),
+                            _MetaText(
+                              'Accepted on: ${_formatAcceptedDate(_acceptedAt)}',
+                            ),
+                          ],
 
                           const SizedBox(height: 18),
 
@@ -80,7 +202,6 @@ class TermsConditionsScreen extends StatelessWidget {
                             'All content, including icons, logos, and UI designs, are the property of UrbanRoots. Users retain rights to the photos of plants they upload but grant UrbanRoots a license to display them within the community features.',
                           ),
 
-                          // breathing space before bottom fixed button area
                           const SizedBox(height: 28),
                         ],
                       ),
@@ -88,14 +209,13 @@ class TermsConditionsScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Fixed bottom button area (like your screenshot)
                 Container(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                   decoration: BoxDecoration(
                     color: AppColors.bg,
                     border: Border(
                       top: BorderSide(
-                        color: AppColors.border.withOpacity(0.6),
+                        color: AppColors.border.withValues(alpha: 0.6),
                         width: 1,
                       ),
                     ),
@@ -103,22 +223,30 @@ class TermsConditionsScreen extends StatelessWidget {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).maybePop(),
+                      onPressed: (_isSubmitting || _alreadyAccepted)
+                          ? null
+                          : _acceptTerms,
                       style: ElevatedButton.styleFrom(
                         elevation: 0,
                         backgroundColor: AppColors.accent,
                         foregroundColor: Colors.black,
+                        disabledBackgroundColor: AppColors.border,
+                        disabledForegroundColor: AppColors.muted,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
                         ),
                       ),
-                      child: const Text(
-                        'I UNDERSTAND',
-                        style: TextStyle(
+                      child: Text(
+                        _isSubmitting
+                            ? 'Saving...'
+                            : (_alreadyAccepted
+                                  ? 'ALREADY ACCEPTED'
+                                  : 'ACCEPT TERMS & CONDITIONS'),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 2.0,
+                          letterSpacing: 1.3,
                         ),
                       ),
                     ),
@@ -132,8 +260,6 @@ class TermsConditionsScreen extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Header (same sizing as other screens) -------------------- */
 
 class _Header extends StatelessWidget {
   const _Header({required this.title, required this.onBack});
@@ -174,8 +300,6 @@ class _Header extends StatelessWidget {
     );
   }
 }
-
-/* -------------------- Typography Widgets -------------------- */
 
 class _MetaText extends StatelessWidget {
   const _MetaText(this.text);

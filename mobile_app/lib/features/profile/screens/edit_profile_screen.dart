@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/api/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -9,20 +12,131 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final firstName = TextEditingController(text: "Alex");
-  final lastName = TextEditingController(text: "Rivers");
-  final email = TextEditingController(text: "alex@email.com");
-  final phone = TextEditingController(text: "+94 77 123 4567");
+  final firstName = TextEditingController();
+  final lastName = TextEditingController();
+  final email = TextEditingController();
+  final phone = TextEditingController();
 
-  void _save() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+  final bool _isLoadingProfile = true;
+
+  final ImagePicker _picker = ImagePicker();
+  File? _profileImage;
+
+  Future<void> _save() async {
+    try {
+      await ApiService.updateProfile(
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+        email: email.text.trim(),
+        phone: phone.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to update profile: $e")));
+    }
   }
 
-  void _editProfileImage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Edit profile picture tapped")),
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _profileImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to pick image: $e")));
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Choose Profile Picture",
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _BottomSheetOption(
+                      icon: Icons.photo_library_outlined,
+                      title: "Choose from Gallery",
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _BottomSheetOption(
+                      icon: Icons.camera_alt_outlined,
+                      title: "Take a Photo",
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                    ),
+                    if (_profileImage != null) ...[
+                      const SizedBox(height: 10),
+                      _BottomSheetOption(
+                        icon: Icons.delete_outline_rounded,
+                        title: "Remove Photo",
+                        isDanger: true,
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() {
+                            _profileImage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -95,22 +209,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     color: AppColors.border,
                                     width: 2,
                                   ),
+                                  image: _profileImage != null
+                                      ? DecorationImage(
+                                          image: FileImage(_profileImage!),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
                                 ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 52,
-                                    color: AppColors.muted,
-                                  ),
-                                ),
+                                child: _profileImage == null
+                                    ? const Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 52,
+                                          color: AppColors.muted,
+                                        ),
+                                      )
+                                    : null,
                               ),
                             ),
-
                             Positioned(
                               right: 4,
                               bottom: 8,
                               child: InkWell(
-                                onTap: _editProfileImage,
+                                onTap: _showImagePickerOptions,
                                 borderRadius: BorderRadius.circular(999),
                                 child: Container(
                                   width: 38,
@@ -274,6 +395,55 @@ class _InputField extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BottomSheetOption extends StatelessWidget {
+  const _BottomSheetOption({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.isDanger = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+  final bool isDanger;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.bg.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isDanger ? Colors.redAccent : AppColors.accent,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: TextStyle(
+                color: isDanger ? Colors.redAccent : AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
