@@ -1,34 +1,41 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 
+import { ProductsModule }      from './products/products.module';
+import { SalesModule }         from './sales/sales.module';
+import { SellersModule }       from './sellers/sellers.module';
+import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
+import { UsersModule }         from './users/users.module';
 
 @Module({
   imports: [
-    //Load the Config Module first
-    ConfigModule.forRoot({
-      isGlobal: true, // Makes .env available everywhere
-    }),
+    // ── Env ────────────────────────────────────────────────
+    ConfigModule.forRoot({ isGlobal: true }),
 
-    //Connect to Database using the variables
+    // ── Database ───────────────────────────────────────────
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (cfg: ConfigService) => ({
         type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        entities: [],
-        synchronize: true,
+        host:     cfg.get<string>('DB_HOST'),
+        port:     cfg.get<number>('DB_PORT'),
+        username: cfg.get<string>('DB_USER'),
+        password: cfg.get<string>('DB_PASS'),
+        database: cfg.get<string>('DB_NAME'),
+        ssl: { rejectUnauthorized: false }, // required for Supabase
+        autoLoadEntities: true,
+        synchronize: false, // tables already exist in Supabase
       }),
     }),
+
+    // ── Feature modules ────────────────────────────────────
+    UsersModule,
+    SellersModule,
+    ProductsModule,
+    SalesModule,
+    BeneficiariesModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
