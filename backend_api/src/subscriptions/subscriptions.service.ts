@@ -3,6 +3,7 @@ import { SupabaseService } from '../common/supabase/supabase.service';
 
 const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
 const VALID_PLANS = ['weekly', 'monthly', 'annual'];
+const VALID_PAYMENT_METHODS = ['card', 'paypal', 'apple_pay', 'google_pay'];
 
 @Injectable()
 export class SubscriptionsService {
@@ -28,7 +29,11 @@ export class SubscriptionsService {
       .insert({
         user_id: TEST_USER_ID,
         selected_plan: 'monthly',
-        status: 'active',
+        status: 'inactive',
+        payment_status: 'pending',
+        payment_method: null,
+        started_at: null,
+        expires_at: null,
       })
       .select('*')
       .single();
@@ -40,27 +45,98 @@ export class SubscriptionsService {
     return created;
   }
 
-  async updateMySubscription(body: { selectedPlan?: string }) {
-    await this.getMySubscription();
+  private getPlanAmount(plan: string): number {
+    switch (plan) {
+      case 'weekly':
+        return 4.99;
+      case 'monthly':
+        return 12.99;
+      case 'annual':
+        return 99.99;
+      default:
+        throw new Error('Invalid subscription plan');
+    }
+  }
 
-    if (!body.selectedPlan || !VALID_PLANS.includes(body.selectedPlan)) {
+  private getExpiryDate(plan: string): string {
+    const date = new Date();
+
+    switch (plan) {
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'annual':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+      default:
+        throw new Error('Invalid subscription plan');
+    }
+
+    return date.toISOString();
+  }
+
+  async startMembership(body: { selectedPlan: string; paymentMethod: string }) {
+    const { selectedPlan, paymentMethod } = body;
+
+    if (!VALID_PLANS.includes(selectedPlan)) {
       throw new Error('Invalid subscription plan');
     }
 
-    const { data, error } = await this.supabase.client
-      .from('subscriptions')
-      .update({
-        selected_plan: body.selectedPlan,
-        updated_at: new Date().toISOString(),
+    if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+      throw new Error('Invalid payment method');
+    }
+
+    const existing = await this.getMySubscription();
+    const now = new Date().toISOString();
+    const expiresAt = this.getExpiryDate(selectedPlan);
+    const amount = this.getPlanAmount(selectedPlan);
+
+    const { data: updatedSubscription, error: updateError } =
+      await this.supabase.client
+        .from('subscriptions')
+        .update({
+          selected_plan: selectedPlan,
+          payment_method: paymentMethod,
+          payment_status: 'paid',
+          status: 'active',
+          started_at: now,
+          expires_at: expiresAt,
+          updated_at: now,
+        })
+        .eq('user_id', TEST_USER_ID)
+        .select('*')
+        .single();
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    const { data: payment, error: paymentError } = await this.supabase.client
+      .from('subscription_payments')
+      .insert({
+        user_id: TEST_USER_ID,
+        subscription_id: existing['id'],
+        selected_plan: selectedPlan,
+        payment_method: paymentMethod,
+        amount: amount,
+        currency: 'USD',
+        payment_status: 'paid',
+        updated_at: now,
       })
-      .eq('user_id', TEST_USER_ID)
       .select('*')
       .single();
 
-    if (error) {
-      throw new Error(error.message);
+    if (paymentError) {
+      throw new Error(paymentError.message);
     }
 
-    return data;
+    return {
+      subscription: updatedSubscription,
+      payment: payment,
+      message: 'Pro membership activated successfully',
+    };
   }
 }
