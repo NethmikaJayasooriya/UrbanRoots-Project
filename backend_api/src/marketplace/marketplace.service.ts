@@ -1,85 +1,135 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './entities/product.entity';
+import { Review } from './entities/review.entity';
+import { Order } from './entities/order.entity';
 
 @Injectable()
-export class MarketplaceService {
-  private readonly products = [
-    { name: 'Tomato Seeds', category: 'Seeds', price: 250.0, description: 'High-yield tomato seeds suitable for urban gardens.' },
-    { name: 'Organic Fertilizer', category: 'Fertilizers', price: 900.0, description: '100% organic compost fertilizer, 2kg bag.' },
-    { name: 'Indoor Fern', category: 'Indoor', price: 1200.0, description: 'Low-maintenance indoor fern for better air quality.' },
-    { name: 'Gardening Gloves', category: 'Tools', price: 450.0, description: 'Durable, weather-resistant gardening gloves.' },
-    { name: 'Watering Can', category: 'Tools', price: 850.0, description: 'Ergonomic 2L watering can with a detachable spout.' },
-    { name: 'Basil Plant', category: 'Plants', price: 350.0, description: 'Fresh basil plant, perfect for your kitchen window.' },
-    { name: 'Chili Seeds', category: 'Seeds', price: 150.0, description: 'Spicy Kochchi chili seeds.' },
-    { name: 'Neem Oil (Pesticide)', category: 'Care', price: 650.0, description: 'Natural pest control for organic farming.' },
-  ];
+export class MarketplaceService implements OnModuleInit {
+  constructor(
+    @InjectRepository(Product) private productRepo: Repository<Product>,
+    @InjectRepository(Review) private reviewRepo: Repository<Review>,
+    @InjectRepository(Order) private orderRepo: Repository<Order>,
+  ) {}
 
-  // In-memory orders map for now.
-  private readonly orders = new Map<string, any>();
+  async onModuleInit() {
+    const count = await this.productRepo.count();
+    if (count === 0) {
+      console.log('Seeding initial products into PostgreSQL...');
+      const initialProducts = [
+        { name: 'Tomato Seeds', category: 'Seeds', price: 250.0, description: 'High-yield tomato seeds suitable for urban gardens.', placeholderIcon: 'spa_rounded' },
+        { name: 'Organic Fertilizer', category: 'Fertilizers', price: 900.0, description: '100% organic compost fertilizer, 2kg bag.', placeholderIcon: 'eco_rounded' },
+        { name: 'Indoor Fern', category: 'Indoor', price: 1200.0, description: 'Low-maintenance indoor fern for better air quality.', placeholderIcon: 'local_florist_rounded' },
+        { name: 'Gardening Gloves', category: 'Tools', price: 450.0, description: 'Durable, weather-resistant gardening gloves.', placeholderIcon: 'hardware_rounded' },
+        { name: 'Watering Can', category: 'Tools', price: 850.0, description: 'Ergonomic 2L watering can with a detachable spout.', placeholderIcon: 'hardware_rounded' },
+        { name: 'Basil Plant', category: 'Plants', price: 350.0, description: 'Fresh basil plant, perfect for your kitchen window.', placeholderIcon: 'local_florist_rounded' },
+        { name: 'Chili Seeds', category: 'Seeds', price: 150.0, description: 'Spicy Kochchi chili seeds.', placeholderIcon: 'spa_rounded' },
+        { name: 'Neem Oil (Pesticide)', category: 'Care', price: 650.0, description: 'Natural pest control for organic farming.', placeholderIcon: 'spa_rounded' },
+      ];
+      for (const p of initialProducts) {
+        await this.productRepo.save(this.productRepo.create(p));
+      }
+      console.log('Seeding complete!');
+    }
+  }
 
-  // In-memory reviews map: productId -> array of reviews
-  private readonly reviews = new Map<string, any[]>();
-
-  getProducts() {
-    return this.products.map(product => {
-      const productReviews = this.reviews.get(product.name) || [];
-      const reviewCount = productReviews.length;
+  async getProducts() {
+    const products = await this.productRepo.find();
+    return Promise.all(products.map(async (product) => {
+      const reviews = await this.reviewRepo.find({ where: { productId: product.name } });
+      const reviewCount = reviews.length;
       let averageRating = 0;
       if (reviewCount > 0) {
-        averageRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount;
+        averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount;
       }
       return {
         ...product,
         rating: averageRating,
         reviewCount,
       };
+    }));
+  }
+
+  async getReviews(productId: string) {
+    return this.reviewRepo.find({ 
+      where: { productId },
+      order: { createdAt: 'DESC' }
     });
   }
 
-  getReviews(productId: string) {
-    return this.reviews.get(productId) || [];
-  }
-
-  addReview(productId: string, reviewData: any) {
-    const productReviews = this.reviews.get(productId) || [];
-    const newReview = {
-      id: `REV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  async addReview(productId: string, reviewData: any) {
+    const newReview = this.reviewRepo.create({
       productId,
-      originalName: 'User', // Placeholder since there is no auth
-      ...reviewData,
-      createdAt: new Date(),
-    };
-    productReviews.push(newReview);
-    this.reviews.set(productId, productReviews);
-    return newReview;
+      originalName: 'User',
+      rating: reviewData.rating,
+      comment: reviewData.comment,
+    });
+    return this.reviewRepo.save(newReview);
   }
 
+  async getRelatedProducts(productName: string) {
+    const currentProduct = await this.productRepo.findOne({ where: { name: productName } });
+    if (!currentProduct) return [];
+    
+    const allProducts = await this.productRepo.find();
+    let related = allProducts.filter(p => p.category === currentProduct.category && p.name !== productName);
+    
+    if (related.length < 3) {
+      const others = allProducts.filter(p => p.category !== currentProduct.category && p.name !== productName);
+      others.sort(() => 0.5 - Math.random());
+      related = [...related, ...others].slice(0, 4);
+    } else {
+      related = related.slice(0, 4);
+    }
+    
+    return Promise.all(related.map(async (product) => {
+      const reviews = await this.reviewRepo.find({ where: { productId: product.name } });
+      const reviewCount = reviews.length;
+      let averageRating = 0;
+      if (reviewCount > 0) {
+        averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount;
+      }
+      return {
+        ...product,
+        rating: averageRating,
+        reviewCount,
+      };
+    }));
+  }
 
-  createOrder(orderData: any) {
+  async createOrder(orderData: any) {
     const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const newOrder = {
+    const newOrder = this.orderRepo.create({
       orderId,
-      ...orderData,
+      customerDetails: {
+        name: orderData.name,
+        address: orderData.address,
+        phone: orderData.phone,
+      },
+      items: orderData.items,
+      totalAmount: orderData.totalAmount,
+      paymentMethod: orderData.paymentMethod,
       status: 'PENDING',
-      createdAt: new Date(),
-    };
-    this.orders.set(orderId, newOrder);
-    console.log(`Order Created: ${orderId}`);
+    });
+    
+    await this.orderRepo.save(newOrder);
+    console.log(`Order Created in Postgres: ${orderId}`);
     return { orderId, status: 'PENDING' };
   }
 
-  handlePayHereNotification(payload: any) {
+  async handlePayHereNotification(payload: any) {
     console.log('Received PayHere Notification:', payload);
     const orderId = payload.order_id;
     const statusCode = payload.status_code; 
     
-    // PayHere status_code 2 means SUCCESS
     if (statusCode === '2') {
-      const order = this.orders.get(orderId);
+      const order = await this.orderRepo.findOne({ where: { orderId } });
       if (order) {
         order.status = 'PAID';
-        this.orders.set(orderId, order);
-        console.log(`Order ${orderId} successfully marked as PAID!`);
-        return 'OK'; // PayHere expects a 200 OK
+        await this.orderRepo.save(order);
+        console.log(`Order ${orderId} successfully marked as PAID in Postgres!`);
+        return 'OK'; 
       }
     }
     return 'FAILED';

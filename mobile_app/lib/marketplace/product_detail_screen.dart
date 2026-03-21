@@ -36,6 +36,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
   List<Review> _reviews = [];
   bool _isLoadingReviews = true;
 
+  List<Product> _relatedProducts = [];
+  bool _isLoadingRelated = true;
+
+
 
   final _commentController = TextEditingController();
   int _selectedRating = 0;
@@ -51,7 +55,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
         .animate(CurvedAnimation(parent: _animController, curve: Curves.easeIn));
     _animController.forward();
     _loadReviews();
+    _loadRelatedProducts();
   }
+
+  Future<void> _loadRelatedProducts() async {
+    try {
+      final relatedData = await MarketplaceApi.fetchRelatedProducts(widget.product.name);
+      if (!mounted) return;
+      setState(() {
+        _relatedProducts = (relatedData as List).map((p) => Product(
+          name: p['name'],
+          category: p['category'],
+          price: (p['price'] as num).toDouble(),
+          description: p['description'],
+          placeholderIcon: _getIconForCategory(p['category']),
+        )).toList();
+        _isLoadingRelated = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingRelated = false);
+      print('Error loading related products: $e');
+    }
+  }
+
+  IconData _getIconForCategory(String category) {
+    if (category == 'Seeds') return Icons.spa_rounded;
+    if (category == 'Indoor') return Icons.local_florist_rounded;
+    if (category == 'Leafy Greens') return Icons.grass_rounded;
+    if (category == 'Tools') return Icons.hardware_rounded;
+    return Icons.eco_rounded;
+  }
+
 
   Future<void> _loadReviews() async {
     try {
@@ -144,6 +179,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
                         _buildReviewForm(),
                         const SizedBox(height: 24),
                         _buildReviewsSection(),
+                        const SizedBox(height: 32),
+                        _buildRelatedProductsSection(),
                         const SizedBox(height: 80), // Fab spacing
                       ],
                     ),
@@ -328,6 +365,87 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
           Text(review.comment, style: const TextStyle(fontSize: 14, color: MarketplaceTheme.textGray, height: 1.5)),
         ],
       ),
+    );
+  }
+
+  Widget _buildRelatedProductsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('You Might Also Like', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite)),
+        const SizedBox(height: 16),
+        if (_isLoadingRelated)
+          const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(color: MarketplaceTheme.primaryGreen)))
+        else if (_relatedProducts.isEmpty)
+          const Text('No recommendations available at this time.', style: TextStyle(color: MarketplaceTheme.textGray))
+        else
+          SizedBox(
+            height: 180,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _relatedProducts.length,
+              itemBuilder: (context, index) {
+                final product = _relatedProducts[index];
+                return GestureDetector(
+                  onTap: () {
+                    // Push a new route so the user navigates into the related product
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)),
+                    );
+                  },
+                  child: Container(
+                    width: 140,
+                    margin: const EdgeInsets.only(right: 16),
+                    decoration: MarketplaceTheme.glassBox(radius: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: MarketplaceTheme.primaryGreen.withOpacity(0.1),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                            ),
+                            child: Center(
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  colors: [MarketplaceTheme.lightGreen, MarketplaceTheme.primaryGreen],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ).createShader(bounds),
+                                child: Icon(product.placeholderIcon, size: 50, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite, fontSize: 13),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Rs. ${product.price.toStringAsFixed(0)}',
+                                style: const TextStyle(color: MarketplaceTheme.lightGreen, fontWeight: FontWeight.w900, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          )
+      ],
     );
   }
 

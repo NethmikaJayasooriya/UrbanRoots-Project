@@ -6,28 +6,33 @@ export class MarketplaceController {
   constructor(private readonly marketplaceService: MarketplaceService) {}
 
   @Get('products')
-  getProducts() {
-    return this.marketplaceService.getProducts();
+  async getProducts() {
+    return await this.marketplaceService.getProducts();
   }
 
   @Post('orders')
-  createOrder(@Body() orderData: any) {
-    return this.marketplaceService.createOrder(orderData);
+  async createOrder(@Body() orderData: any) {
+    return await this.marketplaceService.createOrder(orderData);
   }
 
   @Post('payhere/notify')
-  handlePayHereNotification(@Body() payload: any) {
-    return this.marketplaceService.handlePayHereNotification(payload);
+  async handlePayHereNotification(@Body() payload: any) {
+    return await this.marketplaceService.handlePayHereNotification(payload);
   }
 
   @Get('products/:productId/reviews')
-  getReviews(@Param('productId') productId: string) {
-    return this.marketplaceService.getReviews(productId);
+  async getReviews(@Param('productId') productId: string) {
+    return await this.marketplaceService.getReviews(productId);
   }
 
   @Post('products/:productId/reviews')
-  addReview(@Param('productId') productId: string, @Body() reviewData: any) {
-    return this.marketplaceService.addReview(productId, reviewData);
+  async addReview(@Param('productId') productId: string, @Body() reviewData: any) {
+    return await this.marketplaceService.addReview(productId, reviewData);
+  }
+
+  @Get('products/:productId/related')
+  async getRelatedProducts(@Param('productId') productId: string) {
+    return await this.marketplaceService.getRelatedProducts(productId);
   }
 }
 

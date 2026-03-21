@@ -67,5 +67,20 @@ class MarketplaceApi {
       throw Exception('Error submitting review: $e');
     }
   }
+
+  static Future<List<dynamic>> fetchRelatedProducts(String productId) async {
+    try {
+      final encodedId = Uri.encodeComponent(productId);
+      final response = await http.get(Uri.parse('$baseUrl/marketplace/products/$encodedId/related'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load related products');
+      }
+    } catch (e) {
+      throw Exception('Error fetching related products: $e');
+    }
+  }
 }
+
 
