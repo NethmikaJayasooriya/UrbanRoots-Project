@@ -11,8 +11,13 @@ import { PreferencesModule } from './preferences/preferences.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { StreaksModule } from './streaks/streaks.module';
 
+import { UserModule } from './user/user.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { User } from './user/entities/user.entity';
+
 @Module({
   imports: [
+<<<<<<< HEAD
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
     ProfileModule,
@@ -24,6 +29,31 @@ import { StreaksModule } from './streaks/streaks.module';
     PreferencesModule,
     SubscriptionsModule,
     StreaksModule,
+=======
+    //Load the Config Module first
+    ConfigModule.forRoot({
+      isGlobal: true, // Makes .env available everywhere
+    }),
+
+    //Connect to Database using the variables
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
+        entities: [User],
+        synchronize: true,
+      }),
+    }),
+
+    UserModule,
+    FirebaseModule,
+>>>>>>> e58905b0f1a824cbe080fcb14f8709f217b345ea
   ],
 })
 export class AppModule {}

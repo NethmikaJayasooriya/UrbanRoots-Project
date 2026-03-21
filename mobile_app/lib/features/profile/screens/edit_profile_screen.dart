@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/api/api_service.dart';
+// Note: If you need the ProfileService instead of ApiService, uncomment the line below.
+// import '../services/profile_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -17,13 +19,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final email = TextEditingController();
   final phone = TextEditingController();
 
-  final bool _isLoadingProfile = true;
-
+  // Combined state variables from both branches
+  bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
   File? _profileImage;
 
   Future<void> _save() async {
+    setState(() => _isLoading = true);
+
     try {
+      // Using ApiService from the HEAD branch.
       await ApiService.updateProfile(
         firstName: firstName.text.trim(),
         lastName: lastName.text.trim(),
@@ -32,18 +37,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       if (!mounted) return;
+      setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Profile updated successfully!",
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: AppColors.accent,
+        ),
+      );
 
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isLoading = false);
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to update profile: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to update profile: $e"),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -302,7 +318,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _save,
+                        onPressed: _isLoading ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           foregroundColor: Colors.black,
@@ -311,13 +327,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        child: const Text(
-                          "SAVE CHANGES",
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.black,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "SAVE CHANGES",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
                       ),
                     ),
 
