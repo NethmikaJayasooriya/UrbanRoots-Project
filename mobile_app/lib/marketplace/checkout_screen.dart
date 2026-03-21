@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
 import 'cart_model.dart';
+import 'marketplace_theme.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -12,274 +13,283 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _formKey = GlobalKey<FormState>();
+  String _paymentMethod = 'cod';
+  bool _isProcessing = false;
 
-  // Text Controllers
-  final _nameController = TextEditingController();
-  final _contactController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _postalController = TextEditingController();
-
-  // Payment Method State
-  String _paymentMethod = 'Cash on Delivery';
-  bool _isSubmitting = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _contactController.dispose();
     _addressController.dispose();
-    _postalController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  void _placeOrder() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isSubmitting = true);
+  void _processPayment(double total) {
+    if (!_formKey.currentState!.validate()) return;
+    
+    setState(() => _isProcessing = true);
 
-      final total = context.read<CartModel>().totalPrice;
+    if (_paymentMethod == 'cod') {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        _showSuccessDialog();
+      });
+    } else if (_paymentMethod == 'card') {
+      // Setup PayHere for Card Payment (Placeholder credentials)
+      Map paymentObject = {
+        "sandbox": true,
+        "merchant_id": "1234567",
+        "merchant_secret": "xyz123",
+        "notify_url": "https://ent13zfovozz.x.pipedream.net/",
+        "order_id": "ItemNo12345",
+        "items": "UrbanRoots Order",
+        "amount": total.toString(),
+        "currency": "LKR",
+        "first_name": _nameController.text.split(' ').first,
+        "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').last : '',
+        "email": "user@urbanroots.com",
+        "phone": _phoneController.text,
+        "address": _addressController.text,
+        "city": "Colombo",
+        "country": "Sri Lanka",
+        "delivery_address": _addressController.text,
+        "delivery_city": "Colombo",
+        "delivery_country": "Sri Lanka",
+      };
 
-      if (_paymentMethod == 'Cash on Delivery') {
-        // Simulate a network request
-        await Future.delayed(const Duration(seconds: 1));
-        _completeOrder();
-      } else if (_paymentMethod == 'Credit/Debit Card') {
-        Map paymentObject = {
-          "sandbox": true,
-          "merchant_id": "1234588",
-          "merchant_secret": "MTg5MzM3Mjc1ODQwNjIwMTMzODAyMTI2MzY0MjMxMTYyMzk4OTc3MA==",
-          "notify_url": "http://yourdomain.com/notify", // TODO: Replace with real webhook
-          "order_id": "Order_${DateTime.now().millisecondsSinceEpoch}",
-          "items": "UrbanRoots Order",
-          "amount": total.toStringAsFixed(2),
-          "currency": "LKR",
-          "first_name": _nameController.text.split(' ').first,
-          "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').sublist(1).join(' ') : "",
-          "email": "customer@example.com", // Optional placeholder
-          "phone": _contactController.text,
-          "address": _addressController.text,
-          "city": "Colombo", 
-          "country": "Sri Lanka",
-          "delivery_address": _addressController.text,
-          "delivery_city": "Colombo",
-          "delivery_country": "Sri Lanka",
-          "custom_1": _postalController.text,
-          "custom_2": ""
-        };
-
-        PayHere.startPayment(
-          paymentObject,
-          (paymentId) {
-            _completeOrder();
-          },
-          (error) {
-            setState(() => _isSubmitting = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Payment Failed: $error"),
-                backgroundColor: Colors.red,
-              ),
-            );
-          },
-          () {
-            setState(() => _isSubmitting = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Payment Canceled"),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-        );
-      }
+      PayHere.startPayment(
+        paymentObject,
+        (paymentId) {
+          if (!mounted) return;
+          _showSuccessDialog();
+        },
+        (error) {
+          if (!mounted) return;
+          setState(() => _isProcessing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Payment Failed: $error', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+          );
+        },
+        () {
+          if (!mounted) return;
+          setState(() => _isProcessing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment Canceled', style: TextStyle(color: MarketplaceTheme.textWhite)), backgroundColor: Colors.orange),
+          );
+        },
+      );
     }
   }
 
-  void _completeOrder() {
-    if (!mounted) return;
-
-    // Clear the cart
+  void _showSuccessDialog() {
+    setState(() => _isProcessing = false);
     context.read<CartModel>().clearCart();
 
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Order placed successfully!'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: MarketplaceTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: MarketplaceTheme.primaryGreen.withOpacity(0.3))),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: MarketplaceTheme.primaryGreen.withOpacity(0.2)),
+                child: const Icon(Icons.check_circle, color: MarketplaceTheme.primaryGreen, size: 64),
+              ),
+              const SizedBox(height: 24),
+              const Text('Order Successful!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite)),
+              const SizedBox(height: 12),
+              const Text('Thank you for shopping with UrbanRoots. Let’s grow together!', textAlign: TextAlign.center, style: TextStyle(color: MarketplaceTheme.textGray, height: 1.5)),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: MarketplaceTheme.primaryGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context); // Close checkout
+                    Navigator.pop(context); // Close cart
+                  },
+                  child: const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Text('Back to Shop', style: TextStyle(color: MarketplaceTheme.darkGreen, fontWeight: FontWeight.bold, fontSize: 16))),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
-
-    // Pop all screens until we are back at the main Marketplace screen
-    Navigator.popUntil(context, (route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
-    // We only read the cart once to get the total, watch is not strictly needed 
-    // since we shouldn't be editing the cart from this screen.
-    final total = context.read<CartModel>().totalPrice;
+    final cart = context.watch<CartModel>();
 
     return Scaffold(
+      backgroundColor: MarketplaceTheme.background,
       appBar: AppBar(
-        title: const Text('Checkout'),
+        title: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite)),
+        backgroundColor: MarketplaceTheme.cardColor,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: MarketplaceTheme.primaryGreen),
       ),
-      body: _isSubmitting
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.green),
-            )
+      body: cart.items.isEmpty
+          ? const Center(child: Text('Your cart is empty', style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 16)))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ─── Contact Details ───────────────────────────────────────
-                    const Text(
-                      'Shipping Information',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: _inputDecoration('Full Name', Icons.person),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Please enter your name' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _contactController,
-                      keyboardType: TextInputType.phone,
-                      decoration: _inputDecoration('Contact Number', Icons.phone),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Please enter contact number' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _addressController,
-                      maxLines: 2,
-                      decoration: _inputDecoration('Shipping Address', Icons.home),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Please enter shipping address' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _postalController,
-                      keyboardType: TextInputType.number,
-                      decoration: _inputDecoration('Postal Code', Icons.local_post_office),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Please enter postal code' : null,
-                    ),
-                    const SizedBox(height: 32),
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle('Shipping Details'),
+                  const SizedBox(height: 16),
+                  _buildForm(),
+                  const SizedBox(height: 32),
 
-                    // ─── Payment Method ────────────────────────────────────────
-                    const Text(
-                      'Payment Method',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          side: BorderSide(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        children: [
-                          RadioListTile<String>(
-                            title: const Text('Cash on Delivery'),
-                            value: 'Cash on Delivery',
-                            groupValue: _paymentMethod,
-                            activeColor: Colors.green,
-                            onChanged: (value) {
-                              setState(() => _paymentMethod = value!);
-                            },
-                          ),
-                          const Divider(height: 1),
-                          RadioListTile<String>(
-                            title: const Text('Credit/Debit Card'),
-                            value: 'Credit/Debit Card',
-                            groupValue: _paymentMethod,
-                            activeColor: Colors.green,
-                            onChanged: (value) {
-                              setState(() => _paymentMethod = value!);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                  _buildSectionTitle('Order Summary'),
+                  const SizedBox(height: 16),
+                  _buildOrderSummary(cart),
+                  const SizedBox(height: 32),
 
-                    // ─── Order Summary ─────────────────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade100),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Total Amount:',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Rs. ${total.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
+                  _buildSectionTitle('Payment Method'),
+                  const SizedBox(height: 16),
+                  _buildPaymentMethods(),
+                  const SizedBox(height: 48),
 
-                    // ─── Submit Button ─────────────────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _placeOrder,
-                        child: const Text(
-                          'Place Order',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: MarketplaceTheme.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: _isProcessing ? 0 : 8,
+                        shadowColor: MarketplaceTheme.primaryGreen.withOpacity(0.5),
                       ),
+                      onPressed: _isProcessing ? null : () => _processPayment(cart.totalPrice),
+                      child: _isProcessing
+                          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: MarketplaceTheme.darkGreen, strokeWidth: 3))
+                          : Text('Place Order (Rs. ${cart.totalPrice.toStringAsFixed(2)})', style: const TextStyle(fontSize: 18, color: MarketplaceTheme.darkGreen, fontWeight: FontWeight.w900)),
                     ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
     );
   }
 
-  InputDecoration _inputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.grey),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite));
+  }
+
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: MarketplaceTheme.glassBox(radius: 16),
+        child: Column(
+          children: [
+            _buildTextField(controller: _nameController, label: 'Full Name', icon: Icons.person_outline),
+            const SizedBox(height: 16),
+            _buildTextField(controller: _addressController, label: 'Delivery Address', icon: Icons.location_on_outlined, maxLines: 2),
+            const SizedBox(height: 16),
+            _buildTextField(controller: _phoneController, label: 'Phone Number', icon: Icons.phone_outlined, keyboardType: TextInputType.phone),
+          ],
+        ),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.green, width: 2),
+    );
+  }
+
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, int maxLines = 1, TextInputType? keyboardType}) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: MarketplaceTheme.textWhite),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: MarketplaceTheme.textGray),
+        prefixIcon: Icon(icon, color: MarketplaceTheme.primaryGreen.withOpacity(0.7)),
+        filled: true,
+        fillColor: MarketplaceTheme.background,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: MarketplaceTheme.primaryGreen.withOpacity(0.3))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: MarketplaceTheme.primaryGreen.withOpacity(0.3))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: MarketplaceTheme.primaryGreen, width: 1.5)),
       ),
-      filled: true,
-      fillColor: Colors.white,
+      validator: (value) => value == null || value.isEmpty ? 'Please enter $label' : null,
+    );
+  }
+
+  Widget _buildOrderSummary(CartModel cart) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: MarketplaceTheme.glassBox(radius: 16),
+      child: Column(
+        children: [
+          ...cart.items.map((item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('${item.name} x${item.quantity}', style: const TextStyle(color: MarketplaceTheme.textWhite, fontSize: 14)),
+                    Text('Rs. ${(item.price * item.quantity).toStringAsFixed(2)}', style: const TextStyle(color: MarketplaceTheme.textGray, fontSize: 14)),
+                  ],
+                ),
+              )),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Divider(color: Colors.white24),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: MarketplaceTheme.textWhite)),
+              Text('Rs. ${cart.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: MarketplaceTheme.primaryGreen)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethods() {
+    return Container(
+      decoration: MarketplaceTheme.glassBox(radius: 16),
+      child: Column(
+        children: [
+          Theme(
+            data: ThemeData.dark().copyWith(unselectedWidgetColor: MarketplaceTheme.textGray),
+            child: RadioListTile<String>(
+              title: const Text('Cash on Delivery', style: TextStyle(color: MarketplaceTheme.textWhite)),
+              subtitle: const Text('Pay when you receive the order', style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 12)),
+              value: 'cod',
+              groupValue: _paymentMethod,
+              activeColor: MarketplaceTheme.primaryGreen,
+              onChanged: (value) => setState(() => _paymentMethod = value!),
+            ),
+          ),
+          const Divider(height: 1, color: Colors.white12),
+          Theme(
+            data: ThemeData.dark().copyWith(unselectedWidgetColor: MarketplaceTheme.textGray),
+            child: RadioListTile<String>(
+              title: const Text('Credit/Debit Card', style: TextStyle(color: MarketplaceTheme.textWhite)),
+              subtitle: const Text('Pay securely via PayHere', style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 12)),
+              value: 'card',
+              groupValue: _paymentMethod,
+              activeColor: MarketplaceTheme.primaryGreen,
+              onChanged: (value) => setState(() => _paymentMethod = value!),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -46,4 +46,13 @@ class CartModel extends ChangeNotifier {
     _items.clear();
     notifyListeners();
   }
-}
+
+  void updateQuantity(CartItem item, int quantity) {
+    if (quantity <= 0) {
+      removeItem(item);
+    } else {
+      item.quantity = quantity;
+      notifyListeners();
+    }
+  }
+}
