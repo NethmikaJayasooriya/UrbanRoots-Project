@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
+import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
 import 'cart_model.dart';
 import 'marketplace_theme.dart';
+import 'marketplace_api.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -28,59 +30,76 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
-  void _processPayment(double total) {
+  void _processPayment(double total) async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isProcessing = true);
 
-    if (_paymentMethod == 'cod') {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
-        _showSuccessDialog();
-      });
-    } else if (_paymentMethod == 'card') {
-      // Setup PayHere for Card Payment (Placeholder credentials)
-      Map paymentObject = {
-        "sandbox": true,
-        "merchant_id": "1234567",
-        "merchant_secret": "xyz123",
-        "notify_url": "https://ent13zfovozz.x.pipedream.net/",
-        "order_id": "ItemNo12345",
-        "items": "UrbanRoots Order",
-        "amount": total.toString(),
-        "currency": "LKR",
-        "first_name": _nameController.text.split(' ').first,
-        "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').last : '',
-        "email": "user@urbanroots.com",
-        "phone": _phoneController.text,
-        "address": _addressController.text,
-        "city": "Colombo",
-        "country": "Sri Lanka",
-        "delivery_address": _addressController.text,
-        "delivery_city": "Colombo",
-        "delivery_country": "Sri Lanka",
+    try {
+      final orderData = {
+        'name': _nameController.text,
+        'address': _addressController.text,
+        'phone': _phoneController.text,
+        'totalAmount': total,
+        'paymentMethod': _paymentMethod,
+        'items': context.read<CartModel>().items.map((e) => e.toJson()).toList(),
       };
 
-      PayHere.startPayment(
-        paymentObject,
-        (paymentId) {
-          if (!mounted) return;
-          _showSuccessDialog();
-        },
-        (error) {
-          if (!mounted) return;
-          setState(() => _isProcessing = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Payment Failed: $error', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
-          );
-        },
-        () {
-          if (!mounted) return;
-          setState(() => _isProcessing = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment Canceled', style: TextStyle(color: MarketplaceTheme.textWhite)), backgroundColor: Colors.orange),
-          );
-        },
+      final orderId = await MarketplaceApi.createOrder(orderData);
+
+      if (_paymentMethod == 'cod') {
+        if (!mounted) return;
+        _showSuccessDialog();
+      } else if (_paymentMethod == 'card') {
+        // Setup PayHere for Card Payment
+        Map paymentObject = {
+          "sandbox": true,
+          "merchant_id": "1234567", // Placeholder
+          "merchant_secret": "xyz123", // Placeholder
+          "notify_url": "${MarketplaceApi.baseUrl}/marketplace/payhere/notify",
+          "order_id": orderId,
+          "items": "UrbanRoots Order",
+          "amount": total.toString(),
+          "currency": "LKR",
+          "first_name": _nameController.text.split(' ').first,
+          "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').last : '',
+          "email": "user@urbanroots.com",
+          "phone": _phoneController.text,
+          "address": _addressController.text,
+          "city": "Colombo",
+          "country": "Sri Lanka",
+          "delivery_address": _addressController.text,
+          "delivery_city": "Colombo",
+          "delivery_country": "Sri Lanka",
+        };
+
+        PayHere.startPayment(
+          paymentObject,
+          (paymentId) {
+            if (!mounted) return;
+            _showSuccessDialog();
+          },
+          (error) {
+            if (!mounted) return;
+            setState(() => _isProcessing = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Payment Failed: $error', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+            );
+          },
+          () {
+            if (!mounted) return;
+            setState(() => _isProcessing = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Payment Canceled', style: TextStyle(color: MarketplaceTheme.textWhite)), backgroundColor: Colors.orange),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Order Error: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
       );
     }
   }

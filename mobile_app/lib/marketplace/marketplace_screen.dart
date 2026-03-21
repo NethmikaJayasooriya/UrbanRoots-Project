@@ -5,6 +5,7 @@ import 'cart_model.dart';
 import 'shopping_Cart.dart';
 import 'product_detail_screen.dart';
 import 'marketplace_theme.dart';
+import 'marketplace_api.dart';
 
 // ─── Product ──────────────────────────────────────────────────────────────────
 class Product {
@@ -39,32 +40,51 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
 
   final List<String> _categories = ['All', 'Seeds', 'Leafy Greens', 'Indoor', 'Tools'];
 
-  static const List<Product> _products = [
-    Product(
-      name: 'Green Chilli Seeds',
-      category: 'Seeds',
-      price: 150.00,
-      placeholderIcon: Icons.spa_rounded,
-    ),
-    Product(
-      name: 'Basil Plant',
-      category: 'Indoor',
-      price: 320.00,
-      placeholderIcon: Icons.local_florist_rounded,
-    ),
-    Product(
-      name: 'Spinach Seeds',
-      category: 'Leafy Greens',
-      price: 95.00,
-      placeholderIcon: Icons.grass_rounded,
-    ),
-    Product(
-      name: 'Garden Trowel',
-      category: 'Tools',
-      price: 450.00,
-      placeholderIcon: Icons.hardware_rounded,
-    ),
-  ];
+  List<Product> _products = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final productsData = await MarketplaceApi.fetchProducts();
+      final List<Product> loadedProducts = [];
+      for (var p in productsData) {
+        loadedProducts.add(Product(
+          name: p['name'],
+          category: p['category'],
+          price: (p['price'] as num).toDouble(),
+          description: p['description'],
+          placeholderIcon: _getIconForCategory(p['category']),
+        ));
+      }
+      if (mounted) {
+        setState(() {
+          _products = loadedProducts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        print('Error fetching products: $e');
+      }
+    }
+  }
+
+  IconData _getIconForCategory(String category) {
+    if (category == 'Seeds') return Icons.spa_rounded;
+    if (category == 'Indoor') return Icons.local_florist_rounded;
+    if (category == 'Leafy Greens') return Icons.grass_rounded;
+    if (category == 'Tools') return Icons.hardware_rounded;
+    return Icons.eco_rounded;
+  }
 
   List<Product> get _filteredProducts {
     return _products.where((p) {
@@ -195,13 +215,15 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
 
             // Product Grid
             Expanded(
-              child: _filteredProducts.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No products found.',
-                        style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 16),
-                      ),
-                    )
+              child: _isLoading 
+                  ? const Center(child: CircularProgressIndicator(color: MarketplaceTheme.primaryGreen))
+                  : _filteredProducts.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No products found.',
+                            style: TextStyle(color: MarketplaceTheme.textGray, fontSize: 16),
+                          ),
+                        )
                   : GridView.builder(
                       padding: const EdgeInsets.all(16.0),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
