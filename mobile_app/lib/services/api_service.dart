@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:mobile_app/core/api_constants.dart';
 import 'package:mobile_app/models/products.dart';
 import 'package:mobile_app/models/sale.dart';
+import 'package:mobile_app/models/seller.dart';
 
 // ── Custom exceptions ──────────────────────────────────────────
 class ApiException implements Exception {
@@ -56,10 +57,74 @@ class ApiService {
   }
 
   // ──────────────────────────────────────────────────────────────
+  //  SELLERS
+  // ──────────────────────────────────────────────────────────────
+
+  /// Get seller by their auth uid — returns null if not found (404)
+  /// Used on app startup to decide which screen to show
+  Future<Seller?> getSellerByUid(String uid) async {
+    try {
+      final res = await _client.get(
+        _uri(ApiConstants.sellerByUid(uid)),
+        headers: _headers,
+      );
+      if (res.statusCode == 404) return null;
+      final data = _parse(res) as Map<String, dynamic>;
+      return Seller.fromJson(data);
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  /// Get seller by their seller UUID
+  Future<Seller> getSellerById(String id) async {
+    try {
+      final res = await _client.get(
+        _uri(ApiConstants.sellerById(id)),
+        headers: _headers,
+      );
+      final data = _parse(res) as Map<String, dynamic>;
+      return Seller.fromJson(data);
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  /// Create a new seller during onboarding
+  Future<Seller> createSeller(Map<String, dynamic> payload) async {
+    try {
+      final res = await _client.post(
+        _uri(ApiConstants.sellers),
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
+      final data = _parse(res) as Map<String, dynamic>;
+      return Seller.fromJson(data);
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  /// Update seller profile and payment details
+  Future<Seller> updateSeller(
+      String id, Map<String, dynamic> payload) async {
+    try {
+      final res = await _client.patch(
+        _uri(ApiConstants.sellerById(id)),
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
+      final data = _parse(res) as Map<String, dynamic>;
+      return Seller.fromJson(data);
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
   //  PRODUCTS
   // ──────────────────────────────────────────────────────────────
 
-  /// Fetch all products for a seller
   Future<List<Products>> getProducts(String sellerId) async {
     try {
       final res = await _client.get(
@@ -75,7 +140,6 @@ class ApiService {
     }
   }
 
-  /// Create a new product
   Future<Products> createProduct(Map<String, dynamic> payload) async {
     try {
       final res = await _client.post(
@@ -90,7 +154,6 @@ class ApiService {
     }
   }
 
-  /// Update product fields
   Future<Products> updateProduct(
       String id, Map<String, dynamic> payload) async {
     try {
@@ -106,7 +169,6 @@ class ApiService {
     }
   }
 
-  /// Toggle product active / inactive
   Future<Products> toggleProductActive(String id) async {
     try {
       final res = await _client.patch(
@@ -120,7 +182,6 @@ class ApiService {
     }
   }
 
-  /// Delete a product
   Future<void> deleteProduct(String id) async {
     try {
       final res = await _client.delete(
@@ -137,7 +198,6 @@ class ApiService {
   //  SALES
   // ──────────────────────────────────────────────────────────────
 
-  /// Fetch sales for a seller with optional date range
   Future<List<Sale>> getSales(
     String sellerId, {
     DateTime? from,
@@ -146,7 +206,7 @@ class ApiService {
     try {
       final query = <String, String>{'seller_id': sellerId};
       if (from != null) query['from'] = from.toIso8601String();
-      if (to != null) query['to'] = to.toIso8601String();
+      if (to != null)   query['to']   = to.toIso8601String();
 
       final res = await _client.get(
         _uri(ApiConstants.sales, query),
@@ -156,6 +216,50 @@ class ApiService {
       return data
           .map((e) => Sale.fromJson(e as Map<String, dynamic>))
           .toList();
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  //  BENEFICIARIES
+  // ──────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getBeneficiaries(
+      String sellerId) async {
+    try {
+      final res = await _client.get(
+        _uri(ApiConstants.beneficiaries, {'seller_id': sellerId}),
+        headers: _headers,
+      );
+      final data = _parse(res) as List<dynamic>;
+      return data.cast<Map<String, dynamic>>();
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  Future<Map<String, dynamic>> createBeneficiary(
+      Map<String, dynamic> payload) async {
+    try {
+      final res = await _client.post(
+        _uri(ApiConstants.beneficiaries),
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
+      return _parse(res) as Map<String, dynamic>;
+    } on SocketException {
+      throw const ApiException(0, 'No internet connection');
+    }
+  }
+
+  Future<void> deleteBeneficiary(String id) async {
+    try {
+      final res = await _client.delete(
+        _uri(ApiConstants.beneficiaryById(id)),
+        headers: _headers,
+      );
+      _parse(res);
     } on SocketException {
       throw const ApiException(0, 'No internet connection');
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import 'package:mobile_app/models/seller.dart';
 //import 'package:mobile_app/pages/seller/seller_onboarding_page.dart';
 //import 'package:mobile_app/pages/seller/update_seller_details.dart';
 
@@ -21,7 +22,14 @@ class UrbanRootsApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: const SellerPage(), 
+      home: SellerPage(
+        seller: Seller(
+          id: 'PLACEHOLDER',
+          uid: 'PLACEHOLDER',
+          rating: 0,
+          isVerified: false,
+        ),
+      ),
     );
   }
 }
