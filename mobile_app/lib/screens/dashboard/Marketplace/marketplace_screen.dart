@@ -17,8 +17,8 @@ class Product {
     required this.name,
     required this.category,
     required this.price,
-    this.description, // Optional — null is fine for now
-    this.imageUrl,    // Optional — null is fine for now
+    this.description, 
+    this.imageUrl,    
   });
 }
 
@@ -172,6 +172,8 @@ class MarketplaceScreen1 extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
+            // FIX: Added the missing BoxShadow constructor here
+            BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
             )

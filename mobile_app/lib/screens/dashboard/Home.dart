@@ -1,24 +1,41 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
+  /// Expose a GlobalKey so the parent navigation wrapper can call:
+  ///   HomeScreen.globalKey.currentState?.refresh()
+  /// whenever the Home tab is tapped to trigger an auto-refresh.
+  static final GlobalKey<_HomeScreenState> globalKey =
+      GlobalKey<_HomeScreenState>();
+
   const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isThirsty = false;
   bool _isTapped = false;
 
   Map<String, dynamic>? _dashboardData;
   bool _isLoading = true;
 
-  // Animation controllers for the Digital Pet and UI elements
+  // Auto-refresh: tracks the last time we fetched so we can show "Updated X ago"
+  DateTime? _lastRefreshed;
+  // Polling timer: fires every 8 s when no garden exists yet,
+  // so the screen reacts quickly after garden creation in another tab.
+  Timer? _pollTimer;
+  // Tracks whether the refresh icon rotation animation is active.
+  bool _isRefreshSpinning = false;
+
   AnimationController? _petController;
   late AnimationController _bubbleController;
   late AnimationController _glowController;
@@ -73,12 +90,58 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     _bubbleController.forward();
+
+    // Register for app lifecycle events (e.g. screen unlock / app resume)
+    WidgetsBinding.instance.addObserver(this);
+
     _fetchLiveDashboardData();
+
+    // Start a short poll so the home tab auto-detects a newly created garden
+    // without the user having to manually refresh.  Cancelled once a garden loads.
+    _startPollingUntilGardenFound();
+  }
+
+  // ── Public refresh — called by parent nav wrapper when Home tab is tapped ──
+  void refresh() {
+    if (!_isLoading) {
+      setState(() => _isLoading = true);
+      _fetchLiveDashboardData();
+    }
+  }
+
+  void _startPollingUntilGardenFound() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
+      final id = await ApiService.getStoredGardenId();
+      if (id != null && mounted) {
+        _pollTimer?.cancel();
+        _pollTimer = null;
+        setState(() => _isLoading = true);
+        _fetchLiveDashboardData();
+      }
+    });
   }
 
   // Fetches live data from the backend to determine pet mood and dashboard stats
   Future<void> _fetchLiveDashboardData() async {
-    final int? storedId = await ApiService.getStoredGardenId();
+    int? storedId = await ApiService.getStoredGardenId();
+    
+    // ── RESTORE GARDEN FROM CLOUD FALLBACK ──
+    if (storedId == null) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final fetchedId = await ApiService.fetchUserGardenId(user.uid);
+          if (fetchedId != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('active_garden_id', fetchedId);
+            storedId = fetchedId;
+          }
+        }
+      } catch (e) {
+        debugPrint('Fallback garden fetch failed: $e');
+      }
+    }
     
     if (storedId == null) {
       if (mounted) {
@@ -104,6 +167,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       setState(() {
         _dashboardData = data;
         _isLoading = false;
+        _lastRefreshed = DateTime.now();
+        _isRefreshSpinning = false;
+        // Garden confirmed — stop polling
+        _pollTimer?.cancel();
+        _pollTimer = null;
         
         if (data['pet_status'] != null) {
           _isThirsty = data['pet_status']['is_thirsty'] == true;
@@ -113,12 +181,76 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           }
         }
       });
-      _triggerBubbleAnimation(); 
+      _triggerBubbleAnimation();
+      // Bridge IoT sensor alerts from plant_detail_screen to home pet
+      await _checkForPendingIoTAlert();
+    } else if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isRefreshSpinning = false;
+      });
+    }
+  }
+
+  // ── Reads IoT alert written by plant_detail_screen and bridges to home pet ──
+  Future<void> _checkForPendingIoTAlert() async {
+    if (!mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final resolved  = prefs.getBool('iot_alert_resolved') ?? true;
+      final alertMsg  = prefs.getString('iot_last_alert_message');
+      final alertPlant = prefs.getString('iot_last_alert_plant');
+      final alertTime = prefs.getString('iot_last_alert_time');
+
+      if (resolved || alertMsg == null || alertTime == null || alertPlant == null) return;
+
+      final alertDt = DateTime.tryParse(alertTime);
+      if (alertDt == null) return;
+
+      // Only surface the alert if it happened within the last 30 minutes
+      final ageMinutes = DateTime.now().difference(alertDt).inMinutes;
+      if (ageMinutes > 30) return;
+
+      if (_dashboardData != null && _dashboardData!['linked_plant_name'] != null && _dashboardData!['linked_plant_name'] != "None") {
+        if (_dashboardData!['linked_plant_name'] != alertPlant) {
+          // The linked pet has changed or this is an old ghost alert for a different plant!
+          await prefs.setBool('iot_alert_resolved', true);
+          return;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isThirsty = true;
+          if (_dashboardData != null) {
+            // Inject the real IoT alert into what the pet shows
+            _dashboardData!['pet_status'] = {
+              ...(_dashboardData!['pet_status'] as Map<String, dynamic>? ?? {}),
+              'message': alertMsg,
+              'is_thirsty': true,
+              'mood': 'sad',
+            };
+            _dashboardData!['priority_notification'] =
+                "🚨 ${alertPlant ?? 'Plant'} needs attention: $alertMsg";
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  // ── WidgetsBindingObserver: refresh when the app resumes from background ──
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && !_isLoading) {
+      setState(() => _isLoading = true);
+      _fetchLiveDashboardData();
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pollTimer?.cancel();
     _bubbleController.dispose();
     _glowController.dispose();
     _bounceController.dispose();
@@ -404,32 +536,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  String _formatLastRefreshed() {
+    if (_lastRefreshed == null) return "";
+    final diff = DateTime.now().difference(_lastRefreshed!);
+    if (diff.inSeconds < 60) return "just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes}m ago";
+    return "${diff.inHours}h ago";
+  }
+
   Widget _buildDashboard() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      backgroundColor: AppColors.surfaceColor,
+      onRefresh: () async {
+        setState(() => _isLoading = true);
+        await _fetchLiveDashboardData();
+      },
+      child: SingleChildScrollView(
+        // physics must be specified so RefreshIndicator can trigger even when
+        // content does not overflow (the Column is short)
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
           children: [
-            _sectionHeader("Live Status"),
-            GestureDetector(
-              onTap: () {
-                setState(() => _isLoading = true);
-                _fetchLiveDashboardData();
-              },
-              child: Icon(
-                Icons.refresh, 
-                color: _isLoading ? AppColors.primaryGreen : Colors.white24,
-                size: 20,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _sectionHeader("Live Status"),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_lastRefreshed != null && !_isLoading)
+                      Text(
+                        "Updated ${_formatLastRefreshed()}",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white24,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        if (_isLoading) return;
+                        setState(() {
+                          _isLoading = true;
+                          _isRefreshSpinning = true;
+                        });
+                        _fetchLiveDashboardData();
+                      },
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: _isRefreshSpinning ? 1 : 0),
+                        duration: const Duration(milliseconds: 600),
+                        builder: (_, value, child) => Transform.rotate(
+                          angle: value * 6.28318, // 2π
+                          child: child,
+                        ),
+                        child: Icon(
+                          Icons.refresh_rounded,
+                          color: _isLoading
+                              ? AppColors.primaryGreen
+                              : Colors.white24,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            const SizedBox(height: 12),
+            _buildCompactStatusRow(),
+            const SizedBox(height: 16),
+            _buildAiInsightCard(),
+            const SizedBox(height: 30),
           ],
         ),
-        const SizedBox(height: 12),
-        _buildCompactStatusRow(),
-        const SizedBox(height: 16),
-        _buildAiInsightCard(),
-        const SizedBox(height: 30),
-      ],
+      ),
     );
   }
 
@@ -483,17 +665,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildSkeletonBox({double height = 14, double? width, double radius = 8}) {
+    return AnimatedBuilder(
+      animation: _shimmerAnim,
+      builder: (_, __) => Container(
+        height: height,
+        width: width,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          gradient: LinearGradient(
+            begin: Alignment(_shimmerAnim.value - 1, 0),
+            end: Alignment(_shimmerAnim.value, 0),
+            colors: const [
+              Color(0xFF1A2A1A),
+              Color(0xFF253525),
+              Color(0xFF1A2A1A),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCompactStatusRow() {
     if (_isLoading) {
+      // Skeleton shimmer that mirrors the real layout
       return Container(
-        height: 80,
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
-        child: const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryGreen),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(4, (_) => Column(
+            children: [
+              _buildSkeletonBox(height: 22, width: 22, radius: 11),
+              const SizedBox(height: 8),
+              _buildSkeletonBox(height: 14, width: 36),
+              const SizedBox(height: 4),
+              _buildSkeletonBox(height: 9, width: 48),
+            ],
+          )),
         ),
       );
     }
@@ -603,31 +817,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() => _isLoading = true);
-                _fetchLiveDashboardData();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          // Show "Pull down to refresh" hint when garden exists,
+          // or "Go to My Garden" nudge when no garden is set up yet.
+          _dashboardData?['linked_plant_name'] == "None"
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.primaryGreen.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.arrow_downward_rounded,
+                          color: AppColors.primaryGreen, size: 14),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Go to My Garden tab to get started",
+                        style: GoogleFonts.poppins(
+                          color: AppColors.primaryGreen,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Row(
+                  children: [
+                    const Icon(Icons.swipe_down_alt_rounded,
+                        color: Colors.white24, size: 13),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Pull down to refresh",
+                      style: GoogleFonts.poppins(
+                          color: Colors.white24, fontSize: 10),
+                    ),
+                  ],
                 ),
-                elevation: 0,
-              ),
-              child: Text(
-                "REFRESH STATUS",
-                style: GoogleFonts.poppins(
-                  color: Colors.black,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

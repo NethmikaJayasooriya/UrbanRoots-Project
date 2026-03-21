@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static String get baseUrl => kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+  static const String baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
 
   static Future<int?> getStoredGardenId() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,6 +63,21 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  static Future<int?> fetchUserGardenId(String userId) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/gardens/user/$userId'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return data['data']['garden_id'] as int?; 
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching user garden: $e');
+    }
+    return null;
   }
 
   static Future<Map<String, dynamic>?> getGardenStatus([int? gardenId]) async {
@@ -145,5 +160,40 @@ class ApiService {
       debugPrint('Error updating tasks: $e');
       return false;
     }
+  }
+
+  /// Sends an IoT sensor alert to the backend for plant-specific AI dialogue.
+  /// Returns { pet_dialogue, care_action } or null on failure.
+  static Future<Map<String, dynamic>?> postIoTAlert(
+    int gardenId,
+    Map<String, dynamic> alertData,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/gardens/$gardenId/iot-alert'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(alertData),
+      ).timeout(const Duration(seconds: 8)); // Short timeout — pet dialogue should be fast
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data;
+      }
+    } catch (e) {
+      debugPrint('IoT alert post failed: $e');
+    }
+    return null;
+  }
+
+  static Future<String?> fetchDiseaseTreatment(String diseaseName) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/disease/treatment?name=$diseaseName')).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) return data['treatment'];
+      }
+    } catch (e) {
+      debugPrint('Error fetching treatment: $e');
+    }
+    return null;
   }
 }

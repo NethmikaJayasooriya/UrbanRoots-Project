@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'iot_connection_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 
 class GardenBasicsScreen extends StatefulWidget {
@@ -86,8 +87,9 @@ class _GardenBasicsScreenState extends State<GardenBasicsScreen> {
   }
 
   void _goToNextScreen() {
+    final user = FirebaseAuth.instance.currentUser;
     final Map<String, dynamic> gardenData = {
-      "user_id": "test-user-123",
+      "user_id": user?.uid ?? "unknown_user",
       "garden_name": _nameController.text,
       "location": _locationText,
       "latitude": _latitude,

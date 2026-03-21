@@ -7,8 +7,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 // Garden & Weather Features
-import { GardensModule } from './gardens/gardens.module';
+import { GardenModule } from './garden/garden.module';
 import { WeatherModule } from './weather/weather.module';
+import { DiseaseModule } from './disease/disease.module';
 
 // Auth & User Profile Features
 import { AuthModule } from './auth/auth.module';
@@ -42,15 +43,16 @@ import { UserModule } from './user/user.module';
     }),
 
     // 3. Merged Feature Modules
-    GardensModule,
+    GardenModule,
     WeatherModule,
     AuthModule,
     FirebaseModule,
     OtpModule,
     UserModule,
     PasswordModule,
+    DiseaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

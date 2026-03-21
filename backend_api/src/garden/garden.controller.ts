@@ -11,6 +11,12 @@ export class GardenController {
     return { success: true, message: "Garden successfully created!", data: savedGarden };
   }
 
+  @Get('user/:userId')
+  async getGardenByUserId(@Param('userId') userId: string) {
+    const garden = await this.gardenService.getGardenByUserId(userId);
+    return { success: true, data: garden };
+  }
+
   @Get(':id/status')
   async getDashboardStatus(@Param('id') id: string) {
     return await this.gardenService.getGardenStatus(Number(id));
@@ -48,5 +54,13 @@ export class GardenController {
   ) {
     await this.gardenService.updateCropTasks(Number(cropId), tasks);
     return { success: true, message: "Tasks successfully updated." };
+  }
+
+  // IoT real-time alert — called by Flutter when a sensor crosses a threshold.
+  // Returns AI-generated plant-specific pet_dialogue + care_action.
+  @Post(':id/iot-alert')
+  async handleIoTAlert(@Param('id') id: string, @Body() body: any) {
+    const result = await this.gardenService.processIoTAlert(Number(id), body);
+    return { success: true, ...result };
   }
 }

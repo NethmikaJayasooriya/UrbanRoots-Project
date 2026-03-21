@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/services/api_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 import 'setup_profile_screen.dart';
 import 'reset_password_screen.dart';
@@ -50,7 +52,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Future<void> _verifyOtpCode() async {
-    String otp = _controllers.map((c) => c.text).join();
+    String otp = _controllers.map((c) => c.text.trim()).join();
 
     if (otp.length < 4) {
       setState(() => _otpError = "Please enter the full 4-digit code");
@@ -123,11 +125,20 @@ class _VerificationScreenState extends State<VerificationScreen> {
           });
           return;
         }
+
+        // ── RESTORE GARDEN FROM CLOUD ──
+        final fetchedGardenId = await ApiService.fetchUserGardenId(user.uid);
+        if (fetchedGardenId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('active_garden_id', fetchedGardenId);
+        }
+
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
         
         await OtpService.setLoggedIn(true); // Persist session local
 
-        if (isOnboarded) {
+        // Skip onboarding if they already configured a profile OR have a garden saved on their profile!
+        if (isOnboarded || fetchedGardenId != null) {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),

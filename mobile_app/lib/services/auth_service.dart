@@ -15,7 +15,7 @@ class AuthService {
   );
 
   // ─── Backend API endpoints ───────────────────────────────────────────────
-  static const String _baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
 
   static Future<void> setupProfile({
     required String uid,

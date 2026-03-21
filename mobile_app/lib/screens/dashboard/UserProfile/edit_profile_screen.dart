@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mobile_app/services/profile_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -20,9 +21,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _save() async {
     setState(() => _isLoading = true);
 
-    // Hardcoding 'test-user-123' as UID since FirebaseAuth was removed from this prototype branch
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session expired")));
+      setState(() => _isLoading = false);
+      return;
+    }
+
     final success = await ProfileService.updateProfile(
-      uid: 'test-user-123',
+      uid: user.uid,
       firstName: firstName.text.trim(),
       lastName: lastName.text.trim(),
       email: email.text.trim(),

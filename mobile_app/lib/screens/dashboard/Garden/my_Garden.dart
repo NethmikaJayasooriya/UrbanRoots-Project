@@ -5,7 +5,8 @@ import 'ai_recommendations_screen.dart';
 import 'package:mobile_app/screens/garden_creation/garden_intro_screen.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/api_service.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 class MyGardenScreen extends StatefulWidget {
   const MyGardenScreen({super.key});
 
@@ -75,7 +76,24 @@ class _MyGardenScreenState extends State<MyGardenScreen>
   Future<void> _loadSavedGarden() async {
     setState(() => _isLoadingCrops = true);
     
-    final int? storedId = await ApiService.getStoredGardenId();
+    int? storedId = await ApiService.getStoredGardenId();
+
+    // ── RESTORE GARDEN FROM CLOUD FALLBACK ──
+    if (storedId == null) {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final fetchedId = await ApiService.fetchUserGardenId(user.uid);
+          if (fetchedId != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('active_garden_id', fetchedId);
+            storedId = fetchedId;
+          }
+        }
+      } catch (e) {
+        debugPrint('Fallback garden fetch failed: $e');
+      }
+    }
     
     if (storedId != null && mounted) {
       setState(() {
@@ -785,7 +803,9 @@ class _MyGardenScreenState extends State<MyGardenScreen>
                     Text(plant['status'],
                         style: GoogleFonts.poppins(
                             color: Colors.white70, fontSize: 12)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+                    _buildTaskProgressBar(plant),
+                    const SizedBox(height: 8),
                     _buildLinkToggle(plant['id'], isAssigned),
                   ],
                 ),
@@ -794,6 +814,46 @@ class _MyGardenScreenState extends State<MyGardenScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTaskProgressBar(Map<String, dynamic> plant) {
+    final List tasks = plant['daily_tasks'] as List? ?? [];
+    if (tasks.isEmpty) return const SizedBox.shrink();
+
+    final int done = tasks.where((t) => t['isDone'] == true).length;
+    final double progress = done / tasks.length;
+    final bool allDone = done == tasks.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              allDone ? "All tasks done ✓" : "$done/${tasks.length} tasks",
+              style: GoogleFonts.poppins(
+                color: allDone ? AppColors.primaryGreen : Colors.white54,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 3,
+            backgroundColor: Colors.white12,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              allDone ? AppColors.primaryGreen : AppColors.primaryGreen.withOpacity(0.55),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

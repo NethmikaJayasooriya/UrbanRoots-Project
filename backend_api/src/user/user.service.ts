@@ -49,15 +49,21 @@ export class UserService {
 
       // 2. Sync to Firestore (CamelCase fields)
       const userRef = this.firebaseService.firestore.collection('users').doc(uid);
+      
+      // Firestore rejects undefined values, so we filter them out
+      const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined)
+      );
+
       await userRef.set({
-        ...data,
+        ...cleanData,
         updatedAt: new Date(),
       }, { merge: true });
 
       this.logger.log(`Profile updated for user: ${uid} in both databases.`);
     } catch (error) {
-      this.logger.error(`Failed to update profile for user ${uid}`, error.stack);
-      throw new InternalServerErrorException('Failed to update user profile.');
+      this.logger.error(`Failed to update profile for user ${uid}. Reason: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(`Failed to update user profile: ${error.message}`);
     }
   }
 

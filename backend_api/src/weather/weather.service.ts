@@ -7,7 +7,7 @@ export class WeatherService {
   constructor(private readonly httpService: HttpService) {}
 
   async getLiveWeather(latitude: number, longitude: number) {
-    const apiKey = '9ffb04e991074e06d7b735121b5b6db8'; 
+    const apiKey = process.env.WEATHER_API_KEY;
     
     // units=metric ensures we get Celsius instead of Kelvin
     const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;

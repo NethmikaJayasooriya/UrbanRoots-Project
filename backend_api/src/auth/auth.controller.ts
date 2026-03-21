@@ -9,6 +9,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestLoginOtp(@Body('email') email: string) {
     if (!email) throw new BadRequestException('Email is required');
+    email = email.trim();
     await this.authService.requestLoginOtp(email);
     return { success: true, message: 'OTP sent for login' };
   }
@@ -17,6 +18,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestSignupOtp(@Body('email') email: string) {
     if (!email) throw new BadRequestException('Email is required');
+    email = email.trim();
     await this.authService.requestSignupOtp(email);
     return { success: true, message: 'OTP sent for signup' };
   }
@@ -25,6 +27,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async requestPasswordResetOtp(@Body('email') email: string) {
     if (!email) throw new BadRequestException('Email is required');
+    email = email.trim();
     await this.authService.requestPasswordResetOtp(email);
     return { success: true, message: 'OTP sent for password reset' };
   }
@@ -40,6 +43,8 @@ export class AuthController {
     if (!email || !otp) {
       throw new BadRequestException('Email and OTP are required');
     }
+    email = email.trim();
+    otp = otp.trim();
 
     const isValid = await this.authService.verifyOtp(email, otp);
     if (!isValid) {
@@ -65,6 +70,8 @@ export class AuthController {
     if (!email || !newPassword) {
       throw new BadRequestException('Email and new password are required');
     }
+    email = email.trim();
+    otp = otp?.trim();
 
     // The OTP was already verified on the verification screen and consumed.
     // Check the "recently verified" flag instead of re-verifying.
