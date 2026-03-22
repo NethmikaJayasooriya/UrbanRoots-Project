@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Headers, UnauthorizedException } from '@nestjs/common';
 import { SupportService } from './support.service';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
 
@@ -6,14 +6,19 @@ import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 
+  private extractUid(uid?: string): string {
+    if (!uid) throw new UnauthorizedException('x-user-id header is required');
+    return uid;
+  }
+
   @Post('tickets')
-  createTicket(@Body() dto: CreateSupportTicketDto) {
-    return this.supportService.createTicket(dto);
+  createTicket(@Headers('x-user-id') uid: string, @Body() dto: CreateSupportTicketDto) {
+    return this.supportService.createTicket(this.extractUid(uid), dto);
   }
 
   @Get('tickets/me')
-  getMyTickets() {
-    return this.supportService.getMyTickets();
+  getMyTickets(@Headers('x-user-id') uid: string) {
+    return this.supportService.getMyTickets(this.extractUid(uid));
   }
 
   @Get('faqs')

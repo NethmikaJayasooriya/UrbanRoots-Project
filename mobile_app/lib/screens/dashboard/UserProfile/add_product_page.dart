@@ -51,7 +51,7 @@ class _State extends State<AddProductPage> {
       final bool isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(widget.sellerId);
       String imageUrl = '';
       if (_imageFile != null) {
-        imageUrl = await ApiService.instance.uploadProductImage(_imageFile!);
+        imageUrl = await ApiService.uploadProductImage(_imageFile!);
       }
 
       final payload = {
@@ -64,7 +64,7 @@ class _State extends State<AddProductPage> {
         'is_active': true,
       };
 
-      final created = await ApiService.instance.createProduct(payload);
+      final created = await ApiService.createProduct(payload);
 
       if (!mounted) return;
       // Return the new product to the caller (SellerProductsPage)
@@ -294,3 +294,4 @@ class _State extends State<AddProductPage> {
     );
   }
 }
+

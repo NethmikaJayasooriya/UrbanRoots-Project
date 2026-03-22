@@ -59,7 +59,7 @@ class _SellerOnboardingPageState extends State<SellerOnboardingPage> {
         'logo_url': '',
       };
 
-      final seller = await ApiService.instance.createSeller(payload);
+      final seller = await ApiService.createSeller(payload);
 
       // Tell SellerGate we're done — it will swap to SellerPage
       widget.onOnboarded(seller);
@@ -309,3 +309,4 @@ class _SellerOnboardingPageState extends State<SellerOnboardingPage> {
     );
   }
 }
+

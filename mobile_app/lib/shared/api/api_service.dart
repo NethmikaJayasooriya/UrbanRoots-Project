@@ -1,13 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiService {
   static const String baseUrl = 'http://127.0.0.1:3000';
 
+  static Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        'x-user-id': FirebaseAuth.instance.currentUser?.uid ?? '',
+      };
+
   // ================= PROFILE =================
 
   static Future<Map<String, dynamic>> getProfile() async {
-    final response = await http.get(Uri.parse('$baseUrl/profile/me'));
+    final response = await http.get(Uri.parse('$baseUrl/profile/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -26,7 +32,7 @@ class ApiService {
   }) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/profile/me'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         if (firstName != null) 'firstName': firstName,
         if (lastName != null) 'lastName': lastName,
@@ -47,7 +53,7 @@ class ApiService {
   // ================= PREFERENCES =================
 
   static Future<Map<String, dynamic>> getPreferences() async {
-    final response = await http.get(Uri.parse('$baseUrl/preferences/me'));
+    final response = await http.get(Uri.parse('$baseUrl/preferences/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -61,7 +67,7 @@ class ApiService {
   ) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/preferences/me'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode(body),
     );
 
@@ -75,7 +81,7 @@ class ApiService {
   // ================= NOTIFICATIONS =================
 
   static Future<List<dynamic>> getNotifications() async {
-    final response = await http.get(Uri.parse('$baseUrl/notifications/me'));
+    final response = await http.get(Uri.parse('$baseUrl/notifications/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as List<dynamic>;
@@ -87,6 +93,7 @@ class ApiService {
   static Future<void> markNotificationRead(String id) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/notifications/$id/read'),
+      headers: _headers,
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -97,6 +104,7 @@ class ApiService {
   static Future<void> markAllNotificationsRead() async {
     final response = await http.patch(
       Uri.parse('$baseUrl/notifications/me/read-all'),
+      headers: _headers,
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -109,7 +117,7 @@ class ApiService {
   // ================= REVIEWS =================
 
   static Future<Map<String, dynamic>?> getMyReview() async {
-    final response = await http.get(Uri.parse('$baseUrl/reviews/me'));
+    final response = await http.get(Uri.parse('$baseUrl/reviews/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty || response.body == 'null') {
@@ -133,7 +141,7 @@ class ApiService {
 
     final response = await http.post(
       Uri.parse('$baseUrl/reviews'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         'stars': stars,
         'hasFeedback': trimmed.isNotEmpty,
@@ -151,7 +159,7 @@ class ApiService {
   // ================= TERMS =================
 
   static Future<Map<String, dynamic>> getCurrentTerms() async {
-    final response = await http.get(Uri.parse('$baseUrl/terms/current'));
+    final response = await http.get(Uri.parse('$baseUrl/terms/current'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -163,7 +171,7 @@ class ApiService {
   static Future<Map<String, dynamic>> acceptTerms(String version) async {
     final response = await http.post(
       Uri.parse('$baseUrl/terms/accept'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({'version': version}),
     );
 
@@ -177,7 +185,7 @@ class ApiService {
   // ================= STREAKS =================
 
   static Future<Map<String, dynamic>> getMyStreak() async {
-    final response = await http.get(Uri.parse('$baseUrl/streaks/me'));
+    final response = await http.get(Uri.parse('$baseUrl/streaks/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -189,6 +197,7 @@ class ApiService {
   static Future<Map<String, dynamic>> completeTodayStreak() async {
     final response = await http.post(
       Uri.parse('$baseUrl/streaks/complete-today'),
+      headers: _headers,
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -203,7 +212,7 @@ class ApiService {
   static Future<Map<String, dynamic>> createExportRequest(String email) async {
     final response = await http.post(
       Uri.parse('$baseUrl/data-export/requests'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({'email': email}),
     );
 
@@ -217,6 +226,7 @@ class ApiService {
   static Future<List<dynamic>> getExportRequests() async {
     final response = await http.get(
       Uri.parse('$baseUrl/data-export/requests/me'),
+      headers: _headers,
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -235,7 +245,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/support/tickets'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         'category': category,
         'subject': subject,
@@ -251,7 +261,7 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getSupportTickets() async {
-    final response = await http.get(Uri.parse('$baseUrl/support/tickets/me'));
+    final response = await http.get(Uri.parse('$baseUrl/support/tickets/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as List<dynamic>;
@@ -261,7 +271,7 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getSupportFaqs() async {
-    final response = await http.get(Uri.parse('$baseUrl/support/faqs'));
+    final response = await http.get(Uri.parse('$baseUrl/support/faqs'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as List<dynamic>;
@@ -274,6 +284,7 @@ class ApiService {
     final encodedQuery = Uri.encodeQueryComponent(query);
     final response = await http.get(
       Uri.parse('$baseUrl/support/faqs/search?q=$encodedQuery'),
+      headers: _headers,
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -286,7 +297,7 @@ class ApiService {
   // ================= SELLER HUB =================
 
   static Future<Map<String, dynamic>?> getSeller() async {
-    final response = await http.get(Uri.parse('$baseUrl/seller'));
+    final response = await http.get(Uri.parse('$baseUrl/seller'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty || response.body == 'null') {
@@ -299,7 +310,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> startSeller() async {
-    final response = await http.post(Uri.parse('$baseUrl/seller/start'));
+    final response = await http.post(Uri.parse('$baseUrl/seller/start'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -309,7 +320,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> completeSellerIdentity() async {
-    final response = await http.post(Uri.parse('$baseUrl/seller/identity'));
+    final response = await http.post(Uri.parse('$baseUrl/seller/identity'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -324,7 +335,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/seller/shop'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         'shop_name': shopName,
         'shop_description': shopDescription,
@@ -343,7 +354,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/seller/payout'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({'method': method}),
     );
 
@@ -362,7 +373,7 @@ class ApiService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/subscriptions/start-membership'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         'selectedPlan': selectedPlan,
         'paymentMethod': paymentMethod,
@@ -377,7 +388,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getSubscription() async {
-    final response = await http.get(Uri.parse('$baseUrl/subscriptions/me'));
+    final response = await http.get(Uri.parse('$baseUrl/subscriptions/me'), headers: _headers);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -391,7 +402,7 @@ class ApiService {
   ) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/subscriptions/me'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({'selectedPlan': selectedPlan}),
     );
 

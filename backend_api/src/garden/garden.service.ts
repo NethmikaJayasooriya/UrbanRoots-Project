@@ -48,9 +48,11 @@ export class GardenService {
   ) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY')!;
     const genAI = new GoogleGenerativeAI(apiKey);
+    // gemini-2.5-flash does NOT support responseMimeType in generationConfig
+    // (it is a preview model). The service's regex/JSON fallback parsers handle
+    // JSON extraction from the raw text response instead.
     this.geminiModel = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { responseMimeType: 'application/json' },
     });
   }
 

@@ -8,7 +8,7 @@ export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   seller_id: string;
 
   @Column({ type: 'text' })
@@ -23,8 +23,11 @@ export class Product {
   @Column({ type: 'numeric', precision: 10, scale: 2 })
   price: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'image_url', type: 'text', nullable: true })
   image_url: string;
+
+  @Column({ name: 'placeholder_icon', type: 'text', nullable: true })
+  placeholderIcon: string;
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;

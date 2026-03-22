@@ -46,7 +46,7 @@ class _State extends State<SalesPage> {
       final now = DateTime.now();
       // Always fetch the widest window (1 year) and filter locally
       final from = now.subtract(const Duration(days: 365));
-      final sales = await ApiService.instance.getSales(
+      final sales = await ApiService.getSales(
         widget.sellerId,
         from: from,
         to: now,
@@ -382,3 +382,4 @@ class _ErrorView extends StatelessWidget {
         ),
       );
 }
+

@@ -2,13 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
 
-const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
-
 @Injectable()
 export class SupportService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async createTicket(dto: CreateSupportTicketDto) {
+  async createTicket(uid: string, dto: CreateSupportTicketDto) {
     const category = dto.category?.trim() || null;
     const subject = dto.subject?.trim() || '';
     const message = dto.message?.trim() || '';
@@ -24,7 +22,7 @@ export class SupportService {
     const { data, error } = await this.supabaseService.client
       .from('support_tickets')
       .insert({
-        user_id: TEST_USER_ID,
+        user_id: uid,
         category,
         subject,
         message,
@@ -43,11 +41,11 @@ export class SupportService {
     };
   }
 
-  async getMyTickets() {
+  async getMyTickets(uid: string) {
     const { data, error } = await this.supabaseService.client
       .from('support_tickets')
       .select('*')
-      .eq('user_id', TEST_USER_ID)
+      .eq('user_id', uid)
       .order('created_at', { ascending: false });
 
     if (error) {

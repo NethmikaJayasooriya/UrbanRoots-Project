@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/api/api_service.dart';
-// Note: If you need the ProfileService instead of ApiService, uncomment the line below.
 // import '../services/profile_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -23,6 +23,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
   File? _profileImage;
+  String? _existingPhotoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentProfile();
+  }
+
+  Future<void> _loadCurrentProfile() async {
+    setState(() => _isLoading = true);
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      email.text = user.email ?? '';
+      _existingPhotoUrl = user.photoURL;
+
+      if (user.displayName != null && user.displayName!.isNotEmpty) {
+        final parts = user.displayName!.split(' ');
+        firstName.text = parts.first;
+        if (parts.length > 1) {
+          lastName.text = parts.sublist(1).join(' ');
+        }
+      }
+
+      try {
+        final profile = await ApiService.getProfile();
+        if (mounted) {
+          setState(() {
+            if (profile['first_name'] != null && profile['first_name'].toString().trim().isNotEmpty) {
+              firstName.text = profile['first_name'];
+            }
+            if (profile['last_name'] != null && profile['last_name'].toString().trim().isNotEmpty) {
+              lastName.text = profile['last_name'];
+            }
+            if (profile['phone'] != null && profile['phone'].toString().trim().isNotEmpty) {
+              phone.text = profile['phone'];
+            }
+            if (profile['profile_image_url'] != null && profile['profile_image_url'].toString().trim().isNotEmpty) {
+              _existingPhotoUrl = profile['profile_image_url'];
+            }
+          });
+        }
+      } catch (e) {
+        // Silently fail, leaving Firebase fields as fallback
+      }
+    }
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   Future<void> _save() async {
     setState(() => _isLoading = true);
@@ -232,7 +279,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         )
                                       : null,
                                 ),
-                                child: _profileImage == null
+                                child: _profileImage == null && _existingPhotoUrl == null
                                     ? const Center(
                                         child: Icon(
                                           Icons.person,
@@ -240,7 +287,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                           color: AppColors.muted,
                                         ),
                                       )
-                                    : null,
+                                    : _profileImage == null && _existingPhotoUrl != null
+                                        ? ClipOval(
+                                            child: Image.network(
+                                              _existingPhotoUrl!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : null,
                               ),
                             ),
                             Positioned(
@@ -306,7 +360,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           const _Divider(),
                           _InputField(label: "Last Name", controller: lastName),
                           const _Divider(),
-                          _InputField(label: "Email", controller: email),
+                          _InputField(
+                            label: "Email", 
+                            controller: email,
+                            readOnly: true,
+                          ),
                           const _Divider(),
                           _InputField(label: "Phone", controller: phone),
                         ],
@@ -385,10 +443,15 @@ class _Divider extends StatelessWidget {
 }
 
 class _InputField extends StatelessWidget {
-  const _InputField({required this.label, required this.controller});
+  const _InputField({
+    required this.label, 
+    required this.controller,
+    this.readOnly = false,
+  });
 
   final String label;
   final TextEditingController controller;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -408,8 +471,9 @@ class _InputField extends StatelessWidget {
           const SizedBox(height: 10),
           TextField(
             controller: controller,
-            style: const TextStyle(
-              color: AppColors.text,
+            readOnly: readOnly,
+            style: TextStyle(
+              color: readOnly ? AppColors.muted : AppColors.text,
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),

@@ -8,10 +8,19 @@ import 'rate_app_screen.dart';
 import 'terms_conditions_screen.dart';
 import 'help_support_screen.dart';
 import 'subscriptions_billing_screen.dart';
-import 'package:mobile_app/pages/seller/seller_onboarding_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/sellers_hub_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mobile_app/services/otp_service.dart';
+import '../../auth/login_screen.dart';
+import 'edit_profile_screen.dart';
+import '../../../services/api_service.dart' as core_api;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  // GlobalKey lets the nav bar trigger a hard refresh of profile data
+  static final GlobalKey<_ProfileScreenState> globalKey = GlobalKey<_ProfileScreenState>();
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -20,11 +29,100 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingStreak = true;
   int _currentStreak = 0;
+  String _userName = "Plant Lover";
+  String _userEmail = "";
+  String? _profileImageUrl;
+  bool _isLoadingStats = true;
+  int _plantsGrowing = 0;
+  int _gardensManaged = 0;
 
   @override
   void initState() {
     super.initState();
+    _loadUser();
     _loadStreak();
+    _loadStats();
+  }
+
+  /// Called by nav_bar when the user taps the Profile tab.
+  void refresh() {
+    _loadUser();
+    _loadStreak();
+    _loadStats();
+  }
+
+  Future<void> _loadUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      if (mounted) {
+        setState(() {
+          _userName = user.displayName ?? "Plant Lover";
+          _userEmail = user.email ?? "";
+          _profileImageUrl = user.photoURL;
+        });
+      }
+      
+      try {
+        final profile = await ApiService.getProfile();
+        if (mounted) {
+          setState(() {
+            final fName = profile['first_name']?.toString().trim() ?? '';
+            final lName = profile['last_name']?.toString().trim() ?? '';
+            if (fName.isNotEmpty || lName.isNotEmpty) {
+              _userName = "$fName $lName".trim();
+            }
+            if (profile['profile_image_url'] != null) {
+              _profileImageUrl = profile['profile_image_url'];
+            }
+          });
+        }
+      } catch (e) {
+        // Fallback to Firebase defaults
+      }
+    }
+  }
+
+  void _logout() async {
+    await FirebaseAuth.instance.signOut();
+    await OtpService.setLoggedIn(false);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  void _confirmDeleteAccount() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+         backgroundColor: AppColors.card,
+         title: const Text("Delete Account", style: TextStyle(color: Colors.white)),
+         content: const Text("Are you sure you want to permanently delete your account? This cannot be undone.", style: TextStyle(color: Colors.white70)),
+         actions: [
+            TextButton(
+               onPressed: () => Navigator.pop(ctx),
+               child: const Text("Cancel", style: TextStyle(color: AppColors.accent)),
+            ),
+            TextButton(
+               onPressed: () async {
+                  Navigator.pop(ctx);
+                  try {
+                     await FirebaseAuth.instance.currentUser?.delete();
+                     _logout();
+                  } catch (e) {
+                     _toast("Failed to delete account. You may need to sign in again.");
+                  }
+               },
+               child: const Text("Delete", style: TextStyle(color: Colors.redAccent)),
+            ),
+         ]
+      )
+    );
   }
 
   void _toast(String msg) {
@@ -51,29 +149,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _completeTodayTaskForTesting() async {
+  Future<void> _loadStats() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoadingStats = false);
+      return;
+    }
+
     try {
-      final data = await ApiService.completeTodayStreak();
+      final String uid = user.uid;
+      final int? gardenId = await core_api.ApiService.fetchUserGardenId(uid);
+      
+      int gardens = 0;
+      int plants = 0;
+      
+      if (gardenId != null) {
+        gardens = 1;
+        final crops = await core_api.ApiService.getGardenCrops(gardenId);
+        if (crops != null) {
+          plants = crops.length;
+        }
+      }
 
-      if (!mounted) return;
-
-      setState(() {
-        _currentStreak = (data['current_streak'] ?? 0) as int;
-      });
-
-      final alreadyCompletedToday =
-          (data['alreadyCompletedToday'] ?? false) as bool;
-
-      if (alreadyCompletedToday) {
-        _toast('Today is already counted for your streak');
-      } else {
-        _toast('Streak updated successfully');
+      if (mounted) {
+        setState(() {
+          _gardensManaged = gardens;
+          _plantsGrowing = plants;
+          _isLoadingStats = false;
+        });
       }
     } catch (e) {
-      if (!mounted) return;
-      _toast('Failed to complete today task: $e');
+      if (mounted) {
+        setState(() => _isLoadingStats = false);
+      }
     }
   }
+
+  // Streak tracking now runs automatically via background startup routine
 
   @override
   Widget build(BuildContext context) {
@@ -99,54 +211,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.border, width: 3),
+                        image: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(_profileImageUrl!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: AppColors.muted,
-                      ),
+                      child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                          ? const Icon(Icons.person, size: 60, color: AppColors.muted)
+                          : null,
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
 
-                    const Text(
-                      "Alex Rivers",
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _userName,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                          },
+                          child: const Icon(Icons.edit, size: 20, color: AppColors.accent),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 6),
 
-                    const Text(
-                      "@alex_urbanroots",
-                      style: TextStyle(
+                    Text(
+                      _userEmail.isNotEmpty ? _userEmail : "@user",
+                      style: const TextStyle(
                         color: AppColors.muted,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 32),
 
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: _StatCard(
-                            value: "12",
+                            value: _isLoadingStats ? "..." : _plantsGrowing.toString(),
                             label: "PLANTS\nGROWING",
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        const SizedBox(width: 14),
+                        Expanded(
                           child: _StatCard(
-                            value: "3",
+                            value: _isLoadingStats ? "..." : _gardensManaged.toString(),
                             label: "GARDENS\nMANAGED",
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: _StatCard(
                             value: _isLoadingStreak
@@ -158,30 +286,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
 
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _completeTodayTaskForTesting,
-                        style: ElevatedButton.styleFrom(
-                          elevation: 0,
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        child: const Text("Complete Today Task (Test)"),
-                      ),
-                    ),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 36),
 
                     Align(
                       alignment: Alignment.centerLeft,
@@ -189,14 +296,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         "ACCOUNT",
                         style: TextStyle(
                           color: AppColors.muted,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
+                          letterSpacing: 2.0,
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
                     Container(
                       decoration: BoxDecoration(
@@ -213,7 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => const SellerOnboardingPage(),
+                                  builder: (_) => const SellersHubScreen(),
                                 ),
                               );
                             },
@@ -297,6 +404,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               );
                             },
                           ),
+                          const _MenuDivider(),
+                          _MenuItem(
+                            icon: Icons.logout,
+                            title: "Logout",
+                            onTap: _logout,
+                          ),
+                          const _MenuDivider(),
+                          _MenuItem(
+                            icon: Icons.delete_forever,
+                            title: "Delete Account",
+                            onTap: _confirmDeleteAccount,
+                            isDanger: true,
+                          ),
                         ],
                       ),
                     ),
@@ -359,11 +479,13 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final bool isDanger;
 
   const _MenuItem({
     required this.icon,
     required this.title,
     required this.onTap,
+    this.isDanger = false,
   });
 
   @override
@@ -372,22 +494,22 @@ class _MenuItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.accent),
+            Icon(icon, color: isDanger ? Colors.redAccent : AppColors.accent),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: AppColors.text,
+                style: TextStyle(
+                  color: isDanger ? Colors.redAccent : AppColors.text,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            Icon(Icons.chevron_right_rounded, color: isDanger ? Colors.redAccent.withOpacity(0.5) : AppColors.muted),
           ],
         ),
       ),
@@ -403,3 +525,4 @@ class _MenuDivider extends StatelessWidget {
     return const Divider(height: 1, thickness: 1, color: AppColors.border);
   }
 }
+

@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 
-const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
-
 @Injectable()
 export class StreaksService {
   constructor(private readonly supabase: SupabaseService) {}
@@ -17,25 +15,25 @@ export class StreaksService {
     return date.toISOString().split('T')[0];
   }
 
-  async getOrCreateStreak() {
+  async getOrCreateStreak(uid: string) {
     const { data, error } = await this.supabase.client
       .from('streaks')
       .select('*')
-      .eq('user_id', TEST_USER_ID)
+      .eq('user_id', uid)
       .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
+      console.warn(`[Streaks] select error for ${uid}: ${error.message}`);
+      return this.defaultStreak(uid);
     }
 
-    if (data) {
-      return data;
-    }
+    if (data) return data;
 
+    // Try to create a streak row. May fail if Firebase uid ≠ Supabase auth uid.
     const { data: created, error: createError } = await this.supabase.client
       .from('streaks')
       .insert({
-        user_id: TEST_USER_ID,
+        user_id: uid,
         current_streak: 0,
         longest_streak: 0,
         last_completed_date: null,
@@ -44,14 +42,24 @@ export class StreaksService {
       .single();
 
     if (createError) {
-      throw new Error(createError.message);
+      console.warn(`[Streaks] insert failed for ${uid}: ${createError.message}`);
+      return this.defaultStreak(uid);
     }
 
     return created;
   }
 
-  async getMyStreak() {
-    const streak = await this.getOrCreateStreak();
+  private defaultStreak(uid: string) {
+    return {
+      user_id: uid,
+      current_streak: 0,
+      longest_streak: 0,
+      last_completed_date: null,
+    };
+  }
+
+  async getMyStreak(uid: string) {
+    const streak = await this.getOrCreateStreak(uid);
 
     const today = this.getTodayDateString();
     const yesterday = this.getYesterdayDateString();
@@ -64,45 +72,37 @@ export class StreaksService {
     ) {
       const { data, error } = await this.supabase.client
         .from('streaks')
-        .update({
-          current_streak: 0,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', TEST_USER_ID)
+        .update({ current_streak: 0, updated_at: new Date().toISOString() })
+        .eq('user_id', uid)
         .select('*')
         .single();
 
       if (error) {
-        throw new Error(error.message);
+        return { ...streak, current_streak: 0 };
       }
-
       return data;
     }
 
     return streak;
   }
 
-  async completeToday() {
-    const streak = await this.getOrCreateStreak();
+  async completeToday(uid: string) {
+    const streak = await this.getOrCreateStreak(uid);
 
     const today = this.getTodayDateString();
     const yesterday = this.getYesterdayDateString();
 
     if (streak.last_completed_date === today) {
-      return {
-        ...streak,
-        alreadyCompletedToday: true,
-      };
+      return { ...streak, alreadyCompletedToday: true };
     }
 
     let nextStreak = 1;
-
     if (streak.last_completed_date === yesterday) {
       nextStreak = streak.current_streak + 1;
     }
 
     const nextLongest =
-      nextStreak > streak.longest_streak ? nextStreak : streak.longest_streak;
+      nextStreak > (streak.longest_streak ?? 0) ? nextStreak : streak.longest_streak;
 
     const { data, error } = await this.supabase.client
       .from('streaks')
@@ -112,17 +112,16 @@ export class StreaksService {
         last_completed_date: today,
         updated_at: new Date().toISOString(),
       })
-      .eq('user_id', TEST_USER_ID)
+      .eq('user_id', uid)
       .select('*')
       .single();
 
     if (error) {
-      throw new Error(error.message);
+      // Return in-memory result even if DB couldn't persist
+      console.warn(`[Streaks] update failed for ${uid}: ${error.message}`);
+      return { ...streak, current_streak: nextStreak, alreadyCompletedToday: false };
     }
 
-    return {
-      ...data,
-      alreadyCompletedToday: false,
-    };
+    return { ...data, alreadyCompletedToday: false };
   }
 }

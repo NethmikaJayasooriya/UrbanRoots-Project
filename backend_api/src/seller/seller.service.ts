@@ -1,17 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 
-const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
-
 @Injectable()
 export class SellerService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async getSeller() {
+  async getSeller(uid: string) {
     const { data, error } = await this.supabase.client
       .from('sellers')
       .select('*')
-      .eq('user_id', TEST_USER_ID)
+      .eq('uid', uid)
       .maybeSingle();
 
     if (error) {
@@ -21,8 +19,8 @@ export class SellerService {
     return data;
   }
 
-  async startOnboarding() {
-    const existing = await this.getSeller();
+  async startOnboarding(uid: string) {
+    const existing = await this.getSeller(uid);
 
     if (existing) {
       return existing;
@@ -31,10 +29,10 @@ export class SellerService {
     const { data, error } = await this.supabase.client
       .from('sellers')
       .insert({
-        user_id: TEST_USER_ID,
+        uid: uid,
         onboarding_step: 'identity',
         is_verified: false,
-        shop_name: null,
+        brand_name: null,
         shop_description: null,
         payout_method: null,
       })
@@ -48,11 +46,11 @@ export class SellerService {
     return data;
   }
 
-  async completeIdentity() {
-    const existing = await this.getSeller();
+  async completeIdentity(uid: string) {
+    const existing = await this.getSeller(uid);
 
     if (!existing) {
-      return this.startOnboarding();
+      return this.startOnboarding(uid);
     }
 
     const { data, error } = await this.supabase.client
@@ -61,7 +59,7 @@ export class SellerService {
         is_verified: true,
         onboarding_step: 'shop',
       })
-      .eq('user_id', TEST_USER_ID)
+      .eq('uid', uid)
       .select('*')
       .single();
 
@@ -72,21 +70,21 @@ export class SellerService {
     return data;
   }
 
-  async updateShopDetails(shop_name: string, shop_description: string) {
-    const existing = await this.getSeller();
+  async updateShopDetails(uid: string, shop_name: string, shop_description: string) {
+    const existing = await this.getSeller(uid);
 
     if (!existing) {
-      await this.startOnboarding();
+      await this.startOnboarding(uid);
     }
 
     const { data, error } = await this.supabase.client
       .from('sellers')
       .update({
-        shop_name,
+        brand_name: shop_name,
         shop_description,
         onboarding_step: 'payout',
       })
-      .eq('user_id', TEST_USER_ID)
+      .eq('uid', uid)
       .select('*')
       .single();
 
@@ -97,11 +95,11 @@ export class SellerService {
     return data;
   }
 
-  async setPayout(method: string) {
-    const existing = await this.getSeller();
+  async setPayout(uid: string, method: string) {
+    const existing = await this.getSeller(uid);
 
     if (!existing) {
-      await this.startOnboarding();
+      await this.startOnboarding(uid);
     }
 
     const { data, error } = await this.supabase.client
@@ -110,7 +108,7 @@ export class SellerService {
         payout_method: method,
         onboarding_step: 'completed',
       })
-      .eq('user_id', TEST_USER_ID)
+      .eq('uid', uid)
       .select('*')
       .single();
 

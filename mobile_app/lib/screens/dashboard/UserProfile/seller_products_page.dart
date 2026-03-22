@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:mobile_app/models/products.dart';
-import 'package:mobile_app/pages/seller/add_product_page.dart';
-import 'package:mobile_app/pages/seller/view_product_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/add_product_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/view_product_page.dart';
 import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/style.dart';
-import 'package:mobile_app/marketplace/marketplace_theme.dart';
+import 'package:mobile_app/screens/dashboard/Marketplace/marketplace_theme.dart';
 
 class SellerProductsPage extends StatefulWidget {
   // TODO: replace with real seller ID from auth session
@@ -37,7 +37,7 @@ class _State extends State<SellerProductsPage> {
     setState(() { _loading = true; _error = null; });
     try {
       final products =
-          await ApiService.instance.getProducts(widget.sellerId);
+          await ApiService.getProducts(widget.sellerId);
       if (mounted) setState(() { _products = products; _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
@@ -56,7 +56,7 @@ class _State extends State<SellerProductsPage> {
     if (product.id == null) return;
     try {
       final updated =
-          await ApiService.instance.toggleProductActive(product.id!);
+          await ApiService.toggleProductActive(product.id!);
       setState(() {
         final i = _products.indexWhere((p) => p.id == updated.id);
         if (i != -1) _products[i] = updated;
@@ -107,7 +107,7 @@ class _State extends State<SellerProductsPage> {
   Future<void> _deleteProduct(Products product) async {
     if (product.id == null) return;
     try {
-      await ApiService.instance.deleteProduct(product.id!);
+      await ApiService.deleteProduct(product.id!);
       setState(() => _products.removeWhere((p) => p.id == product.id));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -497,3 +497,6 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
+
+
+

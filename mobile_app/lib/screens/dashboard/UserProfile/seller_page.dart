@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:mobile_app/models/seller.dart';
-import 'package:mobile_app/pages/seller/add_product_page.dart';
-import 'package:mobile_app/pages/seller/sales_page.dart';
-import 'package:mobile_app/pages/seller/seller_products_page.dart';
-import 'package:mobile_app/pages/seller/update_seller_details.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/add_product_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/sales_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/seller_products_page.dart';
+import 'package:mobile_app/screens/dashboard/UserProfile/update_seller_details.dart';
 import 'package:mobile_app/style.dart';
 
 class SellerPage extends StatefulWidget {
@@ -45,11 +45,18 @@ class _SellerPageState extends State<SellerPage> {
 
             // ── Profile Summary ──────────────────────────
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.surfaceColor,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -213,28 +220,63 @@ class _SellerPageState extends State<SellerPage> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          leading: Icon(icon, color: Colors.white70, size: 22),
-          title: Text(
-            label,
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textMain),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceColor.withOpacity(0.6),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white10),
           ),
-          subtitle: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 12, color: Colors.white38),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: AppColors.primary, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(fontSize: 12, color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 20),
+                ),
+              ],
+            ),
           ),
-          trailing:
-              const Icon(Icons.chevron_right, color: Colors.white38),
-          onTap: onTap,
         ),
-        const Divider(height: 1, color: Colors.white12),
-      ],
+      ),
     );
   }
 }
+

@@ -23,6 +23,15 @@ export class Seller {
   @Column({ type: 'text', nullable: true })
   business_address: string;
 
+  @Column({ type: 'varchar', default: 'identity' })
+  onboarding_step: string;
+
+  @Column({ type: 'text', nullable: true })
+  shop_description: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  payout_method: string;
+
   @Column({ type: 'text', nullable: true })
   logo_url: string;
 

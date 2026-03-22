@@ -57,7 +57,7 @@ class _UpdateSellerDetailsPageState
 
   Future<void> _loadBeneficiaries() async {
     try {
-      final data = await ApiService.instance
+      final data = await ApiService
           .getBeneficiaries(widget.seller.id);
       if (mounted) {
         setState(() {
@@ -94,7 +94,7 @@ class _UpdateSellerDetailsPageState
     // If it has an id it exists in the DB — delete it
     if (b.id != null) {
       try {
-        await ApiService.instance.deleteBeneficiary(b.id!);
+        await ApiService.deleteBeneficiary(b.id!);
       } on ApiException catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -125,7 +125,7 @@ class _UpdateSellerDetailsPageState
         if (_logoFile != null) 'logo_url': '',
       };
 
-      final updatedSeller = await ApiService.instance
+      final updatedSeller = await ApiService
           .updateSeller(widget.seller.id, payload);
 
       // ── Save new (unsaved) beneficiaries ───────────────
@@ -134,7 +134,7 @@ class _UpdateSellerDetailsPageState
             b.nameCtrl.text.isNotEmpty &&
             b.accountCtrl.text.isNotEmpty &&
             b.bankCtrl.text.isNotEmpty) {
-          await ApiService.instance.createBeneficiary({
+          await ApiService.createBeneficiary({
             'seller_id':      widget.seller.id,
             'full_name':      b.nameCtrl.text.trim(),
             'account_number': b.accountCtrl.text.trim(),
@@ -383,3 +383,5 @@ class _UpdateSellerDetailsPageState
     );
   }
 }
+
+

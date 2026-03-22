@@ -1,14 +1,23 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Param, Body, Query, HttpCode, HttpStatus,
+  UseInterceptors, UploadedFile, BadRequestException,
+  Req,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { extname } from 'path';
+import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { SupabaseService } from '../common/supabase/supabase.service';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly service: ProductsService) {}
+  constructor(
+    private readonly service: ProductsService,
+    private readonly supabaseService: SupabaseService,
+  ) {}
 
   /** GET /products?seller_id=:uuid */
   @Get()
@@ -22,10 +31,47 @@ export class ProductsController {
     return this.service.findOne(id);
   }
 
+  /** POST /products/upload */
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadImage(
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Image file is required');
+    }
+
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = extname(file.originalname);
+    const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
+
+    const { data, error } = await this.supabaseService.client
+      .storage
+      .from('products')
+      .upload(filename, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('[Supabase Upload Error]', error);
+      throw new BadRequestException('Failed to upload image to Supabase');
+    }
+
+    const { data: publicUrlData } = this.supabaseService.client
+      .storage
+      .from('products')
+      .getPublicUrl(filename);
+
+    console.log('[DEBUG] Supabase Upload Generated URL:', publicUrlData.publicUrl, 'Original name:', file.originalname);
+    return { imageUrl: publicUrlData.publicUrl };
+  }
+
   /** POST /products */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateProductDto) {
+    console.log('[DEBUG] Product Creation Payload received:', dto);
     return this.service.create(dto);
   }
 

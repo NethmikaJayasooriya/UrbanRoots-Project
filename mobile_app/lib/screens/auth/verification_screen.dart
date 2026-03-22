@@ -33,6 +33,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
 
   bool _isLoading = false;
+  bool _isResending = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
   // Inline error for OTP
@@ -169,28 +170,38 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Future<void> _resendOtp() async {
-    if (_resendCooldown > 0) return;
-
-    await OtpService.requestOtp(widget.email, widget.flow);
-
-    if (!mounted) return;
+    if (_resendCooldown > 0 || _isResending) return;
 
     setState(() {
-      _otpError = ''; // clear error when new OTP sent
+      _isResending = true;
+      _otpError = '';
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("A new verification code has been sent to your email.")),
-    );
+    try {
+      await OtpService.requestOtp(widget.email, widget.flow);
 
-    // Start cooldown timer (30 seconds)
-    setState(() => _resendCooldown = 30);
-    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _resendCooldown--;
-        if (_resendCooldown <= 0) timer.cancel();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("A new verification code has been sent to your email.")),
+      );
+
+      // Start cooldown timer (30 seconds)
+      setState(() => _resendCooldown = 30);
+      _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        setState(() {
+          _resendCooldown--;
+          if (_resendCooldown <= 0) timer.cancel();
+        });
       });
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to resend code: $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
   }
 
   @override
@@ -360,28 +371,34 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: _resendCooldown > 0 ? null : _resendOtp,
-                    child: RichText(
-                      text: TextSpan(
-                        text: "Haven't got the email yet? ",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: _resendCooldown > 0
-                                ? "Resend in ${_resendCooldown}s"
-                                : "Resend email",
-                            style: GoogleFonts.poppins(
-                              color: _resendCooldown > 0
-                                  ? Colors.white30
-                                  : AppColors.primaryGreen,
-                              fontWeight: FontWeight.bold,
+                    child: _isResending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                          )
+                        : RichText(
+                            text: TextSpan(
+                              text: "Haven't got the email yet? ",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white54,
+                                fontSize: 13,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: _resendCooldown > 0
+                                      ? "Resend in ${_resendCooldown}s"
+                                      : "Resend email",
+                                  style: GoogleFonts.poppins(
+                                    color: _resendCooldown > 0
+                                        ? Colors.white30
+                                        : AppColors.primaryGreen,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
               ],

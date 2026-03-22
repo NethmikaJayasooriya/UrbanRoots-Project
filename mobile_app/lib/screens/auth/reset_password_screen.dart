@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/otp_service.dart';
+import 'package:mobile_app/services/auth_service.dart';
+import 'package:mobile_app/screens/dashboard/nav_bar.dart';
+import 'setup_profile_screen.dart';
 import 'login_screen.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -55,29 +58,48 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         throw Exception("Failed to reset password. The link might have expired.");
       }
 
-      // Clear the persistent login since password is being reset
-      await OtpService.setLoggedIn(false);
+      // Auto-login with Firebase using the new password
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: widget.email,
+        password: password,
+      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Password reset successfully! You can now log in with your new password.",
-              style: GoogleFonts.poppins(color: Colors.black),
+      // Set local persistent state
+      await OtpService.setLoggedIn(true);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Password reset successfully! You are now logged in.",
+                style: GoogleFonts.poppins(color: Colors.black),
+              ),
+              backgroundColor: AppColors.primaryGreen,
             ),
-            backgroundColor: AppColors.primaryGreen,
-          ),
-        );
+          );
 
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (route) => false,
-            );
-          }
-        });
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              if (isOnboarded) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
+                  (route) => false,
+                );
+              } else {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
+                  (route) => false,
+                );
+              }
+            }
+          });
+        }
       }
     } on FirebaseAuthException catch (e) {
       print('ResetPasswordScreen FirebaseAuth error: $e');

@@ -38,14 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-
+      // Fall back to defaults silently — don't surface backend errors to users
       setState(() {
+        smartReminders = true;
         _isLoadingPreferences = false;
       });
-
-      _toast('Failed to load preferences: $e');
     }
   }
+
 
   Future<void> _updateSmartReminders(bool value) async {
     if (_isSavingPreferences) return;

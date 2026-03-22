@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-<<<<<<< HEAD
 // Root App
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,46 +18,10 @@ import { OtpModule } from './otp/otp.module';
 import { PasswordModule } from './password/password.module';
 import { UserModule } from './user/user.module';
 
-@Module({
-  imports: [
-    // 1. Loads the .env file globally
-    ConfigModule.forRoot({ isGlobal: true }),
-
-    // 2. Connects to Supabase/Postgres using Async configuration
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get<string>('DB_USERNAME'),
-        password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_NAME'),
-        autoLoadEntities: true, // This automatically loads 'User' and other entities
-        synchronize: true, // Auto-creates tables in Supabase (Development only)
-        ssl: {
-          rejectUnauthorized: false, // Required for Supabase
-        },
-      }),
-    }),
-
-    // 3. Merged Feature Modules
-    GardenModule,
-    WeatherModule,
-    AuthModule,
-    FirebaseModule,
-    OtpModule,
-    UserModule,
-    PasswordModule,
-    DiseaseModule,
-=======
-// Existing Apps
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
-// Feature Modules
+// Marketplace Feature
 import { MarketplaceModule } from './marketplace/marketplace.module';
+
+// User Profile & Seller Hub Features (from feature/marketplace branch)
 import { SupabaseModule } from './common/supabase/supabase.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -72,39 +35,44 @@ import { ProductsModule } from './products/products.module';
 import { SalesModule } from './sales/sales.module';
 import { SellersModule } from './sellers/sellers.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
-import { UsersModule } from './users/users.module';
+import { StreaksModule } from './streaks/streaks.module';
 
 @Module({
   imports: [
-    // ── Env Configuration ──────────────────────────────────
+    // 1. Loads the .env file globally
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ── Database (Supabase / Postgres) ─────────────────────
+    // 2. Connects to Supabase/Postgres using Async configuration
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ({
+      useFactory: (config: ConfigService) => ({
         type: 'postgres',
-        host: cfg.get<string>('DB_HOST'),
-        port: cfg.get<number>('DB_PORT') || 5432,
-        username: cfg.get<string>('DB_USER') || cfg.get<string>('DB_USERNAME'),
-        password: cfg.get<string>('DB_PASS') || cfg.get<string>('DB_PASSWORD'),
-        database: cfg.get<string>('DB_NAME'),
-        // SSL is usually required for Supabase remote connections
-        ssl: { rejectUnauthorized: false },
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT') || 5432,
+        username: config.get<string>('DB_USERNAME') || config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASSWORD') || config.get<string>('DB_PASS'),
+        database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        // Set to false if your tables are already managed in Supabase dashboard
-        synchronize: false,
+        synchronize: true,
+        ssl: {
+          rejectUnauthorized: false,
+        },
       }),
     }),
 
-    // ── Feature Modules ────────────────────────────────────
-    UsersModule,
-    SellersModule,
-    ProductsModule,
-    SalesModule,
-    BeneficiariesModule,
+    // 3. Feature Modules
+    GardenModule,
+    WeatherModule,
+    AuthModule,
+    FirebaseModule,
+    OtpModule,
+    UserModule,
+    PasswordModule,
+    DiseaseModule,
     MarketplaceModule,
+
+    // 4. Seller Hub & Profile Features
     SupabaseModule,
     ProfileModule,
     NotificationsModule,
@@ -114,7 +82,11 @@ import { UsersModule } from './users/users.module';
     SellerModule,
     PreferencesModule,
     SubscriptionsModule,
->>>>>>> origin/feature/marketplace
+    ProductsModule,
+    SalesModule,
+    SellersModule,
+    BeneficiariesModule,
+    StreaksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/api/api_service.dart';
 import 'seller_onboarding_screen.dart';
-import '../../../pages/seller/seller_page.dart';
+import 'seller_page.dart';
 import '../../../models/seller.dart';
 
 class SellersHubScreen extends StatefulWidget {
@@ -571,3 +571,4 @@ class _ReasonCard extends StatelessWidget {
     );
   }
 }
+

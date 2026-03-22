@@ -55,7 +55,7 @@ class _State extends State<ViewProductPage> {
         if (_imageFile != null) 'image_url': _imageFile!.name,
       };
 
-      final updated = await ApiService.instance
+      final updated = await ApiService
           .updateProduct(widget.product.id!, payload);
 
       if (!mounted) return;
@@ -108,7 +108,7 @@ class _State extends State<ViewProductPage> {
   Future<void> _delete() async {
     if (widget.product.id == null) return;
     try {
-      await ApiService.instance.deleteProduct(widget.product.id!);
+      await ApiService.deleteProduct(widget.product.id!);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Product deleted.')),
@@ -394,3 +394,5 @@ class _StatusBadge extends StatelessWidget {
         ),
       );
 }
+
+

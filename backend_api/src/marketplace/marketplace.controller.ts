@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-=======
-import { Controller, Get, Param, Post, Body } from '@nestjs/common';
->>>>>>> 1823ea291d5656955397d4cf7d7e5d97a1b06878
 import { MarketplaceService } from './marketplace.service';
 
 @Controller('marketplace')
@@ -10,9 +6,13 @@ export class MarketplaceController {
   constructor(private readonly marketplaceService: MarketplaceService) {}
 
   @Get('products')
-<<<<<<< HEAD
   async getProducts() {
     return await this.marketplaceService.getProducts();
+  }
+
+  @Post('products')
+  async createProduct(@Body() body: any) {
+    return await this.marketplaceService.createProduct(body);
   }
 
   @Post('orders')
@@ -45,30 +45,3 @@ export class MarketplaceController {
     return await this.marketplaceService.getRelatedProducts(productId);
   }
 }
-
-=======
-  getProducts() {
-    return this.marketplaceService.getProducts();
-  }
-
-  @Post('products')
-  createProduct(@Body() body: any) {
-    return this.marketplaceService.createProduct(body);
-  }
-
-  @Get('products/:productId/reviews')
-  getReviews(@Param('productId') productId: string) {
-    return this.marketplaceService.getProductReviews(productId);
-  }
-
-  @Post('reviews')
-  addReview(@Body() body: any) {
-    return this.marketplaceService.addReview(body);
-  }
-
-  @Post('orders')
-  submitOrder(@Body() body: any) {
-    return this.marketplaceService.submitOrder(body);
-  }
-}
->>>>>>> 1823ea291d5656955397d4cf7d7e5d97a1b06878

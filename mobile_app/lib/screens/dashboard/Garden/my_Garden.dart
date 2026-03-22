@@ -72,11 +72,29 @@ class _MyGardenScreenState extends State<MyGardenScreen>
     super.dispose();
   }
 
-  // Looks for the Garden ID we saved in SharedPreferences during creation
+  // Looks for the Garden ID we saved in SharedPreferences during creation,
+  // then validates it is still a real row in the DB. Falls back to the cloud
+  // API if the locally-stored ID is stale (e.g. after a DB reset).
   Future<void> _loadSavedGarden() async {
     setState(() => _isLoadingCrops = true);
-    
+
     int? storedId = await ApiService.getStoredGardenId();
+
+    // ── ALWAYS VALIDATE THE STORED ID AGAINST THE BACKEND ──
+    // If we have a stored ID, double-check it still exists on the server.
+    if (storedId != null) {
+      try {
+        final statusData = await ApiService.getGardenStatus(storedId);
+        if (statusData == null) {
+          // ID is stale — clear it so we fall through to the cloud lookup
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('active_garden_id');
+          storedId = null;
+        }
+      } catch (_) {
+        storedId = null;
+      }
+    }
 
     // ── RESTORE GARDEN FROM CLOUD FALLBACK ──
     if (storedId == null) {
@@ -94,7 +112,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
         debugPrint('Fallback garden fetch failed: $e');
       }
     }
-    
+
     if (storedId != null && mounted) {
       setState(() {
         _gardenCreated = true;
@@ -109,6 +127,7 @@ class _MyGardenScreenState extends State<MyGardenScreen>
       if (mounted) setState(() => _isLoadingCrops = false);
     }
   }
+
 
   void _openGardenCreation() {
     Navigator.push(
