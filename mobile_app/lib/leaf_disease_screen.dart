@@ -23,7 +23,7 @@ import 'screens/dashboard/Marketplace/product_detail_screen.dart';
 import 'screens/dashboard/Marketplace/marketplace_screen.dart' show Product, MarketplaceScreen1;
 
 class LeafDiseaseAPI {
-  static const String _baseUrl = 'https://urbanroots-project.onrender.com';
+  static const String _baseUrl = 'https://nethmika89-urbanroots-ai.hf.space';
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
