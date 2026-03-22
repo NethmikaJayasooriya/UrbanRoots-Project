@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'firebase_options.dart';
+import 'services/auth_service.dart';
+import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
 // screens
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';

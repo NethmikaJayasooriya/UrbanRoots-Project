@@ -28,7 +28,6 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
     with SingleTickerProviderStateMixin {
 
   // ── State ──────────────────────────────────────────────────────────────────
-  bool get _isStandalone => widget.onGardenCreated == null;
   bool _isScanning   = false;
   bool _isConnecting = false;
   String? _selectedDevice; // IP tapped in the list
@@ -238,12 +237,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
       _isConnecting = false;
     });
     _startHeartbeat();
-    
-    if (_isStandalone) {
-      Navigator.pop(context);
-    } else {
-      _showWindConfigDialog();
-    }
+    _showWindConfigDialog();
   }
 
   Future<void> _disconnectDevice() async {
@@ -614,21 +608,11 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () {
-                if (_isStandalone) {
-                  Navigator.pop(context);
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ManualEnvironmentScreen(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => ManualEnvironmentScreen(
                         gardenData: widget.gardenData ?? {},
                         onGardenCreated: widget.onGardenCreated,
-                      ),
-                    ),
-                  );
-                }
-              },
+                      ))),
               child: Text('Skip for now',
                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             ),
