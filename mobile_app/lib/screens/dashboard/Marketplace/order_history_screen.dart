@@ -41,7 +41,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             final data = await MarketplaceApi.fetchOrders(p);
             allOrders.addAll(data);
           } catch(e) {
-            print('Error fetching orders for $p: $e');
+            debugPrint('Error fetching orders for $p: $e');
           }
         }
         
@@ -62,7 +62,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('Error fetching generalized orders: $e');
+      debugPrint('Error fetching generalized orders: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
     }

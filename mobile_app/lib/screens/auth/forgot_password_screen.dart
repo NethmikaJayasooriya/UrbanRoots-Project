@@ -42,7 +42,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         );
       } catch (e) {
-        print('ForgotPasswordScreen error: $e');
+        debugPrint('ForgotPasswordScreen error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Failed to send reset code: $e"),

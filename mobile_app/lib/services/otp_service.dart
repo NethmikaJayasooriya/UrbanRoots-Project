@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // otp service
 class OtpService {
   // local dev ip toggle
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
+  static const String _baseUrl = 'https://urbanroots-project.onrender.com';
 
   // generate otp
   static Future<String> requestOtp(String email, String flow) async {
@@ -33,11 +33,11 @@ class OtpService {
         return "OTP sent successfully";
       } else {
         final errorMsg = jsonDecode(response.body)['message'] ?? 'Failed to generate OTP';
-        print('Backend OTP error: $errorMsg');
+        debugPrint('Backend OTP error: $errorMsg');
         throw Exception(errorMsg);
       }
     } catch (e) {
-      print('Network error generating OTP: $e');
+      debugPrint('Network error generating OTP: $e');
       throw Exception('Could not connect to backend: $e');
     }
   }
@@ -69,11 +69,11 @@ class OtpService {
         return data['success'] == true;
       } else {
         final errorMsg = jsonDecode(response.body)['message'] ?? 'OTP verification failed';
-        print('Backend OTP verification error: $errorMsg');
+        debugPrint('Backend OTP verification error: $errorMsg');
         return false; 
       }
     } catch (e) {
-      print('Error verifying OTP: $e');
+      debugPrint('Error verifying OTP: $e');
       throw Exception('Failed to verify OTP: $e');
     }
   }
@@ -96,8 +96,8 @@ class OtpService {
         }),
       );
 
-      print('Reset password response status: ${response.statusCode}');
-      print('Reset password response body: ${response.body}');
+      debugPrint('Reset password response status: ${response.statusCode}');
+      debugPrint('Reset password response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -107,10 +107,10 @@ class OtpService {
       // parse backend error msg
       final errorBody = jsonDecode(response.body);
       final errorMsg = errorBody['message'] ?? 'Password reset failed';
-      print('Reset password backend error: $errorMsg');
+      debugPrint('Reset password backend error: $errorMsg');
       throw Exception(errorMsg);
     } catch (e) {
-      print('Reset password error: $e');
+      debugPrint('Reset password error: $e');
       rethrow;
     }
   }

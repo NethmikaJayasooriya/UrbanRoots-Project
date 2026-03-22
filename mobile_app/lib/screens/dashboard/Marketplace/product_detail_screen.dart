@@ -77,7 +77,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingRelated = false);
-      print('Error loading related products: $e');
+      debugPrint('Error loading related products: $e');
     }
   }
 
@@ -109,7 +109,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
       setState(() {
         _isLoadingReviews = false;
       });
-      print('Error loading reviews: $e');
+      debugPrint('Error loading reviews: $e');
     }
   }
 
@@ -643,4 +643,4 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
     }
   }
 
-}
+}

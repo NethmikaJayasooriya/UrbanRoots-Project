@@ -78,7 +78,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
         setState(() {
           _isLoading = false;
         });
-        print('Error fetching products: $e');
+        debugPrint('Error fetching products: $e');
       }
     }
   }

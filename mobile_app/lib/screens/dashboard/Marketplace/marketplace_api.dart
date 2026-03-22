@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 // Service class for interacting with the Marketplace backend API.
 // Handles product fetching, order creation, and user reviews.
 class MarketplaceApi {
-  static final String baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://192.168.1.5:3000';
+  static const String baseUrl = 'https://urbanroots-project.onrender.com';
 
   // Fetches the full catalog of available products and treatments
   static Future<List<dynamic>> fetchProducts() async {

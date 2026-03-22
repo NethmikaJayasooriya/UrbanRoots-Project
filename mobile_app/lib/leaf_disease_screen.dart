@@ -23,7 +23,7 @@ import 'screens/dashboard/Marketplace/product_detail_screen.dart';
 import 'screens/dashboard/Marketplace/marketplace_screen.dart' show Product, MarketplaceScreen1;
 
 class LeafDiseaseAPI {
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:8000' : 'http://192.168.1.5:8000';
+  static const String _baseUrl = 'https://urbanroots-project.onrender.com';
 
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
@@ -326,7 +326,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     });
   }
 
-  Future<Map<String, dynamic>> _callAPIAndSave(String imagePath) async {
+  Future<Map<String, dynamic>?> _callAPIAndSave(String imagePath) async {
     try {
       final result      = await LeafDiseaseAPI.predict(imagePath);
       final diseaseName = result['disease'] as String;
@@ -346,16 +346,16 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       return result;
     } catch (e) {
       debugPrint('API error: $e');
-      await ScanHistoryService.saveScan(ScanRecord(
-        id:          DateTime.now().millisecondsSinceEpoch.toString(),
-        imagePath:   imagePath,
-        diseaseName: 'API Error — Check connection',
-        confidence:  0.0,
-        severity:    'Low',
-        scannedAt:   DateTime.now(),
-        isHealthy:   false,
-      ));
-      return {'disease': 'API Error — Check connection', 'confidence': 0.0};
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Service temporarily unavailable'),
+            backgroundColor: AppColors.danger,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return null;
     }
   }
 
@@ -387,6 +387,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       setState(() => _analyzing = true);
 
       final result = await _callAPIAndSave(picked.path);
+      if (result == null) return;
 
       await _vibrate([0, 80, 150, 80]);
 
@@ -435,6 +436,8 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       if (!kIsWeb) await _camController!.setFlashMode(FlashMode.off);
 
       final result = await _callAPIAndSave(photo.path);
+      if (result == null) return;
+      
       await _vibrate([0, 80, 150, 80]);
 
       if (!mounted) return;

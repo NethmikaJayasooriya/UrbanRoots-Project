@@ -102,10 +102,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      print('ResetPasswordScreen FirebaseAuth error: $e');
+      debugPrint('ResetPasswordScreen FirebaseAuth error: $e');
       _showError(e.message ?? "Failed to reset password.");
     } catch (e) {
-      print('ResetPasswordScreen error: $e');
+      debugPrint('ResetPasswordScreen error: $e');
       _showError("Something went wrong: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);

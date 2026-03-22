@@ -50,12 +50,12 @@ class AuthService {
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        print("Backend mapping error: ${response.body}");
+        debugPrint("Backend mapping error: ${response.body}");
         throw Exception('Failed to setup profile on backend: ${response.body}');
       }
-      print("Profile setup successful via backend.");
+      debugPrint("Profile setup successful via backend.");
     } catch (e) {
-      print("Error calling setupProfile: $e");
+      debugPrint("Error calling setupProfile: $e");
       rethrow;
     }
   }
@@ -68,7 +68,7 @@ class AuthService {
       }
       return false;
     } catch (e) {
-      print("Error checking onboarding status: $e");
+      debugPrint("Error checking onboarding status: $e");
       // edge case: fallback to setup on permission denial
       return false;
     }
@@ -80,7 +80,7 @@ class AuthService {
         'last_login': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {
-      print("Error updating last login: $e");
+      debugPrint("Error updating last login: $e");
     }
   }
 
@@ -98,7 +98,7 @@ class AuthService {
       );
       return await _auth.signInWithCredential(credential);
     } catch (e) {
-      print("Google Sign-In Error: $e");
+      debugPrint("Google Sign-In Error: $e");
       rethrow;
     }
   }
@@ -109,7 +109,7 @@ class AuthService {
       await _googleSignIn.signOut();
       await _auth.signOut();
     } catch (e) {
-      print("Sign out error: $e");
+      debugPrint("Sign out error: $e");
     }
   }
 }
