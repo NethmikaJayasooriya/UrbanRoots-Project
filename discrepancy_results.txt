@@ -1,0 +1,11 @@
+1. Dataset Pipeline
+   Max Logit/Prob: 0.7865, Class: 32
+   Pixel 0: [148.44897 144.44897 133.44897]
+
+2. API Pipeline
+   Max Logit/Prob: 0.7865, Class: 32
+   Pixel 0: [148.44897 144.44897 133.44897]
+
+3. Old PIL API Pipeline
+   Max Logit/Prob: 0.4316, Class: 34
+   Pixel 0: [153. 149. 138.]
