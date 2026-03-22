@@ -29,7 +29,7 @@ export class StreaksService {
 
     if (data) return data;
 
-    // Try to create a streak row. May fail if Firebase uid ≠ Supabase auth uid.
+    // Try to create a streak row.
     const { data: created, error: createError } = await this.supabase.client
       .from('streaks')
       .insert({

@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'package:mobile_app/services/auth_service.dart';
-import 'package:mobile_app/screens/dashboard/nav_bar.dart'; // Replaced GardenIntroScreen with NavBar
+import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 
 class SetupProfileScreen extends StatefulWidget {
   const SetupProfileScreen({super.key});
@@ -198,8 +199,22 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         profilePic: profilePicUrl,
       );
 
+      // ── CLEAR ANY STALE DEVICE DATA FROM A PREVIOUS ACCOUNT ──
+      final prefs = await SharedPreferences.getInstance();
+      await Future.wait([
+        prefs.remove('active_garden_id'),
+        prefs.remove('iot_device_ip'),
+        prefs.remove('iot_last_alert_type'),
+        prefs.remove('iot_last_alert_message'),
+        prefs.remove('iot_last_alert_plant'),
+        prefs.remove('iot_last_alert_time'),
+        prefs.remove('scan_history'),
+        prefs.remove('user_phone'),
+        prefs.remove('user_phones'),
+      ]);
+
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile saved successfully'),
@@ -208,7 +223,6 @@ class _SetupProfileScreenState extends State<SetupProfileScreen> {
         ),
       );
 
-      // Navigate to the main dashboard
       if (mounted) {
         Navigator.pushReplacement(
           context,

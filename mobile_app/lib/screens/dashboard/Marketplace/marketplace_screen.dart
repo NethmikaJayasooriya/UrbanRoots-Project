@@ -10,6 +10,7 @@ import 'marketplace_api.dart';
 
 // ─── Product ──────────────────────────────────────────────────────────────────
 class Product {
+  final String id;
   final String name;
   final String category;
   final double price;
@@ -18,6 +19,7 @@ class Product {
   final IconData placeholderIcon;
 
   const Product({
+    required this.id,
     required this.name,
     required this.category,
     required this.price,
@@ -56,6 +58,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
       final List<Product> loadedProducts = [];
       for (var p in productsData) {
         loadedProducts.add(Product(
+          id: p['id'].toString(),
           name: p['name'],
           category: p['category'],
           price: double.tryParse(p['price']?.toString() ?? '0') ?? 0.0,

@@ -10,13 +10,11 @@ export class AuthService {
   constructor(
     private readonly otpService: OtpService,
     private readonly firebaseService: FirebaseService,
-    // INJECT OUR NEW USER SERVICE INSTEAD!
+    // temp fix: injected user service directly
     private readonly userService: UserService,
   ) {}
 
-  /**
-   * Request OTP for Login
-   */
+  // req login otp
   async requestLoginOtp(email: string): Promise<void> {
     try {
       await this.firebaseService.auth.getUserByEmail(email);
@@ -30,9 +28,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Request OTP for Sign Up
-   */
+  // req signup otp
   async requestSignupOtp(email: string): Promise<void> {
     try {
       await this.firebaseService.auth.getUserByEmail(email);
@@ -48,9 +44,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Request OTP for Password Reset
-   */
+  // req password reset otp
   async requestPasswordResetOtp(email: string): Promise<void> {
     try {
       await this.firebaseService.auth.getUserByEmail(email);
@@ -88,9 +82,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Sync a user to Supabase after successful authentication.
-   */
+  // sync supabase post-auth
   async syncUserToSupabase(
     uid: string,
     email: string,
@@ -100,7 +92,7 @@ export class AuthService {
     profilePicUrl?: string,
   ): Promise<void> {
     try {
-      // ROUTE THIS THROUGH OUR NEW TYPEORM FUNCTION
+      // route through typeorm
       await this.userService.updateProfile(uid, {
         email,
         authProvider: authProvider || 'email/password',

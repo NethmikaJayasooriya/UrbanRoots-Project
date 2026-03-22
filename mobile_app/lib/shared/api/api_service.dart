@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mobile_app/core/api_constants.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:3000';
+  static String get baseUrl => ApiConstants.baseUrl;
 
   static Map<String, String> get _headers => {
         'Content-Type': 'application/json',

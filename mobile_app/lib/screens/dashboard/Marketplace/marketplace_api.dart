@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
+// Service class for interacting with the Marketplace backend API.
+// Handles product fetching, order creation, and user reviews.
 class MarketplaceApi {
-  static final String baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+  static final String baseUrl = kIsWeb ? 'http://localhost:3000' : 'http://192.168.1.5:3000';
 
+  // Fetches the full catalog of available products and treatments
   static Future<List<dynamic>> fetchProducts() async {
     try {
       final response = await http.get(Uri.parse('$baseUrl/marketplace/products'));

@@ -25,12 +25,10 @@ export class UserService {
     private readonly firebaseService: FirebaseService,
   ) {}
 
-  /**
-   * Updates user profile in both Supabase (Postgres) and Firestore.
-   */
+  // sync profile to pg & firestore
   async updateProfile(uid: string, data: UpdateProfileDto): Promise<void> {
     try {
-      // 1. Sync to Supabase (Snake_case columns)
+      // pg sync (snake_case)
       let user = await this.userRepository.findOne({ where: { uid } });
       if (!user) {
         user = this.userRepository.create({ uid });
@@ -47,10 +45,10 @@ export class UserService {
 
       await this.userRepository.save(user);
 
-      // 2. Sync to Firestore (CamelCase fields)
+      // firestore sync (camelCase)
       const userRef = this.firebaseService.firestore.collection('users').doc(uid);
       
-      // Firestore rejects undefined values, so we filter them out
+      // drop undefined for firestore strict mode
       const cleanData = Object.fromEntries(
         Object.entries(data).filter(([_, v]) => v !== undefined)
       );
@@ -67,9 +65,7 @@ export class UserService {
     }
   }
 
-  /**
-   * Fetches user profile from Firestore.
-   */
+  // fetch firestore profile
   async getProfile(uid: string) {
     try {
       const doc = await this.firebaseService.firestore.collection('users').doc(uid).get();

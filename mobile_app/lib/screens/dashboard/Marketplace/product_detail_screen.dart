@@ -60,10 +60,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
 
   Future<void> _loadRelatedProducts() async {
     try {
-      final relatedData = await MarketplaceApi.fetchRelatedProducts(widget.product.name);
+      final relatedData = await MarketplaceApi.fetchRelatedProducts(widget.product.id);
       if (!mounted) return;
       setState(() {
         _relatedProducts = (relatedData as List).map((p) => Product(
+          id: p['id'].toString(),
           name: p['name'],
           category: p['category'],
           price: (p['price'] as num).toDouble(),
@@ -91,7 +92,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
 
   Future<void> _loadReviews() async {
     try {
-      final reviewData = await MarketplaceApi.fetchReviews(widget.product.name);
+      final reviewData = await MarketplaceApi.fetchReviews(widget.product.id);
       if (!mounted) return;
       setState(() {
         _reviews = (reviewData as List).map((r) => Review(
@@ -613,7 +614,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
         'rating': _selectedRating,
         'comment': _commentController.text.trim()
       };
-      await MarketplaceApi.submitReview(widget.product.name, reviewData);
+      await MarketplaceApi.submitReview(widget.product.id, reviewData);
       
       final newReview = Review(
         author: 'You',

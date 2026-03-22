@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,9 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
-  /// Expose a GlobalKey so the parent navigation wrapper can call:
-  ///   HomeScreen.globalKey.currentState?.refresh()
-  /// whenever the Home tab is tapped to trigger an auto-refresh.
+  // global key hack to force refresh from tab tap
   static final GlobalKey<_HomeScreenState> globalKey =
       GlobalKey<_HomeScreenState>();
 
@@ -25,15 +25,16 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isThirsty = false;
   bool _isTapped = false;
 
+  String _userName = "Plant Lover";
+
   Map<String, dynamic>? _dashboardData;
   bool _isLoading = true;
 
-  // Auto-refresh: tracks the last time we fetched so we can show "Updated X ago"
+  // cache last refresh time
   DateTime? _lastRefreshed;
-  // Polling timer: fires every 8 s when no garden exists yet,
-  // so the screen reacts quickly after garden creation in another tab.
+  // lazy load poll for garden init
   Timer? _pollTimer;
-  // Tracks whether the refresh icon rotation animation is active.
+  // spin state for refresh icon
   bool _isRefreshSpinning = false;
 
   AnimationController? _petController;
@@ -91,17 +92,22 @@ class _HomeScreenState extends State<HomeScreen>
 
     _bubbleController.forward();
 
-    // Register for app lifecycle events (e.g. screen unlock / app resume)
+    // prefill username
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && user.displayName != null && user.displayName!.isNotEmpty) {
+      _userName = user.displayName!;
+    }
+
+    // bind lifecycle events
     WidgetsBinding.instance.addObserver(this);
 
     _fetchLiveDashboardData();
 
-    // Start a short poll so the home tab auto-detects a newly created garden
-    // without the user having to manually refresh.  Cancelled once a garden loads.
+    // trigger initial poll loop
     _startPollingUntilGardenFound();
   }
 
-  // ── Public refresh — called by parent nav wrapper when Home tab is tapped ──
+  // explicit tab refresh hook
   void refresh() {
     if (!_isLoading) {
       setState(() => _isLoading = true);
@@ -122,11 +128,11 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  // Fetches live data from the backend to determine pet mood and dashboard stats
+  // get dashboard stats & pet state
   Future<void> _fetchLiveDashboardData() async {
     int? storedId = await ApiService.getStoredGardenId();
     
-    // ── RESTORE GARDEN FROM CLOUD FALLBACK ──
+    // fallback cloud restore
     if (storedId == null) {
       try {
         final user = FirebaseAuth.instance.currentUser;
@@ -169,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen>
         _isLoading = false;
         _lastRefreshed = DateTime.now();
         _isRefreshSpinning = false;
-        // Garden confirmed — stop polling
+        // kill poll cycle on success
         _pollTimer?.cancel();
         _pollTimer = null;
         
@@ -182,8 +188,12 @@ class _HomeScreenState extends State<HomeScreen>
         }
       });
       _triggerBubbleAnimation();
-      // Bridge IoT sensor alerts from plant_detail_screen to home pet
-      await _checkForPendingIoTAlert();
+      // priority: live iot over ai
+      bool liveSuccess = await _pollLiveIoTSensor();
+      // fallback iot alert check
+      if (!liveSuccess) {
+        await _checkForPendingIoTAlert();
+      }
     } else if (mounted) {
       setState(() {
         _isLoading = false;
@@ -236,6 +246,51 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
     } catch (_) {}
+  }
+
+  // ── Directly poll the IoT Sensor if it's assigned to the linked plant ────
+  Future<bool> _pollLiveIoTSensor() async {
+    if (!mounted || _dashboardData == null) return false;
+    final plantName = _dashboardData!['linked_plant_name'];
+    if (plantName == null || plantName == "None") return false;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final iotIp = prefs.getString('iot_device_ip');
+      if (iotIp == null || iotIp.isEmpty) return false;
+
+      final res = await http.get(Uri.parse('http://$iotIp/data')).timeout(const Duration(milliseconds: 1500));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final double temp     = (data['temp']     as num?)?.toDouble() ?? 25.0;
+        final double moisture = (data['moisture'] as num?)?.toDouble() ?? 50.0;
+        final double ph       = (data['ph']       as num?)?.toDouble() ?? 6.5;
+
+        bool isCritical = temp > 38 || temp < 10 || moisture > 90 || moisture < 10 || ph < 4.5 || ph > 8.0;
+        bool isThirsty = moisture < 25;
+        
+        String msg = "Ahhh... perfect! 🌱 Soil moisture: ${moisture.toStringAsFixed(0)}%";
+        if (moisture < 25) msg = "I'm very thirsty! 💧 Moisture is only ${moisture.toStringAsFixed(0)}%";
+        else if (moisture > 80) msg = "I'm drowning! 🌊 Moisture is ${moisture.toStringAsFixed(0)}%";
+        else if (temp > 35) msg = "It's scorching hot! 🔥 Soil temp is ${temp.toStringAsFixed(1)}°C";
+
+        if (mounted) {
+          setState(() {
+            _isThirsty = isThirsty;
+            _dashboardData!['pet_status'] = {
+              ...(_dashboardData!['pet_status'] as Map<String, dynamic>? ?? {}),
+              'message': msg,
+              'is_thirsty': _isThirsty,
+              'mood': isCritical ? 'sad' : 'super_happy',
+            };
+            _dashboardData!['priority_notification'] = 
+              "📡 Live IoT sync: Your hardware sensor is monitoring $plantName in real-time.";
+          });
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   // ── WidgetsBindingObserver: refresh when the app resumes from background ──
@@ -312,7 +367,7 @@ class _HomeScreenState extends State<HomeScreen>
       return "Live from ${_dashboardData!['live_weather']['city']}";
     }
     
-    return "keep it up, Nethmika";
+    return "keep it up, ${_userName.split(' ').first}";
   }
 
   Color get _accentColor => _isThirsty ? Colors.redAccent : AppColors.primaryGreen;
@@ -626,7 +681,7 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Hello, Nethmika!",
+                "Hello, ${_userName.split(' ').first}!",
                 style: GoogleFonts.poppins(color: AppColors.textDim, fontSize: 14),
               ),
               Text(

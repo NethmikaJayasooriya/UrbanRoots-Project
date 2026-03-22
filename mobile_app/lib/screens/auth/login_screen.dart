@@ -2,15 +2,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
-// Ensure MainNavigationWrapper is accessible
 import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/otp_service.dart';
+import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/screens/dashboard/nav_bar.dart';
 import 'forgot_password_screen.dart';
 import 'setup_profile_screen.dart';
 import 'sign_up_screen.dart';
 import 'verification_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,15 +44,32 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = user.email;
       if (email == null) throw Exception("No email found from Google.");
 
-      // Check onboarding status
+      // clear stale local data
+      final prefs = await SharedPreferences.getInstance();
+      await Future.wait([
+        prefs.remove('active_garden_id'),
+        prefs.remove('iot_device_ip'),
+        prefs.remove('iot_last_alert_type'),
+        prefs.remove('iot_last_alert_message'),
+        prefs.remove('iot_last_alert_plant'),
+        prefs.remove('iot_last_alert_time'),
+        prefs.remove('scan_history'),
+        prefs.remove('user_phone'),
+        prefs.remove('user_phones'),
+      ]);
+
+      // restore garden & onboarding state
       final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
-      
-      // Persist session
+      final fetchedGardenId = await ApiService.fetchUserGardenId(user.uid);
+      if (fetchedGardenId != null) {
+        await prefs.setInt('active_garden_id', fetchedGardenId);
+      }
+
       await OtpService.setLoggedIn(true);
 
       if (!mounted) return;
 
-      if (isOnboarded) {
+      if (isOnboarded || fetchedGardenId != null) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const MainNavigationWrapper()),
@@ -91,12 +110,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        // Ask Backend to send an OTP
+        // trigger otp email
         try {
           await OtpService.requestOtp(email, 'login');
         } catch (otpError) {
           debugPrint("OTP request failed: $otpError");
-          // Show specific OTP error and sign out the user
+          // otp failed, kill session
           await FirebaseAuth.instance.signOut();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -109,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        // Navigate to OTP verification screen only after OTP is successfully sent
+        // otp sent, move to verification
         if (!mounted) return;
 
         Navigator.pushReplacement(

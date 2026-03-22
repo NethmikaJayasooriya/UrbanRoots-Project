@@ -12,9 +12,6 @@ import 'setup_profile_screen.dart';
 import 'reset_password_screen.dart';
 
 /// Verification screen that handles OTP input for both signup and forgot-password flows.
-///
-/// Pass [email] (the user's email) and [flow] ('signup' or 'forgot_password')
-/// to control what happens after successful verification.
 class VerificationScreen extends StatefulWidget {
   final String email;
   final String flow; // 'signup' or 'forgot_password' or 'login'
@@ -36,7 +33,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
   bool _isResending = false;
   int _resendCooldown = 0;
   Timer? _cooldownTimer;
-  // Inline error for OTP
   String _otpError = '';
 
   @override
@@ -67,8 +63,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      
-      // For signup flow, we must have a current user in Firebase
       if (widget.flow == 'signup' && user == null) {
         setState(() {
           _otpError = "User session expired. Please sign up again.";
@@ -77,7 +71,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
         return;
       }
 
-      // Verify OTP with backend
       late bool isValid;
       try {
         isValid = await OtpService.verifyOtp(
@@ -87,7 +80,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
           provider: 'email/password',
         );
       } catch (verifyError) {
-        debugPrint("OTP verification error: $verifyError");
         setState(() {
           _otpError = "Verification failed: ${verifyError.toString()}";
           _isLoading = false;
@@ -103,21 +95,16 @@ class _VerificationScreenState extends State<VerificationScreen> {
         return;
       }
 
-      // OTP verified successfully (backend handles clearing the OTP internally)
       if (!mounted) return;
 
       if (widget.flow == 'signup') {
-        // Save persistent login state
         await OtpService.setLoggedIn(true);
-
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const SetupProfileScreen()),
           (route) => false,
         );
       } else if (widget.flow == 'login') {
-        // We know we just verified via backend. Let's check onboarding.
-        // We need the user's uid to do this. We can get it from FirebaseAuth instance.
         final user = FirebaseAuth.instance.currentUser;
         if (user == null) {
           setState(() {
@@ -127,18 +114,27 @@ class _VerificationScreenState extends State<VerificationScreen> {
           return;
         }
 
-        // ── RESTORE GARDEN FROM CLOUD ──
+        final prefs = await SharedPreferences.getInstance();
+        await Future.wait([
+          prefs.remove('active_garden_id'),
+          prefs.remove('iot_device_ip'),
+          prefs.remove('iot_last_alert_type'),
+          prefs.remove('iot_last_alert_message'),
+          prefs.remove('iot_last_alert_plant'),
+          prefs.remove('iot_last_alert_time'),
+          prefs.remove('scan_history'),
+          prefs.remove('user_phone'),
+          prefs.remove('user_phones'),
+        ]);
+
         final fetchedGardenId = await ApiService.fetchUserGardenId(user.uid);
         if (fetchedGardenId != null) {
-          final prefs = await SharedPreferences.getInstance();
           await prefs.setInt('active_garden_id', fetchedGardenId);
         }
 
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
-        
-        await OtpService.setLoggedIn(true); // Persist session local
+        await OtpService.setLoggedIn(true);
 
-        // Skip onboarding if they already configured a profile OR have a garden saved on their profile!
         if (isOnboarded || fetchedGardenId != null) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -161,9 +157,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _otpError = "Verification failed. Please try again.";
-      });
+      setState(() => _otpError = "Verification failed. Please try again.");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -179,14 +173,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     try {
       await OtpService.requestOtp(widget.email, widget.flow);
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("A new verification code has been sent to your email.")),
       );
 
-      // Start cooldown timer (30 seconds)
       setState(() => _resendCooldown = 30);
       _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
@@ -218,190 +210,193 @@ class _VerificationScreenState extends State<VerificationScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: 30),
-
-                // Header
-                Center(
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryGreen.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.email_outlined,
-                          color: AppColors.primaryGreen,
-                          size: 40,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        "Check your email",
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "We sent a code to $displayEmail",
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.white60,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
                   ),
-                ),
-                const SizedBox(height: 40),
+                  const SizedBox(height: 30),
 
-                // OTP input boxes
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(4, (index) {
-                    return Container(
-                      width: 65,
-                      height: 65,
-                      child: TextField(
-                        controller: _controllers[index],
-                        focusNode: _focusNodes[index],
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        maxLength: 1,
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  // Branding and Instruction Header
+                  Center(
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.email_outlined,
+                            color: AppColors.primaryGreen,
+                            size: 40,
+                          ),
                         ),
-                        decoration: InputDecoration(
-                          counterText: "",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white12),
+                        const SizedBox(height: 24),
+                        Text(
+                          "Check your email",
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.white12),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: AppColors.primaryGreen,
-                              width: 2,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: AppColors.danger,
-                              width: 1.5,
-                            ),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: AppColors.danger,
-                              width: 2,
-                            ),
-                          ),
-                          errorText: _otpError.isNotEmpty
-                              ? ' '
-                              : null, // Trigger red border
                         ),
-                        onChanged: (value) => _nextField(value, index),
-                      ),
-                    );
-                  }),
-                ),
-
-                const SizedBox(height: 40),
-
-                // Verify button
-                SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyOtpCode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      shadowColor: AppColors.primaryGreen.withOpacity(0.4),
-                      elevation: 5,
+                        const SizedBox(height: 10),
+                        Text(
+                          "We sent a code to $displayEmail",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.white60,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : Text(
-                            "Verify Code",
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
                   ),
-                ),
+                  const SizedBox(height: 40),
 
-                const SizedBox(height: 20),
-
-                // Resend OTP link
-                Center(
-                  child: GestureDetector(
-                    onTap: _resendCooldown > 0 ? null : _resendOtp,
-                    child: _isResending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
-                          )
-                        : RichText(
-                            text: TextSpan(
-                              text: "Haven't got the email yet? ",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white54,
-                                fontSize: 13,
+                  // 4-Digit OTP entry fields
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(4, (index) {
+                      return SizedBox(
+                        width: 65,
+                        height: 65,
+                        child: TextField(
+                          controller: _controllers[index],
+                          focusNode: _focusNodes[index],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          maxLength: 1,
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          decoration: InputDecoration(
+                            counterText: "",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: Colors.white12),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(color: Colors.white12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.primaryGreen,
+                                width: 2,
                               ),
-                              children: [
-                                TextSpan(
-                                  text: _resendCooldown > 0
-                                      ? "Resend in ${_resendCooldown}s"
-                                      : "Resend email",
-                                  style: GoogleFonts.poppins(
-                                    color: _resendCooldown > 0
-                                        ? Colors.white30
-                                        : AppColors.primaryGreen,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
                             ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.danger,
+                                width: 1.5,
+                              ),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.danger,
+                                width: 2,
+                              ),
+                            ),
+                            errorText: _otpError.isNotEmpty ? ' ' : null,
                           ),
+                          onChanged: (value) => _nextField(value, index),
+                        ),
+                      );
+                    }),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 40),
+
+                  // Action button to trigger OTP verification logic
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _verifyOtpCode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        shadowColor: AppColors.primaryGreen.withOpacity(0.4),
+                        elevation: 5,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : Text(
+                              "Verify Code",
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Option to request a new code after cooldown period
+                  Center(
+                    child: GestureDetector(
+                      onTap: _resendCooldown > 0 ? null : _resendOtp,
+                      child: _isResending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryGreen),
+                            )
+                          : RichText(
+                              text: TextSpan(
+                                text: "Haven't got the email yet? ",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white54,
+                                  fontSize: 13,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: _resendCooldown > 0
+                                        ? "Resend in ${_resendCooldown}s"
+                                        : "Resend email",
+                                    style: GoogleFonts.poppins(
+                                      color: _resendCooldown > 0
+                                          ? Colors.white30
+                                          : AppColors.primaryGreen,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                    ),
+                  ),
+                  // Spacer to prevent the "Verify" button from being obscured by the keyboard
+                  const SizedBox(height: 30),
+                ],
+              ),
             ),
           ),
         ),

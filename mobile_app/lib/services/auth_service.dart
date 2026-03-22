@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:mobile_app/core/api_constants.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -14,8 +15,8 @@ class AuthService {
         '459040907750-3hmh8t0rr61p6n6dq3f42d323otsjccf.apps.googleusercontent.com',
   );
 
-  // ─── Backend API endpoints ───────────────────────────────────────────────
-  static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
+  // api base
+  static String get _baseUrl => ApiConstants.baseUrl;
 
   static Future<void> setupProfile({
     required String uid,
@@ -68,7 +69,7 @@ class AuthService {
       return false;
     } catch (e) {
       print("Error checking onboarding status: $e");
-      // If permission denied, assume not onboarded so they go to SetupProfileScreen
+      // edge case: fallback to setup on permission denial
       return false;
     }
   }
@@ -83,7 +84,7 @@ class AuthService {
     }
   }
 
-  // ─── Google ───────────────────────────────────────────────────────────────
+  // google strategy
   static Future<UserCredential?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -102,7 +103,7 @@ class AuthService {
     }
   }
 
-  // ─── Sign Out ─────────────────────────────────────────────────────────────
+  // auth teardown
   static Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();

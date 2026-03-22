@@ -5,12 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'firebase_options.dart';
-
-// Service & Model Imports
-import 'services/auth_service.dart';
-import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
-
-// Screen Imports
+// screens
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/setup_profile_screen.dart';
@@ -21,14 +16,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize Supabase for Image Storage
+  // init supabase
   await Supabase.initialize(
     url: 'https://lbdyfmhetidvimwawvmi.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxiZHlmbWhldGlkdmltd2F3dm1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NjE3NzUsImV4cCI6MjA4ODUzNzc3NX0.a0PspBWet3hxAsbHlfnS5IlCZd3jsZwoTx-_0lI_ZnE',
   );
 
   runApp(
-    // Wrap the app in a MultiProvider to handle the Shopping Cart state
+    // provider array for app state
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CartModel()),
@@ -38,8 +33,7 @@ void main() async {
   );
 }
 
-/// The root widget of the application.
-/// Configures the global Material 3 theme and sets the initial route to the splash screen.
+// main app root
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -52,7 +46,7 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
         primaryColor: const Color(0xFF00E676),
         scaffoldBackgroundColor: const Color(0xFF07160F),
-        // Applying seed color for consistent Material 3 styling
+        // m3 theme seeding
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF00E676),
           brightness: Brightness.dark,
@@ -77,18 +71,15 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
     _navigateFromSplash();
   }
 
-  /// Handles the core authentication routing logic.
-  /// Checks if a user is logged into Firebase, verifies their OTP session state,
-  /// and ensures they have completed the profile onboarding flow before granting
-  /// access to the main application dashboard.
+  // handles initial nav state
   void _navigateFromSplash() async {
-    // Splash screen delay
+    // temp fix: artificial delay for splash
     await Future.delayed(const Duration(seconds: 4));
 
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // User has a valid Firebase token; verify OTP and Database onboarding statuses
+      // verify server state vs local firebase token
       final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
       if (loggedIn) {
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);

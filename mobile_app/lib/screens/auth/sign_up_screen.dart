@@ -48,12 +48,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         debugPrint("User created: ${userCredential.user?.email}");
 
-        // Request OTP from backend for signup flow
+        // trigger otp via backend
         try {
           await OtpService.requestOtp(email, 'signup');
         } catch (otpError) {
           debugPrint("OTP request failed: $otpError");
-          // Delete the Firebase user if OTP request fails
+          // rollback firebase user on otp fail
           await FirebaseAuth.instance.currentUser?.delete();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -113,10 +113,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final email = user.email;
       if (email == null) throw Exception("No email found from Google.");
 
-      // Check onboarding status
+      // get onboarding flag
       final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
       
-      // Persist session
+      // mark logged in locally
       await OtpService.setLoggedIn(true);
 
       if (!mounted) return;

@@ -8,13 +8,11 @@ import 'Home.dart';
 import 'Garden/my_Garden.dart';
 import '../../leaf_disease_screen.dart';
 
-// EXACT IMPORTS BASED ON YOUR PROJECT STRUCTURE
+// absolute imports
 import 'Marketplace/marketplace_screen.dart';
 import 'UserProfile/profile_screen.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  MAIN NAVIGATION WRAPPER  (logic unchanged)
-// ─────────────────────────────────────────────────────────────────────────────
+// main nav root
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
 
@@ -78,11 +76,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  NAV BAR  —  Luminous Forest Capsule  ✦  redesigned visuals, logic intact
-// ─────────────────────────────────────────────────────────────────────────────
+// updated capsule nav
 
-// Shared palette tokens
+// local color tokens
 const _kMint = Color(0xFF00FFA3);
 const _kEmerald = Color(0xFF00C97B);
 const _kDeepGreen = Color(0xFF003D22);
@@ -100,7 +96,7 @@ class _FloatingGlassNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Left items: indices 0,1   Right items: 3,4
+    // spatial layout idx
     const leftItems = [
       _ItemDef(Icons.home_rounded, 'Home', 0),
       _ItemDef(Icons.yard_rounded, 'Garden', 1),
@@ -119,7 +115,7 @@ class _FloatingGlassNavBar extends StatelessWidget {
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-              // ── glass pill ──────────────────────────────────────────────
+              // backdrop blur pill
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(34),
@@ -133,7 +129,7 @@ class _FloatingGlassNavBar extends StatelessWidget {
                           color: _kBorder,
                           width: 1.2,
                         ),
-                        // Subtle top-edge aurora line
+                        // aurora edge
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -162,23 +158,23 @@ class _FloatingGlassNavBar extends StatelessWidget {
                 ),
               ),
 
-              // ── nav items ───────────────────────────────────────────────
+              // nav loops
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left pair
+                    // left block
                     ...leftItems.map((d) => _NavItem(
                           def: d,
                           isSelected: currentIndex == d.index,
                           onTap: () => onItemTapped(d.index),
                         )),
 
-                    // Centre FAB — wider placeholder so spacing stays even
+                    // center cutout spacing
                     const SizedBox(width: 72),
 
-                    // Right pair
+                    // right block
                     ...rightItems.map((d) => _NavItem(
                           def: d,
                           isSelected: currentIndex == d.index,
@@ -188,7 +184,7 @@ class _FloatingGlassNavBar extends StatelessWidget {
                 ),
               ),
 
-              // ── centre scan button (floats above pill) ───────────────────
+              // absolute pos scan btn
               Positioned(
                 top: -14,
                 child: _ScanCapsule(onTap: () => onItemTapped(2)),

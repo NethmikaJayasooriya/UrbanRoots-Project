@@ -2,26 +2,26 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-// Root App
+// root
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// Garden & Weather Features
+// core domains
 import { GardenModule } from './garden/garden.module';
 import { WeatherModule } from './weather/weather.module';
 import { DiseaseModule } from './disease/disease.module';
 
-// Auth & User Profile Features
+// auth stack
 import { AuthModule } from './auth/auth.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { OtpModule } from './otp/otp.module';
 import { PasswordModule } from './password/password.module';
 import { UserModule } from './user/user.module';
 
-// Marketplace Feature
+// marketplace
 import { MarketplaceModule } from './marketplace/marketplace.module';
 
-// User Profile & Seller Hub Features (from feature/marketplace branch)
+// user profile & seller hub mods
 import { SupabaseModule } from './common/supabase/supabase.module';
 import { ProfileModule } from './profile/profile.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -39,10 +39,10 @@ import { StreaksModule } from './streaks/streaks.module';
 
 @Module({
   imports: [
-    // 1. Loads the .env file globally
+    // load envs
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // 2. Connects to Supabase/Postgres using Async configuration
+    // db init
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -61,7 +61,7 @@ import { StreaksModule } from './streaks/streaks.module';
       }),
     }),
 
-    // 3. Feature Modules
+    // feature mods
     GardenModule,
     WeatherModule,
     AuthModule,
@@ -72,7 +72,7 @@ import { StreaksModule } from './streaks/streaks.module';
     DiseaseModule,
     MarketplaceModule,
 
-    // 4. Seller Hub & Profile Features
+    // seller & profile mods
     SupabaseModule,
     ProfileModule,
     NotificationsModule,

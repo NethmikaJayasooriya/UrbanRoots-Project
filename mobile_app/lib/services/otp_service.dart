@@ -3,16 +3,15 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-/// OTP service that connects to the NestJS backend API.
+// otp service
 class OtpService {
-  // Use localhost for Web, 192.168.1.5 for physical phone / emulator
+  // local dev ip toggle
   static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
 
-  /// Requests an OTP from the backend based on the specific auth flow.
-  /// [flow] can be 'login', 'signup', or 'forgot_password'.
+  // generate otp
   static Future<String> requestOtp(String email, String flow) async {
     try {
-      // FIX: Changed from 'otp/' to 'auth/' to match AuthController
+      // temp fix: updated endpoint to match auth module
       String endpoint = '$_baseUrl/auth/'; 
       if (flow == 'login') {
         endpoint += 'login-otp';
@@ -43,8 +42,7 @@ class OtpService {
     }
   }
 
-  /// Verifies the user-entered OTP.
-  /// If [uid] and [provider] are provided, the backend will sync/create the Firestore user.
+  // verify otp and sync user doc
   static Future<bool> verifyOtp({
     required String email, 
     required String enteredOtp,
@@ -60,7 +58,7 @@ class OtpService {
       };
 
       final response = await http.post(
-        // FIX: Changed to '/auth/verify-otp'
+        // route fix
         Uri.parse('$_baseUrl/auth/verify-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
@@ -80,7 +78,7 @@ class OtpService {
     }
   }
 
-  /// Resets the user's password via the backend after OTP verification.
+  // password reset post-otp
   static Future<bool> resetPassword({
     required String email,
     required String enteredOtp,
@@ -88,7 +86,7 @@ class OtpService {
   }) async {
     try {
       final response = await http.post(
-        // FIX: Changed to '/auth/reset-password'
+        // route fix
         Uri.parse('$_baseUrl/auth/reset-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -106,7 +104,7 @@ class OtpService {
         return data['success'] == true;
       }
 
-      // Parse the error message from backend
+      // parse backend error msg
       final errorBody = jsonDecode(response.body);
       final errorMsg = errorBody['message'] ?? 'Password reset failed';
       print('Reset password backend error: $errorMsg');
@@ -117,25 +115,24 @@ class OtpService {
     }
   }
 
-  /// Clears stored OTP data for the given email.
+  // clear otp cache
   static Future<void> clearOtp(String email) async {
-    // Handled by the backend internally. No-op here.
+    // no-op; handled by backend
   }
 
-  /// Marks the user as persistently logged in / OTP verified.
-  /// Merged to use the 'is_otp_verified' key from the AI branch.
+  // local auth persistence
   static Future<void> setLoggedIn(bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    // Setting both keys just in case other parts of the app rely on the old key
+    // backcompat for legacy auth keys
     await prefs.setBool('is_otp_verified', value);
     await prefs.setBool('isLoggedIn', value);
   }
 
-  /// Checks if the user has a persistent login session or verified OTP.
+  // check active session
   static Future<bool> isLoggedIn() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Check for either the old key or the new AI branch key
+      // fallback check for legacy keys
       bool isOtpVerified = prefs.getBool('is_otp_verified') ?? false;
       bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
       return isOtpVerified || isLoggedIn;

@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiService {
-  static const String baseUrl = kIsWeb ? 'http://127.0.0.1:3000' : 'http://192.168.1.5:3000';
+  static String get baseUrl => ApiConstants.baseUrl;
 
   static Future<int?> getStoredGardenId() async {
     final prefs = await SharedPreferences.getInstance();

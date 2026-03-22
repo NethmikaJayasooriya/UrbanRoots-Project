@@ -6,8 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-// Update: Added foundation for kIsWeb check
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/foundation.dart'; // Required for kIsWeb check
 import 'package:vibration/vibration.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,6 +18,9 @@ import 'app_styles.dart';
 import 'scan_history_screen.dart';
 import 'disease_detail_screen.dart';
 import 'services/api_service.dart';
+import 'screens/dashboard/Marketplace/marketplace_api.dart';
+import 'screens/dashboard/Marketplace/product_detail_screen.dart';
+import 'screens/dashboard/Marketplace/marketplace_screen.dart' show Product, MarketplaceScreen1;
 
 class LeafDiseaseAPI {
   static const String _baseUrl = kIsWeb ? 'http://127.0.0.1:8000' : 'http://192.168.1.5:8000';
@@ -42,7 +44,7 @@ class LeafDiseaseAPI {
 }
 
 Future<void> _vibrate(List<int> pattern) async {
-  // Update: Safely handle vibration on web
+  // Vibration is handled differently on web, so we guard it here
   if (kIsWeb) return; 
   final hasVibrator = await Vibration.hasVibrator() ?? false;
   if (!hasVibrator) return;
@@ -51,12 +53,10 @@ Future<void> _vibrate(List<int> pattern) async {
 
 enum FlashOption { off, on, auto }
 
-// ═══════════════════════════════════════════════
-// SCREEN 1 — Leaf Scan Screen
-// ═══════════════════════════════════════════════
+// Main leaf scanning interface that handles real-time camera preview and image processing.
 class LeafScanScreen extends StatefulWidget {
   final bool isActive; 
-  // Update: Callback for handling navigation inside IndexedStack
+  // Needed to handle navigation logic when this screen is nested inside an IndexedStack
   final VoidCallback? onBackPressed; 
 
   const LeafScanScreen({super.key, this.isActive = true, this.onBackPressed}); 
@@ -160,7 +160,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
   }
 
   Future<void> _startCamera() async {
-    // Update: Safely handle permissions for Web platform
+    // Check for camera permissions; web has its own flow via browser prompts
     if (kIsWeb) {
       try {
         _cameras = await availableCameras();
@@ -370,7 +370,7 @@ class _LeafScanScreenState extends State<LeafScanScreen>
 
   Future<void> _pickFromGallery() async {
     try {
-      // Update: Guarded Platform._operatingSystem error for Web
+      // Platform check guards against calling native Android permissions on Web platform
       if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.photos.request();
         if (status.isDenied || status.isPermanentlyDenied) {
@@ -1701,41 +1701,7 @@ Scanned with UrbanRoots 🌱
                       },
                     ),
                     const SizedBox(height: AppSpacing.lg),
-                    Container(
-                      padding: AppSpacing.cardPadding,
-                      decoration: AppStyles.card,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 60, height: 60,
-                            decoration: AppStyles.productIcon,
-                            child: const Icon(Icons.eco_rounded,
-                                color: AppColors.accent, size: 30),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Organic Neem Oil',
-                                    style: AppText.subheading
-                                        .copyWith(fontSize: 15)),
-                                const SizedBox(height: 3),
-                                Text('Natural & Effective',
-                                    style: AppText.caption),
-                              ],
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {},
-                            child: const AnimatedGlowingDetailsButton(
-                              text: 'View Details',
-                              isPrimary: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    MarketplaceRemedyScroller(diseaseName: widget.diseaseName),
                     ],
                     const SizedBox(height: AppSpacing.xl),
                     Row(
@@ -1749,7 +1715,12 @@ Scanned with UrbanRoots 🌱
                         Expanded(
                           flex: 2,
                           child: ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const MarketplaceScreen1()),
+                              );
+                            },
                             icon: const Icon(Icons.shopping_bag_rounded,
                                 size: 18, color: Colors.black),
                             label: const Text('Buy Remedy',
@@ -2227,4 +2198,180 @@ class _AnimatedGlowingDetailsButtonState extends State<AnimatedGlowingDetailsBut
       },
     );
   }
-}
+}
+
+// Handles the bottom scroller that shows real products from the marketplace matching the diagnosis.
+class MarketplaceRemedyScroller extends StatefulWidget {
+  final String diseaseName;
+  const MarketplaceRemedyScroller({super.key, required this.diseaseName});
+
+  @override
+  State<MarketplaceRemedyScroller> createState() => _MarketplaceRemedyScrollerState();
+}
+
+class _MarketplaceRemedyScrollerState extends State<MarketplaceRemedyScroller> {
+  late Future<List<Product>> _futureProducts;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureProducts = _fetchAndFilterRemedies();
+  }
+
+  Future<List<Product>> _fetchAndFilterRemedies() async {
+    try {
+      // Fetch the full product inventory from the backend
+      final jsonList = await MarketplaceApi.fetchProducts();
+      final allProducts = jsonList.map((p) => Product(
+        id: p['id'].toString(),
+        name: p['name'],
+        category: p['category'],
+        price: double.tryParse(p['price']?.toString() ?? '0') ?? 0.0,
+        description: p['description'],
+        imageUrl: p['imageUrl'] ?? p['image_url'],
+      )).toList();
+
+      // Get the list of recommended remedies for this specific disease from our local database
+      final remedies = getRemediesForDisease(widget.diseaseName);
+      if (remedies.isEmpty) return [];
+
+      // Match the recommended names against actual marketplace inventory to find buyable products
+      List<Product> matched = [];
+      for (var remedy in remedies) {
+        final nameLower = remedy.name.toLowerCase();
+        final match = allProducts.firstWhere(
+          (p) => p.name.toLowerCase() == nameLower,
+          orElse: () => const Product(id: 'null', name: '', description: '', price: 0, category: ''),
+        );
+        if (match.id != 'null') {
+          matched.add(match);
+        }
+      }
+
+      return matched.take(3).toList();
+    } catch (e) {
+      debugPrint('Error in _fetchAndFilterRemedies: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Product>>(
+      future: _futureProducts,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: SizedBox(
+                width: 24, height: 24,
+                child: CircularProgressIndicator(color: AppColors.neonGreen, strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+
+        final products = snapshot.data ?? [];
+        if (products.isEmpty) {
+          return const SizedBox.shrink(); 
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Purchase Remedies', style: AppText.subheading),
+                Icon(Icons.arrow_forward_rounded, color: Colors.white38, size: 16),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 110,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: products.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final p = products[index];
+                  return GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(product: p),
+                      ),
+                    ),
+                    child: Container(
+                      width: 280,
+                      padding: const EdgeInsets.all(12),
+                      decoration: AppStyles.card,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 55, height: 55,
+                            decoration: AppStyles.productIcon,
+                            child: CategoryIconWidget(category: p.category),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  p.name,
+                                  style: AppText.subheading.copyWith(fontSize: 14),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Rs. ${p.price.toStringAsFixed(2)}',
+                                      style: AppText.primaryValue.copyWith(
+                                        fontSize: 13,
+                                        color: AppColors.neonGreen,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    const AnimatedGlowingDetailsButton(text: 'view', isPrimary: true),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class CategoryIconWidget extends StatelessWidget {
+  final String category;
+  const CategoryIconWidget({super.key, required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    switch (category) {
+      case 'Seeds': icon = Icons.spa_rounded; break;
+      case 'Indoor': icon = Icons.local_florist_rounded; break;
+      case 'Leafy Greens': icon = Icons.grass_rounded; break;
+      case 'Tools': icon = Icons.hardware_rounded; break;
+      case 'treatment': icon = Icons.science_rounded; break; // Custom for our seeded products
+      default: icon = Icons.eco_rounded;
+    }
+    return Icon(icon, color: AppColors.neonGreen, size: 24);
+  }
+}

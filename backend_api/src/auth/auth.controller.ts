@@ -37,8 +37,8 @@ export class AuthController {
   async verifyOtp(
     @Body('email') email: string, 
     @Body('otp') otp: string,
-    @Body('uid') uid?: string, // Passed from Flutter after it completes Firebase Auth
-    @Body('provider') provider?: string // 'email/password' or 'google'
+    @Body('uid') uid?: string, // from flutter firebase auth
+    @Body('provider') provider?: string // auth provider strategy
   ) {
     if (!email || !otp) {
       throw new BadRequestException('Email and OTP are required');
@@ -51,8 +51,7 @@ export class AuthController {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    // If uid and provider are passed (e.g. after a valid Google SignIn or Email/Pass Signup),
-    // sync base user data to Firestore.
+    // trigger firestore sync post-auth if valid
     if (uid && provider) {
       await this.authService.syncUserToFirestore(uid, email, provider);
     }
@@ -73,8 +72,7 @@ export class AuthController {
     email = email.trim();
     otp = otp?.trim();
 
-    // The OTP was already verified on the verification screen and consumed.
-    // Check the "recently verified" flag instead of re-verifying.
+    // check cached otp valid flag
     const isVerified = this.authService.isEmailRecentlyVerified(email);
     if (!isVerified) {
       throw new UnauthorizedException('Email not verified or session expired. Please verify OTP again.');
@@ -82,7 +80,7 @@ export class AuthController {
 
     await this.authService.updatePassword(email, newPassword);
 
-    // Consume the verified status so it can't be reused
+    // invalidate cached otp flag
     this.authService.clearVerifiedEmail(email);
 
     return { success: true, message: 'Password reset successfully' };

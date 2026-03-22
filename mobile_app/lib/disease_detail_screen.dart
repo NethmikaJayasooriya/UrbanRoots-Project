@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_styles.dart';
 
-// ═══════════════════════════════════════════════
-// Disease Info Model
-// ═══════════════════════════════════════════════
+// Model representing detailed medical information for a plant disease, including symptoms, causes, and recommended remedies.
 class DiseaseInfo {
   final String       name;
   final String       scientificName;
@@ -50,10 +48,10 @@ class RemedyInfo {
   });
 }
 
-// ── Disease database ──
+// Local data repository containing treatment protocols and descriptive data for supported plant diseases.
 const _diseaseDatabase = {
 
-  // ── TOMATO DISEASES ─────────────────────────────────────────
+  // Tomato Diseases
   'Tomato__Tomato_YellowLeaf__Curl_Virus': DiseaseInfo(
     name:           'Tomato Yellow Leaf Curl Virus',
     scientificName: 'Tomato Yellow Leaf Curl Virus (TYLCV)',
@@ -243,7 +241,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── POTATO DISEASES ─────────────────────────────────────────
+  // Potato Diseases
   'Potato___Early_blight': DiseaseInfo(
     name:           'Potato Early Blight',
     scientificName: 'Alternaria solani',
@@ -300,7 +298,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── PEPPER DISEASES ─────────────────────────────────────────
+  // Pepper Diseases
   'Pepper__bell___Bacterial_spot': DiseaseInfo(
     name:           'Pepper Bacterial Spot',
     scientificName: 'Xanthomonas campestris pv. vesicatoria',
@@ -338,7 +336,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── GRAPE DISEASES ──────────────────────────────────────────
+  // Grape Diseases
   'Grape___Black_rot': DiseaseInfo(
     name:           'Grape Black Rot',
     scientificName: 'Guignardia bidwellii',
@@ -414,7 +412,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── CHERRY DISEASES ─────────────────────────────────────────
+  // Cherry Diseases
   'Cherry_(including_sour)___Powdery_mildew': DiseaseInfo(
     name:           'Cherry Powdery Mildew',
     scientificName: 'Podosphaera clandestina',
@@ -452,7 +450,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── STRAWBERRY DISEASES ──────────────────────────────────────
+  // Strawberry Diseases
   'Strawberry___Leaf_scorch': DiseaseInfo(
     name:           'Strawberry Leaf Scorch',
     scientificName: 'Diplocarpon earliana',
@@ -490,7 +488,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── ORANGE DISEASES ─────────────────────────────────────────
+  // Orange Diseases
   'Orange___Haunglongbing_(Citrus_greening)': DiseaseInfo(
     name:           'Citrus Greening (HLB)',
     scientificName: 'Candidatus Liberibacter asiaticus',
@@ -510,7 +508,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── ROSE DISEASES ───────────────────────────────────────────
+  // Rose Diseases
   'Rose___blight': DiseaseInfo(
     name:           'Rose Blight',
     scientificName: 'Botrytis cinerea',
@@ -548,7 +546,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── HIBISCUS DISEASES ────────────────────────────────────────
+  // Hibiscus Diseases
   'Hibiscus_Blight': DiseaseInfo(
     name:           'Hibiscus Blight',
     scientificName: 'Phytophthora spp.',
@@ -624,7 +622,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── OTHER HEALTHY PLANTS ─────────────────────────────────────
+  // Other Healthy Plants
   'Blueberry___healthy': DiseaseInfo(
     name:           'Healthy Blueberry',
     scientificName: 'Vaccinium corymbosum',
@@ -679,7 +677,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── CRAPE JASMINE DISEASES ───────────────────────────────────
+  // Crape Jasmine Diseases
   'Crape_jasmine_healthy': DiseaseInfo(
     name:           'Healthy Crape Jasmine',
     scientificName: 'Tabernaemontana divaricata',
@@ -736,7 +734,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── DWARF WHITE BAUHINIA DISEASES ────────────────────────────
+  // Dwarf White Bauhinia Diseases
   'Dwarf_white_bauhinia_healthy': DiseaseInfo(
     name:           'Healthy Dwarf White Bauhinia',
     scientificName: 'Bauhinia acuminata',
@@ -793,7 +791,7 @@ const _diseaseDatabase = {
     ],
   ),
 
-  // ── NIGHT FLOWERING JASMINE DISEASES ─────────────────────────
+  // Night Flowering Jasmine Diseases
   'Night_flowering_jasmine_healthy': DiseaseInfo(
     name:           'Healthy Night Flowering Jasmine',
     scientificName: 'Nyctanthes arbor-tristis',
@@ -851,8 +849,13 @@ const _diseaseDatabase = {
   ),
 };
 
-// DISEASE DETAIL SCREEN
-// ═══════════════════════════════════════════════
+List<RemedyInfo> getRemediesForDisease(String diseaseName) {
+  final info = _diseaseDatabase[diseaseName];
+  if (info == null) return [];
+  return info.remedies;
+}
+
+// Screen that displays in-depth information about a specific plant disease, organized into tabs.
 class DiseaseDetailScreen extends StatefulWidget {
   final String diseaseName;
   const DiseaseDetailScreen({super.key, required this.diseaseName});
@@ -907,7 +910,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Top bar ────────────────────────────────
+  // Standard app bar with navigation and scientific name display
   Widget _buildTopBar(DiseaseInfo info) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     return Container(
@@ -954,7 +957,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Hero card ──────────────────────────────
+  // Main summary card showing category, risk level, and primary stats
   Widget _buildHeroCard(DiseaseInfo info) {
     // ✅ Using AppSeverity helper — single source of truth
     final severityColor = AppSeverity.color(info.severity);
@@ -981,54 +984,64 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
           Row(
             children: [
               // Category badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color:        info.categoryColor.withOpacity(0.15),
-                  borderRadius: AppRadius.pillBR,
-                  border: Border.all(
-                      color: info.categoryColor.withOpacity(0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_categoryIcon(info.category),
-                        color: info.categoryColor, size: 12),
-                    const SizedBox(width: 5),
-                    Text(info.category,
-                        style: TextStyle(
-                          color:      info.categoryColor,
-                          fontSize:   11,
-                          fontWeight: FontWeight.w700,
-                        )),
-                  ],
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color:        info.categoryColor.withOpacity(0.12),
+                    borderRadius: AppRadius.pillBR,
+                    border: Border.all(
+                        color: info.categoryColor.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_categoryIcon(info.category),
+                          color: info.categoryColor, size: 12),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(info.category,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color:      info.categoryColor,
+                              fontSize:   11,
+                              fontWeight: FontWeight.w700,
+                            )),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               // Severity badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color:        severityColor.withOpacity(0.12),
-                  borderRadius: AppRadius.pillBR,
-                  border: Border.all(
-                      color: severityColor.withOpacity(0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.warning_amber_rounded,
-                        color: severityColor, size: 12),
-                    const SizedBox(width: 4),
-                    Text('${info.severity} Risk',
-                        style: TextStyle(
-                          color:      severityColor,
-                          fontSize:   11,
-                          fontWeight: FontWeight.w700,
-                        )),
-                  ],
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color:        severityColor.withOpacity(0.12),
+                    borderRadius: AppRadius.pillBR,
+                    border: Border.all(
+                        color: severityColor.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          color: severityColor, size: 12),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text('${info.severity} Risk',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color:      severityColor,
+                              fontSize:   11,
+                              fontWeight: FontWeight.w700,
+                            )),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1052,7 +1065,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Tab bar ────────────────────────────────
+  // Navigation tab bar for switching between Overview, Symptoms, and Treatment
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -1085,7 +1098,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Overview tab ───────────────────────────
+  // Displays general disease information, causes, and prevention methods
   Widget _buildOverviewTab(DiseaseInfo info) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1117,7 +1130,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Symptoms tab ───────────────────────────
+  // Lists specific visual indicators to help users identify the disease
   Widget _buildSymptomsTab(DiseaseInfo info) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1180,7 +1193,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Treatment tab ──────────────────────────
+  // Provides actionable treatment steps for handling the infection
   Widget _buildTreatmentTab(DiseaseInfo info) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1231,7 +1244,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Remedies tab ───────────────────────────
+  // Lists specific organic and chemical remedies recommended for this disease
   Widget _buildRemediesTab(DiseaseInfo info) {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1322,7 +1335,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Not found state ────────────────────────
+  // Fallback UI for when a disease ID is not found in the local database
   Widget _buildNotFound() {
     return Scaffold(
       backgroundColor: AppColors.bgColor,
@@ -1360,7 +1373,7 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
     );
   }
 
-  // ── Helpers ────────────────────────────────
+  // UI helper methods for consistent icon and card styling
   IconData _categoryIcon(String category) => switch (category) {
         'Viral'     => Icons.coronavirus_rounded,
         'Fungal'    => Icons.grass_rounded,
@@ -1419,18 +1432,25 @@ class _DiseaseDetailScreenState extends State<DiseaseDetailScreen>
           children: [
             Icon(icon, color: Colors.white38, size: 14),
             const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: AppText.tip.copyWith(color: Colors.white30)),
-                Text(value,
-                    style: const TextStyle(
-                      color:      Colors.white70,
-                      fontSize:   12,
-                      fontWeight: FontWeight.w600,
-                    )),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.tip.copyWith(color: Colors.white30)),
+                  Text(value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color:      Colors.white70,
+                        fontSize:   12,
+                        fontWeight: FontWeight.w600,
+                      )),
+                ],
+              ),
             ),
           ],
         ),

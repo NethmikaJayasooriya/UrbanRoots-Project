@@ -7,20 +7,20 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Serve static UI assets (product uploads)
+  // serve static upload dirs
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
   });
 
-  // 1. Enable CORS for Flutter & IoT Devices
+  // cors config
   app.enableCors({
-    origin: '*', // For development; change to specific domain in production
+    origin: '*', // TODO: lock down origin before prod
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Accept, Authorization, x-user-id',
     credentials: true,
   });
 
-  // 2. Global Validation
+  // global validation pipes
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -29,7 +29,7 @@ async function bootstrap() {
     }),
   );
 
-  // 3. Start the Server
+  // boot server
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
 

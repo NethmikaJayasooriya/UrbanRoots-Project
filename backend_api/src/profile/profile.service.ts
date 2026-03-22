@@ -11,14 +11,17 @@ export class ProfileService {
       .from('users')
       .select('*')
       .eq('uid', uid)
-      .single();
+      .maybeSingle(); // Returns null for new users — no error thrown
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is row not found.
-        throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
     }
-    
-    if (data) data.profile_image_url = data.profile_pic;
 
+    // New users have no row yet — return an empty profile object so the
+    // edit screen can open and let them fill in their details.
+    if (!data) return { uid, first_name: null, last_name: null, phone: null, profile_image_url: null };
+
+    data.profile_image_url = data.profile_pic;
     return data;
   }
 

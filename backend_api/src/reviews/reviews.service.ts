@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../common/supabase/supabase.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 
@@ -30,7 +30,7 @@ export class ReviewsService {
       .single();
 
     if (error) {
-      throw new Error(error.message);
+      throw new BadRequestException(error.message);
     }
 
     return data;
@@ -44,7 +44,7 @@ export class ReviewsService {
       .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
+      throw new BadRequestException(error.message);
     }
 
     return data;
