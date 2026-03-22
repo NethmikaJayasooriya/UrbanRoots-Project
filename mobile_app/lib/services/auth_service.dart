@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mobile_app/core/api_constants.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
