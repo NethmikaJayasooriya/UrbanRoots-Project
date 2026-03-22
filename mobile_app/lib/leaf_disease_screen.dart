@@ -25,6 +25,51 @@ import 'screens/dashboard/Marketplace/marketplace_screen.dart' show Product, Mar
 class LeafDiseaseAPI {
   static const String _baseUrl = 'https://nethmika89-urbanroots-ai.hf.space';
 
+  static const List<String> _classNames = [
+    "Blueberry___healthy",
+    "Cherry_(including_sour)___Powdery_mildew",
+    "Cherry_(including_sour)___healthy",
+    "Crape_jasmine_Yellow_leaf_disease",
+    "Crape_jasmine_healthy",
+    "Crape_jasmine_insect_bite",
+    "Dwarf_white_bauhinia_Death_leaf",
+    "Dwarf_white_bauhinia_Yellow_Leaf_Disease",
+    "Dwarf_white_bauhinia_healthy",
+    "Grape___Black_rot",
+    "Grape___Esca_(Black_Measles)",
+    "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)",
+    "Grape___healthy",
+    "Hibiscus_Blight",
+    "Hibiscus_Death_leaf",
+    "Hibiscus_Scorch",
+    "Hibiscus_healthy",
+    "Night_flowering_jasmine_Early_blight",
+    "Night_flowering_jasmine_Red_spot",
+    "Night_flowering_jasmine_healthy",
+    "Orange___Haunglongbing_(Citrus_greening)",
+    "Pepper__bell___Bacterial_spot",
+    "Pepper__bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Raspberry___healthy",
+    "Rose___blight",
+    "Rose___healthy",
+    "Soybean___healthy",
+    "Strawberry___Leaf_scorch",
+    "Strawberry___healthy",
+    "Tomato_Bacterial_spot",
+    "Tomato_Early_blight",
+    "Tomato_Late_blight",
+    "Tomato_Leaf_Mold",
+    "Tomato_Septoria_leaf_spot",
+    "Tomato_Spider_mites_Two_spotted_spider_mite",
+    "Tomato__Target_Spot",
+    "Tomato__Tomato_YellowLeaf__Curl_Virus",
+    "Tomato__Tomato_mosaic_virus",
+    "Tomato_healthy",
+  ];
+
   static Future<Map<String, dynamic>> predict(String imagePath) async {
     final uri     = Uri.parse('$_baseUrl/predict');
     final request = http.MultipartRequest('POST', uri);
@@ -36,7 +81,22 @@ class LeafDiseaseAPI {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      if (data.containsKey('class_index')) {
+        int idx = data['class_index'] as int;
+        if (idx >= 0 && idx < _classNames.length) {
+          data['disease'] = _classNames[idx];
+        } else {
+          data['disease'] = "Unknown Disease";
+        }
+      }
+      
+      if (!data.containsKey('disease')) {
+        data['disease'] = 'Unknown Disease';
+      }
+      
+      return data;
     } else {
       throw Exception('Server returned ${response.statusCode}');
     }
@@ -330,7 +390,9 @@ class _LeafScanScreenState extends State<LeafScanScreen>
     try {
       final result      = await LeafDiseaseAPI.predict(imagePath);
       final diseaseName = result['disease'] as String;
-      final confidence  = (result['confidence'] as num).toDouble() / 100.0;
+      
+      num confRaw = result['confidence'] as num? ?? 0.0;
+      final confidence  = confRaw > 1.0 ? confRaw.toDouble() / 100.0 : confRaw.toDouble();
       final isHealthy   = diseaseName.toLowerCase().contains('healthy');
       final severity    = _getSeverity(diseaseName);
 
