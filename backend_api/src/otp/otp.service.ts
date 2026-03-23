@@ -26,20 +26,25 @@ export class OtpService {
   private readonly verifiedEmails = new Map<string, Date>();
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
+    const host = this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
+    const user = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER;
+    const pass = this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS;
+    const port = Number(this.configService.get('SMTP_PORT')) || Number(process.env.SMTP_PORT) || 587;
+
+    // IMPORTANT ENFORCEMENT for Gmail/SMTP protocols:
+    // Port 465 ALWAYS requires `secure: true` (Implicit TLS).
+    // Port 587 ALWAYS requires `secure: false` (STARTTLS - standard).
+    const isSecure = port === 465;
+
+    console.log(`[OtpService] SMTP Config: host=${host}, port=${port}, user=${user}, secure=${isSecure}`);
 
     if (!host || !user || !pass) {
-      this.logger.error('⚠️  SMTP env vars missing (SMTP_HOST / SMTP_USER / SMTP_PASS). OTP emails will NOT be sent. Set these on Render.');
+      this.logger.error('⚠️  SMTP env vars missing (SMTP_HOST / SMTP_USER / SMTP_PASS).');
     }
-
-    const smtpSecure = this.configService.get<string | boolean>('SMTP_SECURE');
-    const isSecure = smtpSecure === true || smtpSecure === 'true';
 
     this.transporter = nodemailer.createTransport({
       host: host ?? 'smtp.gmail.com',
-      port: this.configService.get<number>('SMTP_PORT') ?? 587,
+      port: port,
       secure: isSecure,
       family: 4,
       auth: {
@@ -59,10 +64,12 @@ export class OtpService {
 
     // Store in-memory
     this.otpStore.set(email, { otp, expiresAt });
+    console.log(`[OtpService] Generated OTP for ${email}: ${otp}`);
 
     // Send email asynchronously and don't block
+    console.log(`[OtpService] Sending email to ${email}...`);
     this.transporter.sendMail({
-      from: `"UrbanRoots" <${this.configService.get<string>('SMTP_USER')}>`,
+      from: `"UrbanRoots" <${this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER}>`,
       to: email,
       subject: 'Your UrbanRoots Verification Code',
       text: `Your OTP is: ${otp}. It will expire in 5 minutes.`,
@@ -74,10 +81,10 @@ export class OtpService {
           <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
         </div>
       `,
-    }).then(() => {
-      this.logger.log(`OTP sent to ${email}`);
+    }).then((info) => {
+      console.log(`[OtpService] Email sent successfully to ${email}. ID: ${info.messageId}`);
     }).catch((error) => {
-      this.logger.error(`Failed to send email to ${email}`, error.stack);
+      console.error(`[OtpService] FAILED to send email to ${email}:`, error);
     });
   }
 
