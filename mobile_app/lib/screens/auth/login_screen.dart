@@ -98,6 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
+    FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       final email = _emailController.text.trim();

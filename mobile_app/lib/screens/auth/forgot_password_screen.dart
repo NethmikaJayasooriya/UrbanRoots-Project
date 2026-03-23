@@ -18,6 +18,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   bool _isLoading = false;
 
   void _sendResetCode() async {
+    FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 

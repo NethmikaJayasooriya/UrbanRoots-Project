@@ -49,6 +49,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Future<void> _verifyOtpCode() async {
+    FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     String otp = _controllers.map((c) => c.text.trim()).join();
 
     if (otp.length < 4) {
@@ -164,6 +165,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Future<void> _resendOtp() async {
+    FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     if (_resendCooldown > 0 || _isResending) return;
 
     setState(() {

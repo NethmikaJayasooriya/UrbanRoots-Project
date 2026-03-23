@@ -27,6 +27,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isLoading = false;
 
   void _resetPassword() async {
+    FocusScope.of(context).unfocus(); // dismiss keyboard before nav (Flutter Web ViewInsets bug)
     final password = _passController.text.trim();
     final confirmPassword = _confirmPassController.text.trim();
 

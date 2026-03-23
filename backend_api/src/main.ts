@@ -12,10 +12,25 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  // cors config
+  // cors config — wildcard + credentials is rejected by browsers; use explicit origin list
   app.enableCors({
-    origin: '*', // TODO: lock down origin before prod
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, callback) => {
+      // allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      const allowed = [
+        'http://localhost:3000',
+        'http://localhost:5000',  // flutter web default dev port
+        'http://localhost:8080',  // flutter web alternate dev port
+        'http://127.0.0.1:5000',
+        'http://127.0.0.1:8080',
+      ];
+      if (allowed.includes(origin)) return callback(null, true);
+      // allow any localhost port for local dev
+      if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
+      if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return callback(null, true);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, x-user-id',
     credentials: true,
   });

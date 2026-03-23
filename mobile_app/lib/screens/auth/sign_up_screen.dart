@@ -29,6 +29,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isEmailLoading = false;
 
   void _handleSignUp() async {
+    FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     if (_formKey.currentState!.validate()) {
       if (!_agreedToTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
