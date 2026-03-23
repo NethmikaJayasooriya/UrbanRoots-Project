@@ -12,8 +12,12 @@ export class NotificationsService {
       .eq('user_id', uid)
       .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
-    return data;
+    // Firebase UIDs are not UUIDs — return empty list gracefully
+    if (error) {
+      if (error.message?.includes('invalid input syntax for type uuid')) return [];
+      throw new Error(error.message);
+    }
+    return data ?? [];
   }
 
   async markOneRead(id: string, uid: string) {

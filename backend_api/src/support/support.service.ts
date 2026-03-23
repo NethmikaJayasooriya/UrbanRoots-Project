@@ -32,6 +32,9 @@ export class SupportService {
       .single();
 
     if (error) {
+      if (error.message?.includes('invalid input syntax for type uuid')) {
+        throw new BadRequestException('User ID format is not compatible with the database. Please contact support.');
+      }
       throw new Error(error.message);
     }
 
@@ -48,7 +51,12 @@ export class SupportService {
       .eq('user_id', uid)
       .order('created_at', { ascending: false });
 
+    // Supabase user_id column is uuid type; Firebase UIDs are not UUIDs
+    // Return empty list gracefully instead of crashing with 500
     if (error) {
+      if (error.message?.includes('invalid input syntax for type uuid')) {
+        return [];
+      }
       throw new Error(error.message);
     }
 
