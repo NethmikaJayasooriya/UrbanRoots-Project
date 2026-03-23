@@ -1,10 +1,16 @@
+import * as dns from 'dns';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
+
 async function bootstrap() {
+  // Force IPv4 DNS — Render blocks IPv6 outbound; smtp.gmail.com resolves
+  // to IPv6 first on Node 17+, causing ENETUNREACH on SMTP connections.
+  dns.setDefaultResultOrder('ipv4first');
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // serve static upload dirs
