@@ -45,15 +45,22 @@ export class OtpService {
     this.transporter = nodemailer.createTransport({
       host: host ?? 'smtp.gmail.com',
       port: port,
-      secure: isSecure,
-      family: 4,
+      secure: isSecure,       // false for 587 (STARTTLS), true for 465 (SSL)
+      requireTLS: !isSecure,  // enforce STARTTLS upgrade on port 587
+      family: 4,              // force IPv4 — Render can't reach Gmail via IPv6 on 465
+      connectionTimeout: 10000,  // 10s — give cloud network time to connect
+      greetingTimeout: 10000,    // 10s — wait for SMTP server greeting
+      socketTimeout: 15000,      // 15s — max idle time after connection
       auth: {
         user: user ?? '',
         pass: pass ?? '',
       },
       tls: {
-        rejectUnauthorized: false,
+        rejectUnauthorized: false, // required on some cloud hosts (Render, Railway)
+        minVersion: 'TLSv1.2',
       },
+      debug: true,   // logs full SMTP handshake to console for diagnostics
+      logger: false, // use console.log, not nodemailer's built-in logger
     } as any);
   }
 
