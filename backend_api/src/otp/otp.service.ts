@@ -4,7 +4,7 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
-import { Resend } from 'resend';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 
 interface OtpRecord {
@@ -15,7 +15,6 @@ interface OtpRecord {
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
-  private resend: Resend;
 
   // In-memory store: email -> OtpRecord
   private readonly otpStore = new Map<string, OtpRecord>();
@@ -25,17 +24,7 @@ export class OtpService {
   // Maps email -> expiry Date (valid for 10 minutes after verification).
   private readonly verifiedEmails = new Map<string, Date>();
 
-  constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY') || process.env.RESEND_API_KEY;
-
-    if (!apiKey) {
-      console.warn('[OtpService] RESEND_API_KEY is missing. OTP emails will NOT be sent.');
-    } else {
-      console.log('[OtpService] Resend API initialized.');
-    }
-
-    this.resend = new Resend(apiKey || 're_placeholder');
-  }
+  constructor(private readonly configService: ConfigService) {}
 
   async generateAndSendOtp(email: string): Promise<void> {
     // Generate 4-digit OTP
@@ -46,14 +35,23 @@ export class OtpService {
     this.otpStore.set(email, { otp, expiresAt });
     console.log(`[OtpService] Generated OTP for ${email}: ${otp}`);
 
-    // Send email asynchronously using Resend API (HTTP port 443)
-    console.log(`[OtpService] Attempting to send Resend email to ${email}...`);
-    
-    this.resend.emails.send({
-      from: 'UrbanRoots <onboarding@resend.dev>',
-      to: email,
+    // Send email asynchronously using Brevo API (HTTP port 443)
+    // We use Axios because Render blocks SMTP (465/587)
+    const apiKey = this.configService.get<string>('BREVO_API_KEY') || process.env.BREVO_API_KEY;
+    const senderEmail = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || 'jayasooriyanethmika74@gmail.com';
+
+    if (!apiKey) {
+      console.warn('[OtpService] BREVO_API_KEY is missing. OTP emails will NOT be sent.');
+      return;
+    }
+
+    console.log(`[OtpService] Attempting to send Brevo email to ${email}...`);
+
+    axios.post('https://api.brevo.com/v3/smtp/email', {
+      sender: { name: 'UrbanRoots', email: senderEmail },
+      to: [{ email }],
       subject: 'Your UrbanRoots Verification Code',
-      html: `
+      htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
           <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
           <p style="color: #ccc;">Your verification code is:</p>
@@ -61,14 +59,16 @@ export class OtpService {
           <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
         </div>
       `,
-    }).then((response) => {
-      if (response.error) {
-        console.error(`[OtpService] Resend API Error for ${email}:`, response.error);
-      } else {
-        console.log(`[OtpService] Email sent successfully to ${email}. ID: ${response.data?.id}`);
+    }, {
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
       }
+    }).then((response) => {
+      console.log(`[OtpService] Brevo Email sent successfully to ${email}. ID: ${response.data.messageId}`);
     }).catch((error) => {
-      console.error(`[OtpService] FAILED to send Resend email to ${email}:`, error);
+      const errorMsg = error.response?.data?.message || error.message;
+      console.error(`[OtpService] FAILED to send Brevo email to ${email}:`, errorMsg);
     });
   }
 
@@ -100,11 +100,6 @@ export class OtpService {
     return true;
   }
 
-  /**
-   * Checks if an email was recently verified via OTP.
-   * Used by flows like forgot-password where the reset step
-   * is a separate request from the verification step.
-   */
   isEmailVerified(email: string): boolean {
     const expiry = this.verifiedEmails.get(email);
     if (!expiry) return false;
@@ -117,9 +112,6 @@ export class OtpService {
     return true;
   }
 
-  /**
-   * Clears the verified status for an email (call after consuming it).
-   */
   clearVerifiedEmail(email: string): void {
     this.verifiedEmails.delete(email);
   }
