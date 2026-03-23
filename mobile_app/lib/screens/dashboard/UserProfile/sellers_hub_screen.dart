@@ -141,12 +141,7 @@ class _SellersHubScreenState extends State<SellersHubScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => SellerPage(
-              seller: Seller(
-                id: _seller?['id'] ?? 'PLACEHOLDER',
-                uid: _seller?['uid'] ?? 'PLACEHOLDER',
-                rating: 0,
-                isVerified: true,
-              ),
+              seller: Seller.fromJson(_seller ?? {}),
             ),
           ),
         );
@@ -177,13 +172,15 @@ class _SellersHubScreenState extends State<SellersHubScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _TopBar(
-                            title: "UrbanRoots Seller Hub",
+                            title: _seller?['shop_name'] ?? _seller?['brand_name'] ?? "UrbanRoots Seller Hub",
                             onClose: () => Navigator.of(context).maybePop(),
                             onHelp: () => _toast("Seller support coming soon"),
                           ),
                           const SizedBox(height: 16),
                           _HeroCard(
-                            title: "Grow your business\nwith UrbanRoots",
+                            title: (_seller?['shop_name'] ?? _seller?['brand_name']) != null
+                                ? "Welcome back,\n${_seller?['shop_name'] ?? _seller?['brand_name']}"
+                                : "Grow your business\nwith UrbanRoots",
                             subtitle:
                                 "Join our exclusive community of local plant enthusiasts and botanical experts.",
                             buttonText: _heroButtonText(step),

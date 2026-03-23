@@ -4,10 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/foundation.dart';
 
+import 'package:mobile_app/core/api_constants.dart';
+
 // otp service
 class OtpService {
-  // local dev ip toggle
-  static const String _baseUrl = 'https://urbanroots-project.onrender.com';
+  // Ensure we use the shared, dynamic local baseUrl
+  static String get _baseUrl => ApiConstants.baseUrl;
 
   // generate otp
   static Future<String> requestOtp(String email, String flow) async {

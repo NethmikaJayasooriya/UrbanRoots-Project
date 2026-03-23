@@ -52,28 +52,25 @@ export class OtpService {
     // Store in-memory
     this.otpStore.set(email, { otp, expiresAt });
 
-    try {
-      await this.transporter.sendMail({
-        from: `"UrbanRoots" <${this.configService.get<string>('SMTP_USER')}>`,
-        to: email,
-        subject: 'Your UrbanRoots Verification Code',
-        text: `Your OTP is: ${otp}. It will expire in 5 minutes.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
-            <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
-            <p style="color: #ccc;">Your verification code is:</p>
-            <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
-            <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
-          </div>
-        `,
-      });
+    // Send email asynchronously and don't block
+    this.transporter.sendMail({
+      from: `"UrbanRoots" <${this.configService.get<string>('SMTP_USER')}>`,
+      to: email,
+      subject: 'Your UrbanRoots Verification Code',
+      text: `Your OTP is: ${otp}. It will expire in 5 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
+          <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
+          <p style="color: #ccc;">Your verification code is:</p>
+          <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
+          <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
+        </div>
+      `,
+    }).then(() => {
       this.logger.log(`OTP sent to ${email}`);
-    } catch (error) {
+    }).catch((error) => {
       this.logger.error(`Failed to send email to ${email}`, error.stack);
-      throw new InternalServerErrorException(
-        'Failed to send OTP email. Please check your SMTP settings.',
-      );
-    }
+    });
   }
 
   async verifyOtp(email: string, otp: string): Promise<boolean> {

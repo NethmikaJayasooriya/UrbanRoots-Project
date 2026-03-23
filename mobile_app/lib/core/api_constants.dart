@@ -4,7 +4,12 @@ import 'package:flutter/foundation.dart';
 
 class ApiConstants {
 
-  static const String baseUrl = 'https://urbanroots-project.onrender.com';
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:3000';
+    }
+    return 'http://10.0.2.2:3000';
+  }
 
   // ── Products ───────────────────────────────────────────────
   static const String products          = '/products';

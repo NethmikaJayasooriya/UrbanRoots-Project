@@ -35,7 +35,7 @@ class Seller {
     return Seller(
       id:              json['id']?.toString() ?? json['_id']?.toString() ?? '',
       uid:             json['uid']?.toString() ?? '',
-      brandName:       json['brand_name']?.toString(),
+      brandName:       json['brand_name']?.toString() ?? json['shop_name']?.toString(),
       businessEmail:   json['business_email']?.toString(),
       phone:           json['phone']?.toString(),
       businessAddress: json['business_address']?.toString(),
