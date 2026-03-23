@@ -26,17 +26,25 @@ export class OtpService {
   private readonly verifiedEmails = new Map<string, Date>();
 
   constructor(private readonly configService: ConfigService) {
+    const host = this.configService.get<string>('SMTP_HOST');
+    const user = this.configService.get<string>('SMTP_USER');
+    const pass = this.configService.get<string>('SMTP_PASS');
+
+    if (!host || !user || !pass) {
+      this.logger.error('⚠️  SMTP env vars missing (SMTP_HOST / SMTP_USER / SMTP_PASS). OTP emails will NOT be sent. Set these on Render.');
+    }
+
     const smtpSecure = this.configService.get<string | boolean>('SMTP_SECURE');
     const isSecure = smtpSecure === true || smtpSecure === 'true';
 
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: this.configService.get<number>('SMTP_PORT'),
+      host: host ?? 'smtp.gmail.com',
+      port: this.configService.get<number>('SMTP_PORT') ?? 587,
       secure: isSecure,
       family: 4,
       auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
+        user: user ?? '',
+        pass: pass ?? '',
       },
       tls: {
         rejectUnauthorized: false,
