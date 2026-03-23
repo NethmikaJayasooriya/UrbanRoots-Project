@@ -4,7 +4,7 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { ConfigService } from '@nestjs/config';
 
 interface OtpRecord {
@@ -15,7 +15,7 @@ interface OtpRecord {
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
 
   // In-memory store: email -> OtpRecord
   private readonly otpStore = new Map<string, OtpRecord>();
@@ -26,42 +26,15 @@ export class OtpService {
   private readonly verifiedEmails = new Map<string, Date>();
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST') || process.env.SMTP_HOST;
-    const user = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER;
-    const pass = this.configService.get<string>('SMTP_PASS') || process.env.SMTP_PASS;
-    const port = Number(this.configService.get('SMTP_PORT')) || Number(process.env.SMTP_PORT) || 587;
+    const apiKey = this.configService.get<string>('RESEND_API_KEY') || process.env.RESEND_API_KEY;
 
-    // IMPORTANT ENFORCEMENT for Gmail/SMTP protocols:
-    // Port 465 ALWAYS requires `secure: true` (Implicit TLS).
-    // Port 587 ALWAYS requires `secure: false` (STARTTLS - standard).
-    const isSecure = port === 465;
-
-    console.log(`[OtpService] SMTP Config: host=${host}, port=${port}, user=${user}, secure=${isSecure}`);
-
-    if (!host || !user || !pass) {
-      this.logger.error('⚠️  SMTP env vars missing (SMTP_HOST / SMTP_USER / SMTP_PASS).');
+    if (!apiKey) {
+      console.warn('[OtpService] RESEND_API_KEY is missing. OTP emails will NOT be sent.');
+    } else {
+      console.log('[OtpService] Resend API initialized.');
     }
 
-    this.transporter = nodemailer.createTransport({
-      host: host ?? 'smtp.gmail.com',
-      port: port,
-      secure: isSecure,       // false for 587 (STARTTLS), true for 465 (SSL)
-      requireTLS: !isSecure,  // enforce STARTTLS upgrade on port 587
-      family: 4,              // force IPv4 — Render can't reach Gmail via IPv6 on 465
-      connectionTimeout: 10000,  // 10s — give cloud network time to connect
-      greetingTimeout: 10000,    // 10s — wait for SMTP server greeting
-      socketTimeout: 15000,      // 15s — max idle time after connection
-      auth: {
-        user: user ?? '',
-        pass: pass ?? '',
-      },
-      tls: {
-        rejectUnauthorized: false, // required on some cloud hosts (Render, Railway)
-        minVersion: 'TLSv1.2',
-      },
-      debug: true,   // logs full SMTP handshake to console for diagnostics
-      logger: false, // use console.log, not nodemailer's built-in logger
-    } as any);
+    this.resend = new Resend(apiKey || 're_placeholder');
   }
 
   async generateAndSendOtp(email: string): Promise<void> {
@@ -73,13 +46,13 @@ export class OtpService {
     this.otpStore.set(email, { otp, expiresAt });
     console.log(`[OtpService] Generated OTP for ${email}: ${otp}`);
 
-    // Send email asynchronously and don't block
-    console.log(`[OtpService] Sending email to ${email}...`);
-    this.transporter.sendMail({
-      from: `"UrbanRoots" <${this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER}>`,
+    // Send email asynchronously using Resend API (HTTP port 443)
+    console.log(`[OtpService] Attempting to send Resend email to ${email}...`);
+    
+    this.resend.emails.send({
+      from: 'UrbanRoots <onboarding@resend.dev>',
       to: email,
       subject: 'Your UrbanRoots Verification Code',
-      text: `Your OTP is: ${otp}. It will expire in 5 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
           <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
@@ -88,10 +61,14 @@ export class OtpService {
           <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
         </div>
       `,
-    }).then((info) => {
-      console.log(`[OtpService] Email sent successfully to ${email}. ID: ${info.messageId}`);
+    }).then((response) => {
+      if (response.error) {
+        console.error(`[OtpService] Resend API Error for ${email}:`, response.error);
+      } else {
+        console.log(`[OtpService] Email sent successfully to ${email}. ID: ${response.data?.id}`);
+      }
     }).catch((error) => {
-      console.error(`[OtpService] FAILED to send email to ${email}:`, error);
+      console.error(`[OtpService] FAILED to send Resend email to ${email}:`, error);
     });
   }
 
