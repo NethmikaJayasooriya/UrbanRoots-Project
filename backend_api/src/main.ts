@@ -23,17 +23,13 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // allow requests with no origin (mobile apps, curl, Postman)
       if (!origin) return callback(null, true);
-      const allowed = [
-        'http://localhost:3000',
-        'http://localhost:5000',  // flutter web default dev port
-        'http://localhost:8080',  // flutter web alternate dev port
-        'http://127.0.0.1:5000',
-        'http://127.0.0.1:8080',
-      ];
-      if (allowed.includes(origin)) return callback(null, true);
-      // allow any localhost port for local dev
+      // allow any localhost / 127.0.0.1 port (covers all Flutter Web dev ports)
       if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
       if (/^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) return callback(null, true);
+      // allow Render-hosted backend origin (same-origin requests from Render preview)
+      if (/^https:\/\/.*\.onrender\.com$/.test(origin)) return callback(null, true);
+      // allow Firebase / Flutter Web hosting
+      if (/^https:\/\/.*\.(web\.app|firebaseapp\.com)$/.test(origin)) return callback(null, true);
       callback(new Error(`CORS blocked: ${origin}`));
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
