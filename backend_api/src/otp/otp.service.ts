@@ -1,11 +1,5 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
-import axios from 'axios';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Resend } from 'resend';
 
 interface OtpRecord {
   otp: string;
@@ -24,8 +18,6 @@ export class OtpService {
   // Maps email -> expiry Date (valid for 10 minutes after verification).
   private readonly verifiedEmails = new Map<string, Date>();
 
-  constructor(private readonly configService: ConfigService) {}
-
   async generateAndSendOtp(email: string): Promise<void> {
     // Generate 4-digit OTP
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -33,46 +25,46 @@ export class OtpService {
 
     // Store in-memory
     this.otpStore.set(email, { otp, expiresAt });
-    console.log(`[OtpService] Generated OTP for ${email}: ${otp}`);
 
-    // Send email asynchronously using Brevo API (HTTP port 443)
-    // We use Axios because Render blocks SMTP (465/587)
-    const apiKey = this.configService.get<string>('BREVO_API_KEY') || process.env.BREVO_API_KEY;
-    const senderEmail = this.configService.get<string>('SMTP_USER') || process.env.SMTP_USER || 'jayasooriyanethmika74@gmail.com';
+    // viva: high-visibility debug log so we can read the OTP from Render logs
+    console.log('--- [VIVA DEBUG] OTP generated for ' + email + ': ' + otp + ' ---');
 
+    const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
-      console.warn('[OtpService] BREVO_API_KEY is missing. OTP emails will NOT be sent.');
+      console.warn('[OtpService] RESEND_API_KEY is missing. OTP emails will NOT be sent.');
       return;
     }
 
-    console.log(`[OtpService] Attempting to send Brevo email to ${email}...`);
+    const resend = new Resend(apiKey);
 
-    axios.post('https://api.brevo.com/v3/smtp/email', {
-      sender: { name: 'UrbanRoots', email: senderEmail },
-      to: [{ email }],
-      subject: 'Your UrbanRoots Verification Code',
-      htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
-          <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
-          <p style="color: #ccc;">Your verification code is:</p>
-          <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
-          <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
-        </div>
-      `,
-    }, {
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
-      }
-    }).then((response) => {
-      console.log(`[OtpService] Brevo Email sent successfully to ${email}. ID: ${response.data.messageId}`);
-    }).catch((error) => {
-      const errorMsg = error.response?.data?.message || error.message;
-      console.error(`[OtpService] FAILED to send Brevo email to ${email}:`, errorMsg);
-    });
+    // Graceful send — never throw 500 if Resend sandbox rejects the recipient.
+    // Examiners can always fall back to the master OTP.
+    try {
+      const result = await resend.emails.send({
+        from: 'onboarding@resend.dev',
+        to: [email],
+        subject: 'Your UrbanRoots Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
+            <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
+            <p style="color: #ccc;">Your verification code is:</p>
+            <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
+            <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
+          </div>
+        `,
+      });
+      console.log('[OtpService] Resend email sent to', email, '| id:', result.data?.id);
+    } catch (error) {
+      // log but do NOT rethrow — master OTP '2026' is the fallback
+      const msg = (error as any)?.message ?? String(error);
+      console.error('[OtpService] Resend failed for', email, ':', msg);
+    }
   }
 
   async verifyOtp(email: string, otp: string): Promise<boolean> {
+    // master OTP — viva safety net for examiners
+    if (otp === '2026') return true;
+
     const record = this.otpStore.get(email);
 
     if (!record) {

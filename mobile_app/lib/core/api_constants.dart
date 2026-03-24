@@ -14,9 +14,12 @@ class ApiConstants {
       String.fromEnvironment('BACKEND_URL', defaultValue: '');
 
   static String get baseUrl {
-    // Use local override when provided (all platforms during dev)
+    // Explicit override wins on all platforms (used for local dev on mobile/emulator)
+    //   flutter run --dart-define=BACKEND_URL=http://10.0.2.2:3000
     if (_devUrlOverride.isNotEmpty) return _devUrlOverride;
-    // Default: production backend for all builds (APK, web, iOS)
+    // Web always uses localhost during flutter run -d chrome (local dev server)
+    if (kIsWeb) return 'http://localhost:3000';
+    // Mobile (APK / real device) → production Render backend
     return _prodUrl;
   }
 
