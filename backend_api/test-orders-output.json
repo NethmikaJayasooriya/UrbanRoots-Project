@@ -1,0 +1,221 @@
+{
+  "columns": [
+    {
+      "column_name": "id",
+      "data_type": "uuid"
+    },
+    {
+      "column_name": "orderId",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "customerPhone",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "customerDetails",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "items",
+      "data_type": "jsonb"
+    },
+    {
+      "column_name": "totalAmount",
+      "data_type": "double precision"
+    },
+    {
+      "column_name": "paymentMethod",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying"
+    },
+    {
+      "column_name": "userId",
+      "data_type": "uuid"
+    },
+    {
+      "column_name": "createdAt",
+      "data_type": "timestamp with time zone"
+    }
+  ],
+  "orders": [
+    {
+      "id": "7fb4be40-c8ac-415b-9a45-cbb82fd922c7",
+      "orderId": "ORD-1774677592148-561",
+      "customerPhone": "04484444494",
+      "customerDetails": {
+        "name": "eyyejjs",
+        "phone": "04484444494",
+        "address": "susuu"
+      },
+      "items": [
+        {
+          "name": "Tomato Seeds",
+          "price": 250,
+          "category": "Seeds",
+          "quantity": 1
+        },
+        {
+          "name": "Organic Fertilizer",
+          "price": 900,
+          "category": "Fertilizers",
+          "quantity": 2
+        },
+        {
+          "name": "Indoor Fern",
+          "price": 1200,
+          "category": "Indoor",
+          "quantity": 2
+        },
+        {
+          "name": "Gardening Gloves",
+          "price": 450,
+          "category": "Tools",
+          "quantity": 2
+        }
+      ],
+      "totalAmount": 5350,
+      "paymentMethod": "cod",
+      "status": "PENDING",
+      "userId": null,
+      "createdAt": "2026-03-28T05:59:52.190Z"
+    },
+    {
+      "id": "e864b750-6b6c-4a18-871b-859809d6cb9c",
+      "orderId": "ORD-1774677584670-45",
+      "customerPhone": "04484444494",
+      "customerDetails": {
+        "name": "eyyejjs",
+        "phone": "04484444494",
+        "address": "susuu"
+      },
+      "items": [
+        {
+          "name": "Tomato Seeds",
+          "price": 250,
+          "category": "Seeds",
+          "quantity": 1
+        },
+        {
+          "name": "Organic Fertilizer",
+          "price": 900,
+          "category": "Fertilizers",
+          "quantity": 2
+        },
+        {
+          "name": "Indoor Fern",
+          "price": 1200,
+          "category": "Indoor",
+          "quantity": 2
+        },
+        {
+          "name": "Gardening Gloves",
+          "price": 450,
+          "category": "Tools",
+          "quantity": 2
+        }
+      ],
+      "totalAmount": 5350,
+      "paymentMethod": "card",
+      "status": "PENDING",
+      "userId": null,
+      "createdAt": "2026-03-28T05:59:45.692Z"
+    },
+    {
+      "id": "d93e6c51-4ed4-4ed9-9f36-154499a73fc6",
+      "orderId": "ORD-1774677539915-937",
+      "customerPhone": "228464314664",
+      "customerDetails": {
+        "name": "sshsjsjss",
+        "phone": "228464314664",
+        "address": "sysuusjdjs"
+      },
+      "items": [
+        {
+          "name": "Tomato Seeds",
+          "price": 250,
+          "category": "Seeds",
+          "quantity": 1
+        },
+        {
+          "name": "Organic Fertilizer",
+          "price": 900,
+          "category": "Fertilizers",
+          "quantity": 1
+        },
+        {
+          "name": "Indoor Fern",
+          "price": 1200,
+          "category": "Indoor",
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 2350,
+      "paymentMethod": "cod",
+      "status": "PENDING",
+      "userId": null,
+      "createdAt": "2026-03-28T05:59:00.947Z"
+    },
+    {
+      "id": "d0a5f29e-16fc-46f7-8cb5-55fa6b1a98ec",
+      "orderId": "ORD-1774677066789-321",
+      "customerPhone": "8084426",
+      "customerDetails": {
+        "name": "ifjfidyy",
+        "phone": "8084426",
+        "address": "ogifjfif"
+      },
+      "items": [
+        {
+          "name": "Organic Fertilizer",
+          "price": 900,
+          "category": "Fertilizers",
+          "quantity": 1
+        },
+        {
+          "name": "Indoor Fern",
+          "price": 1200,
+          "category": "Indoor",
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 2100,
+      "paymentMethod": "cod",
+      "status": "PENDING",
+      "userId": null,
+      "createdAt": "2026-03-28T05:51:07.826Z"
+    },
+    {
+      "id": "7a3a3032-ce0f-46f7-9ccc-d5af91969023",
+      "orderId": "ORD-1774677004093-903",
+      "customerPhone": "0546466464",
+      "customerDetails": {
+        "name": "jwjejjs",
+        "phone": "0546466464",
+        "address": "jjddjdjdjd"
+      },
+      "items": [
+        {
+          "name": "Tomato Seeds",
+          "price": 250,
+          "category": "Seeds",
+          "quantity": 1
+        },
+        {
+          "name": "Organic Fertilizer",
+          "price": 900,
+          "category": "Fertilizers",
+          "quantity": 1
+        }
+      ],
+      "totalAmount": 1150,
+      "paymentMethod": "cod",
+      "status": "PENDING",
+      "userId": null,
+      "createdAt": "2026-03-28T05:50:05.104Z"
+    }
+  ]
+}

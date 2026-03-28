@@ -14,7 +14,10 @@ class ApiService {
   // ================= PROFILE =================
 
   static Future<Map<String, dynamic>> getProfile() async {
-    final response = await http.get(Uri.parse('$baseUrl/profile/me'), headers: _headers);
+    final response = await http.get(Uri.parse('$baseUrl/profile/me'), headers: _headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception('Request timed out while loading profile.'),
+    );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -68,7 +71,10 @@ class ApiService {
   // ================= PREFERENCES =================
 
   static Future<Map<String, dynamic>> getPreferences() async {
-    final response = await http.get(Uri.parse('$baseUrl/preferences/me'), headers: _headers);
+    final response = await http.get(Uri.parse('$baseUrl/preferences/me'), headers: _headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception('Request timed out while loading preferences.'),
+    );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -312,7 +318,10 @@ class ApiService {
   // ================= SELLER HUB =================
 
   static Future<Map<String, dynamic>?> getSeller() async {
-    final response = await http.get(Uri.parse('$baseUrl/seller'), headers: _headers);
+    final response = await http.get(Uri.parse('$baseUrl/seller'), headers: _headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => throw Exception('Request timed out while loading seller dashboard.'),
+    );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty || response.body == 'null') {

@@ -8,12 +8,12 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <WiFiManager.h> // Added WiFiManager
+#include <esp_wifi.h> // Required to disable power saving for picky routers
 
 // ================================================================
-//  CHANGE THESE TO YOUR WIFI NAME AND PASSWORD
+//  DEVICE CONFIGURATION
 // ================================================================
-const char* WIFI_SSID     = "SLT_FIBRE";
-const char* WIFI_PASSWORD = "20030808";
 const char* DEVICE_NAME   = "urbanroots"; // Device will appear as urbanroots.local
 
 // ================================================================
@@ -146,15 +146,28 @@ void setup() {
     bh1750Ready = true;
   }
 
-  // WiFi Connection
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
+  // WiFi Connection via WiFiManager
+  // This removes hardcoded credentials. It creates a temporary "UrbanRoots_Setup"
+  // Wi-Fi network if it is not connected. The user connects their phone to it to set up Wi-Fi.
+  
+  // ---> NEW: Robustness fixes for picky Dual-Band/SLT Fiber routers
+  WiFi.mode(WIFI_STA); 
+  WiFi.disconnect(); 
+  esp_wifi_set_ps(WIFI_PS_NONE); // Disables Wi-Fi power-saving (major cause of ESP32 drops)
+  
+  WiFiManager wm;
+  wm.setCleanConnect(true); // Forces a clean disassociation before attempting to connect
+  bool res = wm.autoConnect("UrbanRoots_Setup"); // AP Name
+  if (!res) {
+    Serial.println("Failed to connect to WiFi and hit timeout");
+    ESP.restart(); // Restart and try again
+  }
   Serial.println("\nConnected! IP: " + WiFi.localIP().toString());
 
   if (MDNS.begin(DEVICE_NAME)) {
     Serial.println("mDNS Responder Started: http://urbanroots.local");
+    // Broadcast the "urbanroots" service so the app can find the device instantly!
+    MDNS.addService("urbanroots", "tcp", 80);
   }
 
   // Define Server Routes

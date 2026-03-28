@@ -9,6 +9,8 @@ import 'package:mobile_app/services/auth_service.dart';
 import 'package:mobile_app/services/otp_service.dart';
 import 'package:mobile_app/services/api_service.dart';
 import 'package:mobile_app/screens/dashboard/nav_bar.dart';
+import 'package:provider/provider.dart';
+import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
 import 'forgot_password_screen.dart';
 import 'setup_profile_screen.dart';
 import 'sign_up_screen.dart';
@@ -46,6 +48,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (email == null) throw Exception("No email found from Google.");
 
       // clear stale local data
+      if (mounted) {
+        context.read<CartModel>().clearCart();
+      }
       final prefs = await SharedPreferences.getInstance();
       await Future.wait([
         prefs.remove('active_garden_id'),
@@ -101,6 +106,12 @@ class _LoginScreenState extends State<LoginScreen> {
     FocusScope.of(context).unfocus(); // Prevent Web ViewInsets crash
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
+      
+      // Clear any stale cart data from previous sessions
+      if (mounted) {
+        context.read<CartModel>().clearCart();
+      }
+
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
@@ -117,12 +128,15 @@ class _LoginScreenState extends State<LoginScreen> {
           await OtpService.requestOtp(email, 'login');
         } catch (otpError) {
           debugPrint("OTP request failed: $otpError");
-          // otp failed, kill session
-          await FirebaseAuth.instance.signOut();
+          // NOTE: Do NOT call FirebaseAuth.signOut() here.
+          // The user hasn't completed login (no OTP = no session granted),
+          // so there's nothing to sign out of. Calling signOut() emits spurious
+          // "Notifying id token listeners about a sign-out event" logs and
+          // disrupts the Firebase auth state unnecessarily.
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to send verification code: ${otpError.toString()}'),
+                content: Text('Could not reach server. Please check your connection and try again.'),
                 backgroundColor: AppColors.danger,
               ),
             );

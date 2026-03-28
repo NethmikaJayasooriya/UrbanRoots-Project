@@ -68,7 +68,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with SingleTi
           id: p['id'].toString(),
           name: p['name'],
           category: p['category'],
-          price: (p['price'] as num).toDouble(),
+          price: double.tryParse(p['price']?.toString() ?? '0') ?? 0.0,
           description: p['description'],
           imageUrl: p['imageUrl'],
           placeholderIcon: _getIconForCategory(p['category']),

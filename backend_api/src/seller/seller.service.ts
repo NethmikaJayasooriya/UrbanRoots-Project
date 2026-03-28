@@ -9,6 +9,39 @@ export class SellerService {
     private readonly marketplaceService: MarketplaceService,
   ) {}
 
+  /**
+   * Compute this seller's average rating by:
+   * 1. Fetching all product IDs belonging to the seller
+   * 2. Fetching all reviews for those products
+   * 3. Averaging the review ratings
+   *
+   * This is done directly via Supabase so it is schema-agnostic
+   * and does not depend on TypeORM's rating column being in sync.
+   */
+  private async computeRatingForSeller(sellerId: string): Promise<number> {
+    // 1. Get all product IDs for this seller
+    const { data: products, error: prodErr } = await this.supabase.client
+      .from('products')
+      .select('id')
+      .eq('seller_id', sellerId);
+
+    if (prodErr || !products || products.length === 0) return 0;
+
+    const productIds = products.map((p: any) => p.id);
+
+    // 2. Get all reviews for those products
+    const { data: reviews, error: revErr } = await this.supabase.client
+      .from('reviews')
+      .select('rating')
+      .in('productId', productIds);
+
+    if (revErr || !reviews || reviews.length === 0) return 0;
+
+    // 3. Average
+    const total = reviews.reduce((sum: number, r: any) => sum + Number(r.rating), 0);
+    return parseFloat((total / reviews.length).toFixed(2));
+  }
+
   async getSeller(uid: string) {
     const { data, error } = await this.supabase.client
       .from('sellers')
@@ -21,19 +54,24 @@ export class SellerService {
     }
 
     if (data) {
-      // Force a rating sync using the rating engine
-      await this.marketplaceService.updateSellerRating(data.id).catch(e => {
-        console.error(`Sync error for singular UID ${uid}:`, e);
-      });
-      
-      // Return fresh data with the updated rating
-      const { data: freshData } = await this.supabase.client
-        .from('sellers')
-        .select('*')
-        .eq('uid', uid)
-        .maybeSingle();
-        
-      return freshData;
+      // Compute the rating directly from reviews (reliable, schema-agnostic)
+      const computedRating = await this.computeRatingForSeller(data.id).catch(() => 0);
+
+      // Also try to persist the computed rating back into the sellers table
+      // so the TypeORM-based endpoints stay in sync too (best-effort).
+      (async () => {
+        try {
+          await this.supabase.client
+            .from('sellers')
+            .update({ rating: computedRating })
+            .eq('id', data.id);
+        } catch (e: any) {
+          console.error(`Failed to persist computed rating for seller ${data.id}:`, e);
+        }
+      })();
+
+      // Inject the computed rating into the returned object
+      return { ...data, rating: computedRating };
     }
 
     return data;

@@ -30,6 +30,11 @@ class OtpService {
         Uri.parse(endpoint),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email.trim()}),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception(
+          'Connection timed out. Make sure the backend is running and the emulator can reach 10.0.2.2:3000.',
+        ),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -65,6 +70,11 @@ class OtpService {
         Uri.parse('$_baseUrl/auth/verify-otp'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception(
+          'Verification timed out. Please check your connection and try again.',
+        ),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {

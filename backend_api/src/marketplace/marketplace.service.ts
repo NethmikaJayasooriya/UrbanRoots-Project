@@ -1,4 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
@@ -13,7 +15,15 @@ export class MarketplaceService {
     @InjectRepository(Review) private reviewRepo: Repository<Review>,
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     @InjectRepository(Seller) private sellerRepo: Repository<Seller>,
+    private configService: ConfigService,
   ) {}
+
+  getPayHereConfig() {
+    return {
+      merchantId: this.configService.get<string>('PAYHERE_MERCHANT_ID', '1234567'),
+      isSandbox: this.configService.get<string>('PAYHERE_SANDBOX', 'true') === 'true',
+    };
+  }
 
   async getProducts(): Promise<Product[]> {
     try {
@@ -121,16 +131,52 @@ export class MarketplaceService {
   }
 
   async handlePayHereNotification(payload: any): Promise<string> {
-    const orderId = payload.order_id;
-    if (payload.status_code === '2') {
-      const order = await this.orderRepo.findOne({ where: { orderId } });
-      if (order) {
-        order.status = 'PAID';
-        await this.orderRepo.save(order);
-        return 'OK';
-      }
+    const {
+      order_id: orderId,
+      status_code: statusCode,
+      md5sig: receivedHash,
+      merchant_id: merchantId,
+      payhere_amount: amount,
+      payhere_currency: currency,
+    } = payload;
+
+    // 1. Verify Hash for security
+    const secret = this.configService.get<string>('PAYHERE_SECRET', 'xyz123');
+    const hashedSecret = crypto.createHash('md5').update(secret).digest('hex').toUpperCase();
+    
+    // MD5(merchant_id + order_id + payhere_amount + payhere_currency + status_code + MD5(merchant_secret).toUpperCase())
+    const expectedHash = crypto.createHash('md5')
+      .update(merchantId + orderId + amount + currency + statusCode + hashedSecret)
+      .digest('hex')
+      .toUpperCase();
+
+    if (receivedHash !== expectedHash) {
+      console.warn('PayHere notification hash mismatch!', { orderId, receivedHash, expectedHash });
+      return 'INVALID_HASH';
     }
-    return 'FAILED';
+
+    // 2. Update Order Status
+    // PayHere Status Codes: 2: Success, 0: Pending, -1: Canceled, -2: Failed
+    const order = await this.orderRepo.findOne({ where: { orderId } });
+    if (!order) return 'ORDER_NOT_FOUND';
+
+    switch (statusCode) {
+      case '2':
+        order.status = 'PAID';
+        break;
+      case '0':
+        order.status = 'PENDING_PAYMENT';
+        break;
+      case '-1':
+        order.status = 'CANCELED';
+        break;
+      case '-2':
+        order.status = 'FAILED';
+        break;
+    }
+
+    await this.orderRepo.save(order);
+    return 'OK';
   }
 
   async getOrdersByUser(userId: string, phones: string[] = []): Promise<Order[]> {
@@ -165,7 +211,8 @@ export class MarketplaceService {
 
   async cancelOrder(orderId: string, userId: string): Promise<void> {
     const order = await this.orderRepo.findOne({ where: { orderId, userId } });
-    if (order && order.status === 'PENDING') {
+    if (order && (order.status === 'PENDING' || order.status === 'PENDING_PAYMENT')) {
+      // In a real app, you might not want to hard delete, but for this cleanup flow:
       await this.orderRepo.remove(order);
     }
   }

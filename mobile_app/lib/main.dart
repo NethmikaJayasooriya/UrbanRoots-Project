@@ -10,8 +10,8 @@ import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
 // screens
 import 'screens/auth/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/welcome_screen.dart';
 import 'screens/auth/setup_profile_screen.dart';
-import 'screens/auth/verification_screen.dart';
 import 'screens/dashboard/nav_bar.dart';
 
 void main() async {
@@ -73,30 +73,41 @@ class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
     _navigateFromSplash();
   }
 
-  // handles initial nav state
+  // Handles initial navigation state after splash.
+  // We check Firebase auth first, then validate the local OTP session flag.
+  // IMPORTANT: We do NOT call FirebaseAuth.signOut() here — doing so triggers
+  // spurious "Notifying id token listeners about a sign-out event" logs and
+  // breaks the auth state for users who are legitimately signed in but whose
+  // local SharedPreferences were cleared (e.g. first install, app update, etc.).
   void _navigateFromSplash() async {
-    // temp fix: artificial delay for splash
-    await Future.delayed(const Duration(seconds: 4));
+    // Wait for the splash screen animation to finish
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
 
     final user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      // verify server state vs local firebase token
-      final loggedIn = await OtpService.isLoggedIn().catchError((_) => false);
-      if (loggedIn) {
+      // Check if the user completed the OTP verification step in this session
+      final otpVerified = await OtpService.isLoggedIn().catchError((_) => false);
+
+      if (otpVerified) {
+        // Fully authenticated — check onboarding
         final isOnboarded = await AuthService.checkIsOnboarded(user.uid);
+        if (!mounted) return;
         if (isOnboarded) {
           _goToScreen(const MainNavigationWrapper());
         } else {
           _goToScreen(const SetupProfileScreen());
         }
-      } else {
-        await FirebaseAuth.instance.signOut();
-        _goToScreen(const LoginScreen());
+        return;
       }
-    } else {
-      _goToScreen(const LoginScreen());
     }
+
+    // Default to Welcome Screen for new OR partially authenticated users.
+    // This restores the "Front Door" branding flow.
+    if (!mounted) return;
+    _goToScreen(const WelcomeScreen());
   }
 
   void _goToScreen(Widget screen) {

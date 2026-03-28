@@ -37,28 +37,28 @@ export class OtpService {
 
     const resend = new Resend(apiKey);
 
-    // Graceful send — never throw 500 if Resend sandbox rejects the recipient.
-    // Examiners can always fall back to the master OTP.
-    try {
-      const result = await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: [email],
-        subject: 'Your UrbanRoots Verification Code',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
-            <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
-            <p style="color: #ccc;">Your verification code is:</p>
-            <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
-            <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
-          </div>
-        `,
-      });
-      console.log('[OtpService] Resend email sent to', email, '| id:', result.data?.id);
-    } catch (error) {
-      // log but do NOT rethrow — master OTP '2026' is the fallback
-      const msg = (error as any)?.message ?? String(error);
-      console.error('[OtpService] Resend failed for', email, ':', msg);
-    }
+    // NON-BLOCKING: Send the email in the background so the mobile app gets an instant response.
+    resend.emails.send({
+      from: 'onboarding@resend.dev',
+      to: [email],
+      subject: 'Your UrbanRoots Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 24px; background: #0f2218; border-radius: 12px; color: white;">
+          <h2 style="color: #4caf50; margin-bottom: 8px;">UrbanRoots</h2>
+          <p style="color: #ccc;">Your verification code is:</p>
+          <div style="font-size: 36px; font-weight: bold; letter-spacing: 12px; color: #4caf50; padding: 16px 0;">${otp}</div>
+          <p style="color: #999; font-size: 13px;">This code expires in 5 minutes. Do not share it with anyone.</p>
+        </div>
+      `,
+    }).then((result) => {
+      console.log('[OtpService] Resend email success for', email, '| id:', result.data?.id);
+    }).catch((error) => {
+       const msg = (error as any)?.message ?? String(error);
+       console.error('[OtpService] Resend background fail for', email, ':', msg);
+    });
+
+    // Return immediately after triggering the background send
+    return;
   }
 
   async verifyOtp(email: string, otp: string): Promise<boolean> {

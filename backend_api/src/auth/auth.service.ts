@@ -16,15 +16,16 @@ export class AuthService {
 
   // req login otp
   async requestLoginOtp(email: string): Promise<void> {
+    // The client already authenticated via Firebase (email+password), so we trust
+    // the user is valid. Skip the blocking getUserByEmail() call — it adds latency
+    // and can time out on Render cold starts, causing the mobile app to abort.
+    // Generate and send OTP immediately for a fast response.
     try {
-      await this.firebaseService.auth.getUserByEmail(email);
       await this.otpService.generateAndSendOtp(email);
       this.logger.log(`Login OTP sent to ${email}`);
     } catch (error) {
-      if (error.code === 'auth/user-not-found') {
-        throw new NotFoundException('No account found with this email. Please sign up first.');
-      }
-      throw new BadRequestException('Failed to initiate login. Please check the email.');
+      this.logger.error(`Failed to send login OTP to ${email}: ${error.message}`);
+      throw new BadRequestException('Failed to send verification code. Please try again.');
     }
   }
 

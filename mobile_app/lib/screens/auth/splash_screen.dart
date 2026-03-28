@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
-import 'welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,26 +30,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _fadeAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
-
-    _navigateToWelcome();
-  }
-
-  void _navigateToWelcome() async {
-    // Keep splash visible briefly before pushing to auth flow
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const WelcomeScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final fade = CurvedAnimation(parent: animation, curve: Curves.easeInOut);
-          return FadeTransition(opacity: fade, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
+    // NOTE: Navigation is handled exclusively by SplashScreenWrapper in main.dart.
+    // Do NOT add self-navigation here as it creates a race condition.
   }
 
   @override

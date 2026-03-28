@@ -40,10 +40,12 @@ export class SellersService {
   async findByUid(uid: string): Promise<Seller | null> {
     const seller = await this.repo.findOneBy({ uid });
     if (seller) {
+      // Update the stored rating from reviews
       await this.marketplaceService.updateSellerRating(seller.id).catch(e => {
         console.error(`Sync error for UID ${uid}:`, e);
       });
-      return this.repo.findOneBy({ uid }); // Return fresh data
+      // Return fresh data with the updated rating
+      return this.repo.findOneBy({ uid });
     }
     return null;
   }

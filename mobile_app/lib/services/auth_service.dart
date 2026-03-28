@@ -48,6 +48,9 @@ class AuthService {
           if (normalizedProfilePic != null && normalizedProfilePic.isNotEmpty)
             'profilePic': normalizedProfilePic,
         }),
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception('Profile setup timed out. The server may be starting up.'),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {

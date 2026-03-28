@@ -6,6 +6,7 @@ import 'package:mobile_app/screens/dashboard/UserProfile/add_product_page.dart';
 import 'package:mobile_app/screens/dashboard/UserProfile/sales_page.dart';
 import 'package:mobile_app/screens/dashboard/UserProfile/seller_products_page.dart';
 import 'package:mobile_app/screens/dashboard/UserProfile/update_seller_details.dart';
+import 'package:mobile_app/shared/api/api_service.dart';
 import 'package:mobile_app/style.dart';
 
 class SellerPage extends StatefulWidget {
@@ -18,11 +19,29 @@ class SellerPage extends StatefulWidget {
 
 class _SellerPageState extends State<SellerPage> {
   late Seller _seller;
+  bool _refreshingRating = true;
 
   @override
   void initState() {
     super.initState();
     _seller = widget.seller;
+    _refreshSellerRating();
+  }
+
+  /// Fetches fresh seller data from the backend so the rating shown
+  /// is always computed from live customer reviews.
+  Future<void> _refreshSellerRating() async {
+    try {
+      final data = await ApiService.getSeller();
+      if (!mounted || data == null) return;
+      setState(() {
+        _seller = Seller.fromJson(data);
+        _refreshingRating = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _refreshingRating = false);
+    }
   }
 
   @override
@@ -99,12 +118,23 @@ class _SellerPageState extends State<SellerPage> {
                             const Icon(Icons.star,
                                 color: Colors.amber, size: 16),
                             const SizedBox(width: 4),
-                            Text(
-                              _seller.rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textMain),
-                            ),
+                            _refreshingRating
+                                ? const SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      color: Colors.amber,
+                                    ),
+                                  )
+                                : Text(
+                                    _seller.rating > 0
+                                        ? _seller.rating.toStringAsFixed(1)
+                                        : 'No reviews yet',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textMain),
+                                  ),
                             const SizedBox(width: 8),
                             if (_seller.isVerified)
                               Container(

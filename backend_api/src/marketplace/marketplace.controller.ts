@@ -15,6 +15,11 @@ export class MarketplaceController {
     return await this.marketplaceService.getProducts();
   }
 
+  @Get('config')
+  async getConfig() {
+    return this.marketplaceService.getPayHereConfig();
+  }
+
   @Post('products')
   async createProduct(@Body() body: any) {
     return await this.marketplaceService.createProduct(body);

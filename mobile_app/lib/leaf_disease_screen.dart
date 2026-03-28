@@ -75,8 +75,9 @@ class LeafDiseaseAPI {
     final request = http.MultipartRequest('POST', uri);
     request.files.add(await http.MultipartFile.fromPath('file', imagePath));
 
+    // Increased timeout to 90 seconds to allow Hugging Face space to wake up
     final streamed = await request.send().timeout(
-      const Duration(seconds: 30),
+      const Duration(seconds: 90),
     );
     final response = await http.Response.fromStream(streamed);
 
@@ -408,12 +409,19 @@ class _LeafScanScreenState extends State<LeafScanScreen>
       return result;
     } catch (e) {
       debugPrint('API error: $e');
+      
+      String errorMsg = 'Service temporarily unavailable.';
+      // Check for common errors when Hugging Face space is waking up (Timeout, 503, HTML parsing error)
+      if (e.toString().contains('Timeout') || e.toString().contains('503') || e.toString().contains('FormatException')) {
+        errorMsg = 'AI Model is waking up. Please wait 1-2 minutes and try scanning again.';
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Service temporarily unavailable'),
-            backgroundColor: AppColors.danger,
-            duration: Duration(seconds: 4),
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: AppColors.warning,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

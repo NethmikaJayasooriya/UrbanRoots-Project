@@ -15,6 +15,8 @@ import '../../auth/login_screen.dart';
 import 'edit_profile_screen.dart';
 import '../../../services/api_service.dart' as core_api;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:mobile_app/screens/dashboard/Marketplace/cart_model.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -83,6 +85,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _logout() async {
+    if (mounted) {
+      context.read<CartModel>().clearCart();
+    }
     await FirebaseAuth.instance.signOut();
     await OtpService.setLoggedIn(false);
     final prefs = await SharedPreferences.getInstance();

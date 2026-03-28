@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart'; // Added for kIsWeb
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:payhere_mobilesdk_flutter/payhere_mobilesdk_flutter.dart';
@@ -22,6 +24,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
+  Map<String, dynamic>? _marketplaceConfig;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+    _loadPrefilledData();
+  }
+
+  Future<void> _loadConfig() async {
+    try {
+      final config = await MarketplaceApi.fetchMarketplaceConfig();
+      if (mounted) {
+        setState(() => _marketplaceConfig = config);
+      }
+    } catch (e) {
+      debugPrint('Error loading marketplace config: $e');
+    }
+  }
+
+  Future<void> _loadPrefilledData() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      _nameController.text = prefs.getString('user_name') ?? '';
+      _phoneController.text = prefs.getString('user_phone') ?? '';
+      _addressController.text = prefs.getString('user_address') ?? '';
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -37,6 +68,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
+      
+      // Save details for next time
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_name', _nameController.text.trim());
+      await prefs.setString('user_phone', rawPhone);
+      await prefs.setString('user_address', _addressController.text.trim());
+
       final orderData = {
         'name': _nameController.text.trim(),
         'address': _addressController.text.trim(),
@@ -52,36 +90,53 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (!mounted) return;
         _showSuccessDialog();
       } else if (_paymentMethod == 'card') {
+        // PLATFORM CHECK: PayHere SDK only supports Mobile (Android/iOS)
+        if (kIsWeb) {
+          if (!mounted) return;
+          setState(() => _isProcessing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Card payments are only available on Android or iOS devices.', style: TextStyle(color: Colors.white)),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+
         // Setup PayHere for Card Payment
+        final merchantId = _marketplaceConfig?['merchantId'] ?? "1234567";
+        final isSandbox = _marketplaceConfig?['isSandbox'] ?? true;
+
         Map paymentObject = {
-          "sandbox": true,
-          "merchant_id": "1234567", // Placeholder
-          "merchant_secret": "xyz123", // Placeholder
-          "notify_url": "${MarketplaceApi.baseUrl}/marketplace/payhere/notify",
+          "sandbox": isSandbox,
+          "merchant_id": merchantId,
+          // PayHere SDK strictly validates that the notify_url domain is registered in 
+          // your Merchant Portal. It rejects local IP addresses (like 192.168.x.x).
+          // We must use the production domain here for the SDK to open properly.
+          "notify_url": "https://urbanroots-project.onrender.com/marketplace/payhere/notify",
           "order_id": orderId,
-          "items": "UrbanRoots Order",
-          "amount": total.toString(),
+          "items": "UrbanRoots Marketplace Order #$orderId",
+          "amount": total.toStringAsFixed(2),
           "currency": "LKR",
           "first_name": _nameController.text.split(' ').first,
-          "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').last : '',
-          "email": "user@urbanroots.com",
-          "phone": _phoneController.text,
-          "address": _addressController.text,
+          "last_name": _nameController.text.split(' ').length > 1 ? _nameController.text.split(' ').last : 'Customer',
+          "email": FirebaseAuth.instance.currentUser?.email ?? "customer@urbanroots.com",
+          "phone": rawPhone,
+          "address": _addressController.text.trim(),
           "city": "Colombo",
           "country": "Sri Lanka",
-          "delivery_address": _addressController.text,
-          "delivery_city": "Colombo",
-          "delivery_country": "Sri Lanka",
         };
 
         PayHere.startPayment(
           paymentObject,
           (paymentId) {
             if (!mounted) return;
+            debugPrint('Payment Success: $paymentId');
             _showSuccessDialog();
           },
           (error) {
             if (!mounted) return;
+            debugPrint('Payment Error: $error');
             MarketplaceApi.cancelOrder(orderId);
             setState(() => _isProcessing = false);
             ScaffoldMessenger.of(context).showSnackBar(
@@ -90,6 +145,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           },
           () {
             if (!mounted) return;
+            debugPrint('Payment Dismissed');
             MarketplaceApi.cancelOrder(orderId);
             setState(() => _isProcessing = false);
             ScaffoldMessenger.of(context).showSnackBar(
