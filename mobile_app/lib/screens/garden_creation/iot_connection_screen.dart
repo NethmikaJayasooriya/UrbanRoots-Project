@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:multicast_dns/multicast_dns.dart';
 import 'package:mobile_app/core/theme/app_colors.dart';
 import 'manual_environment_screen.dart';
 import 'garden_strategy_screen.dart';
@@ -124,7 +125,7 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
     }
   }
 
-  // ── Network scan ───────────────────────────────────────────────────────────
+  // ── Network scan (mDNS / ZeroConf) ─────────────────────────────────────────
   Future<void> _scanNetwork() async {
     if (_isScanning) return;
     setState(() {
@@ -133,45 +134,41 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
       _selectedDevice = null;
     });
 
-    // Try mDNS hostnames first — zero-latency if firmware supports it
-    await _checkAndAdd('esp32.local',    timeout: _scanTimeout);
-    await _checkAndAdd('smartsoil.local', timeout: _scanTimeout);
+    // Still check the fallback hostname just in case mDNS broadcast missed, but quickly
+    await _checkAndAdd('urbanroots.local', timeout: const Duration(milliseconds: 1500));
 
+    final MDnsClient client = MDnsClient();
     try {
-      if (kIsWeb) {
-        await _scanSubnets(['192.168.1.', '192.168.0.', '192.168.8.', '192.168.43.', '10.0.0.']);
-      } else {
-        await _scanNative();
-      }
-    } catch (_) {}
-
-    if (mounted) setState(() => _isScanning = false);
-  }
-
-  Future<void> _scanNative() async {
-    String? localIp;
-    for (final iface in await NetworkInterface.list()) {
-      for (final addr in iface.addresses) {
-        if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-          if (addr.address.startsWith('192.168.')) { localIp = addr.address; break; }
-          localIp ??= addr.address;
-        }
-      }
-      if (localIp?.startsWith('192.168.') == true) break;
-    }
-    if (localIp == null) return;
-    await _scanSubnets([localIp.substring(0, localIp.lastIndexOf('.') + 1)]);
-  }
-
-  Future<void> _scanSubnets(List<String> subnets) async {
-    for (final subnet in subnets) {
-      if (!mounted || !_isScanning) return;
-      final ips = List.generate(254, (i) => '$subnet${i + 1}');
-      for (int off = 0; off < ips.length; off += _concurrency) {
-        if (!mounted || !_isScanning) return;
-        final batch = ips.sublist(off, (off + _concurrency).clamp(0, ips.length));
-        await Future.wait(batch.map((ip) => _checkAndAdd(ip, timeout: _scanTimeout)));
-      }
+      await client.start();
+      
+      // Use Future.any to enforce an absolute timeout for the discovery process
+      await Future.any([
+        Future.delayed(const Duration(seconds: 4)),
+        () async {
+          await for (final PtrResourceRecord ptr in client.lookup<PtrResourceRecord>(
+              ResourceRecordQuery.serverPointer('_urbanroots._tcp.local'))) {
+            await for (final SrvResourceRecord srv in client.lookup<SrvResourceRecord>(
+                ResourceRecordQuery.service(ptr.domainName))) {
+              await for (final IPAddressResourceRecord ip in client.lookup<IPAddressResourceRecord>(
+                  ResourceRecordQuery.addressIPv4(srv.target))) {
+                
+                final String deviceIp = ip.address.address;
+                // Ping it to make sure it's valid and responds to our API
+                final isSensor = await _ping(deviceIp, const Duration(milliseconds: 1000));
+                
+                if (isSensor && mounted && !_foundDevices.any((d) => d.ip == deviceIp)) {
+                  setState(() => _foundDevices.add(_Device(ip: deviceIp, name: 'UrbanRoots Sensor')));
+                }
+              }
+            }
+          }
+        }()
+      ]);
+    } catch (e) {
+      debugPrint("mDNS Error: $e");
+    } finally {
+      client.stop();
+      if (mounted) setState(() => _isScanning = false);
     }
   }
 
@@ -237,7 +234,12 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
       _isConnecting = false;
     });
     _startHeartbeat();
-    _showWindConfigDialog();
+    if (widget.gardenData != null) {
+      _showWindConfigDialog();
+    } else {
+      // Coming from Plant Details screen
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _disconnectDevice() async {
@@ -299,12 +301,15 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
                 Navigator.pop(ctx);
                 if (widget.gardenData != null) {
                   widget.gardenData!['is_windy'] = localWind;
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => GardenStrategyScreen(
+                            gardenData: widget.gardenData!,
+                            onGardenCreated: widget.onGardenCreated,
+                          )));
+                } else {
+                  // Coming from Plant Details screen
+                  Navigator.pop(context);
                 }
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => GardenStrategyScreen(
-                          gardenData: widget.gardenData ?? {},
-                          onGardenCreated: widget.onGardenCreated,
-                        )));
               },
               child: Padding(
                 padding: const EdgeInsets.only(right: 8, bottom: 8),
@@ -608,12 +613,19 @@ class _IoTConnectionScreenState extends State<IoTConnectionScreen>
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => ManualEnvironmentScreen(
-                        gardenData: widget.gardenData ?? {},
-                        onGardenCreated: widget.onGardenCreated,
-                      ))),
-              child: Text('Skip for now',
+              onPressed: () {
+                if (widget.gardenData != null) {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => ManualEnvironmentScreen(
+                            gardenData: widget.gardenData!,
+                            onGardenCreated: widget.onGardenCreated,
+                          )));
+                } else {
+                  // Coming from Plant Details screen
+                  Navigator.pop(context);
+                }
+              },
+              child: Text(widget.gardenData != null ? 'Skip for now' : 'Cancel',
                   style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
             ),
           ],

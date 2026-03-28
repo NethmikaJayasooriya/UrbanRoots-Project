@@ -1,11 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:mobile_app/core/api_constants.dart';
 
 // Service class for interacting with the Marketplace backend API.
 // Handles product fetching, order creation, and user reviews.
 class MarketplaceApi {
-  static const String baseUrl = 'https://urbanroots-project.onrender.com';
+  static String get baseUrl => ApiConstants.baseUrl;
+
+  static Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        'x-user-id': FirebaseAuth.instance.currentUser?.uid ?? '',
+      };
 
   // Fetches the full catalog of available products and treatments
   static Future<List<dynamic>> fetchProducts() async {
@@ -25,7 +33,7 @@ class MarketplaceApi {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/marketplace/orders'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode(orderData),
       );
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -85,10 +93,17 @@ class MarketplaceApi {
     }
   }
 
-  static Future<List<dynamic>> fetchOrders(String phone) async {
+  static Future<List<dynamic>> fetchOrders(List<String> cachedPhones) async {
     try {
-      final encodedPhone = Uri.encodeComponent(phone);
-      final response = await http.get(Uri.parse('$baseUrl/marketplace/orders/$encodedPhone'));
+      String query = '';
+      if (cachedPhones.isNotEmpty) {
+        final j = cachedPhones.join(',');
+        query = '?phones=${Uri.encodeComponent(j)}';
+      }
+      final response = await http.get(
+        Uri.parse('$baseUrl/marketplace/orders/me$query'),
+        headers: _headers,
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -96,6 +111,20 @@ class MarketplaceApi {
       }
     } catch (e) {
       throw Exception('Error fetching orders: $e');
+    }
+  }
+
+  static Future<bool> cancelOrder(String orderId) async {
+    try {
+      final encodedId = Uri.encodeComponent(orderId);
+      final response = await http.delete(
+        Uri.parse('$baseUrl/marketplace/orders/$encodedId/cancel'),
+        headers: _headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Error canceling order: $e');
+      return false;
     }
   }
 }

@@ -5,9 +5,10 @@ import { MarketplaceService } from './marketplace.service';
 import { Product } from '../products/entities/product.entity';
 import { Review } from './entities/review.entity';
 import { Order } from './entities/order.entity';
+import { Seller } from '../sellers/entities/seller.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Review, Order])],
+  imports: [TypeOrmModule.forFeature([Product, Review, Order, Seller])],
   controllers: [MarketplaceController],
   providers: [MarketplaceService],
   exports: [MarketplaceService],

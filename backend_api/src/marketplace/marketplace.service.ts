@@ -1,9 +1,10 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
 import { Review } from './entities/review.entity';
 import { Order } from './entities/order.entity';
+import { Seller } from '../sellers/entities/seller.entity';
 
 @Injectable()
 export class MarketplaceService {
@@ -11,11 +12,12 @@ export class MarketplaceService {
     @InjectRepository(Product) private productRepo: Repository<Product>,
     @InjectRepository(Review) private reviewRepo: Repository<Review>,
     @InjectRepository(Order) private orderRepo: Repository<Order>,
+    @InjectRepository(Seller) private sellerRepo: Repository<Seller>,
   ) {}
 
   async getProducts(): Promise<Product[]> {
     try {
-      return await this.productRepo.find();
+      return await this.productRepo.find({ where: { is_active: true } });
     } catch (error: any) {
       throw new InternalServerErrorException('Failed to fetch products', error.message);
     }
@@ -44,13 +46,53 @@ export class MarketplaceService {
       rating: reviewData.rating,
       comment: reviewData.comment,
     });
-    return this.reviewRepo.save(newReview);
+    const savedReview = await this.reviewRepo.save(newReview);
+
+    // After adding a review, update the seller's rating
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (product?.seller_id) {
+      this.updateSellerRating(product.seller_id).catch(err => {
+        console.error('Failed to update seller rating:', err);
+      });
+    }
+
+    return savedReview;
+  }
+
+  public async updateSellerRating(sellerId: string): Promise<void> {
+    // 1. Get all products owned by this seller
+    const products = await this.productRepo.find({
+      where: { seller_id: sellerId },
+      select: ['id'],
+    });
+
+    if (products.length === 0) return;
+
+    const productIds = products.map(p => p.id);
+
+    // 2. Get all reviews for all those products
+    const reviews = await this.reviewRepo.find({
+      where: { productId: In(productIds) },
+      select: ['rating'],
+    });
+
+    if (reviews.length === 0) {
+      await this.sellerRepo.update(sellerId, { rating: 0 });
+      return;
+    }
+
+    // 3. Calculate average
+    const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = totalRating / reviews.length;
+
+    // 4. Update seller entity
+    await this.sellerRepo.update(sellerId, { rating: parseFloat(averageRating.toFixed(2)) });
   }
 
   async getRelatedProducts(productId: string): Promise<Product[]> {
     const current = await this.productRepo.findOne({ where: { id: productId } });
     if (!current) return [];
-    const all = await this.productRepo.find();
+    const all = await this.productRepo.find({ where: { is_active: true } });
     let related = all.filter(p => p.category === current.category && p.id !== productId);
     if (related.length < 3) {
       const others = all.filter(p => p.category !== current.category && p.id !== productId);
@@ -62,10 +104,11 @@ export class MarketplaceService {
     return related;
   }
 
-  async createOrder(orderData: any): Promise<{ orderId: string; status: string }> {
+  async createOrder(orderData: any, userId: string): Promise<{ orderId: string; status: string }> {
     const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const newOrder = this.orderRepo.create({
       orderId,
+      userId,
       customerPhone: orderData.phone,
       customerDetails: { name: orderData.name, address: orderData.address, phone: orderData.phone },
       items: orderData.items,
@@ -90,10 +133,40 @@ export class MarketplaceService {
     return 'FAILED';
   }
 
-  async getOrdersByPhone(phone: string): Promise<Order[]> {
-    return this.orderRepo.find({
-      where: { customerPhone: phone },
-      order: { createdAt: 'DESC' },
-    });
+  async getOrdersByUser(userId: string, phones: string[] = []): Promise<Order[]> {
+    let orders: Order[] = [];
+    
+    if (phones && phones.length > 0) {
+      orders = await this.orderRepo.find({
+        where: [
+          { userId },
+          { customerPhone: In(phones) }
+        ],
+        order: { createdAt: 'DESC' },
+      });
+    } else {
+      orders = await this.orderRepo.find({
+        where: { userId },
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    // Auto-migrate legacy orders that matched by device phone but are missing userId
+    const legacyOrders = orders.filter(o => !o.userId);
+    if (legacyOrders.length > 0) {
+      for (const o of legacyOrders) {
+        o.userId = userId;
+      }
+      await this.orderRepo.save(legacyOrders);
+    }
+    
+    return orders;
+  }
+
+  async cancelOrder(orderId: string, userId: string): Promise<void> {
+    const order = await this.orderRepo.findOne({ where: { orderId, userId } });
+    if (order && order.status === 'PENDING') {
+      await this.orderRepo.remove(order);
+    }
   }
 }

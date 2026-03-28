@@ -14,7 +14,7 @@ export class WeatherService {
 
     try {
       // Make the HTTP GET request to OpenWeather
-      const response = await firstValueFrom(this.httpService.get(url));
+      const response = await firstValueFrom(this.httpService.get<any>(url));
       
       // We only extract the data UrbanRoots actually cares about
       return {

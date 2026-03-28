@@ -23,6 +23,20 @@ class ApiService {
     }
   }
 
+  static Future<String> uploadImage(String filePath) async {
+    final uri = Uri.parse('$baseUrl/products/upload');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath('image', filePath));
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body);
+      return data['imageUrl'];
+    } else {
+      throw Exception('Failed to upload image: ${response.body}');
+    }
+  }
+
   static Future<Map<String, dynamic>> updateProfile({
     String? firstName,
     String? lastName,

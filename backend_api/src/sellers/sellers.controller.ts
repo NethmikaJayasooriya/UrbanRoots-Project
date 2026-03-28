@@ -23,6 +23,12 @@ export class SellersController {
     return this.service.create(dto);
   }
 
+  /** GET /sellers/by-uid/:uid — fetch seller by Firebase UID */
+  @Get('by-uid/:uid')
+  async findByUid(@Param('uid') uid: string) {
+    return this.service.findByUid(uid);
+  }
+
   /** PATCH /sellers/:id — update business + payment details */
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateSellerDto) {

@@ -9,11 +9,10 @@ import 'package:mobile_app/style.dart';
 import 'package:mobile_app/screens/dashboard/Marketplace/marketplace_theme.dart';
 
 class SellerProductsPage extends StatefulWidget {
-  // TODO: replace with real seller ID from auth session
   final String sellerId;
   const SellerProductsPage({
     super.key,
-    this.sellerId = 'PLACEHOLDER_SELLER_ID',
+    required this.sellerId,
   });
   @override
   State<SellerProductsPage> createState() => _State();

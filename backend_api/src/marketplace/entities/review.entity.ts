@@ -5,7 +5,7 @@ export class Review {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid')
+  @Column({ name: 'productId', type: 'uuid' })
   productId: string;
 
   @Column({ default: 'User' })
@@ -17,6 +17,6 @@ export class Review {
   @Column({ type: 'text', nullable: true })
   comment: string;
 
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({ name: 'createdAt', type: 'timestamp with time zone' })
   createdAt: Date;
 }

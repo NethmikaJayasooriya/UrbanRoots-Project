@@ -26,42 +26,29 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
   Future<void> _fetchOrders() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final phoneSingle = prefs.getString('user_phone');
       List<String> userPhones = prefs.getStringList('user_phones') ?? [];
+      final phoneSingle = prefs.getString('user_phone');
       
-      // Migrate old single phone tracking
+      // Attempt to salvage any legacy single-phone records 
       if (phoneSingle != null && phoneSingle.isNotEmpty && !userPhones.contains(phoneSingle)) {
         userPhones.add(phoneSingle);
-        await prefs.setStringList('user_phones', userPhones);
       }
 
-      if (userPhones.isNotEmpty) {
-        List<dynamic> allOrders = [];
-        for (String p in userPhones) {
-          try {
-            final data = await MarketplaceApi.fetchOrders(p);
-            allOrders.addAll(data);
-          } catch(e) {
-            debugPrint('Error fetching orders for $p: $e');
-          }
-        }
-        
-        // Sort explicitly by createdAt DESC since we merged separate phone queries
-        allOrders.sort((a, b) {
-          final d1 = a['createdAt'] != null ? DateTime.parse(a['createdAt']) : DateTime.now();
-          final d2 = b['createdAt'] != null ? DateTime.parse(b['createdAt']) : DateTime.now();
-          return d2.compareTo(d1);
-        });
+      // Fetch the unified order feed directly from Postgres cloud, passing legacy phone hints
+      final List<dynamic> allOrders = await MarketplaceApi.fetchOrders(userPhones);
 
-        if (!mounted) return;
-        setState(() {
-          _orders = allOrders;
-          _isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-      }
+      // Sort explicitly by createdAt DESC
+      allOrders.sort((a, b) {
+        final d1 = a['createdAt'] != null ? DateTime.parse(a['createdAt']) : DateTime.now();
+        final d2 = b['createdAt'] != null ? DateTime.parse(b['createdAt']) : DateTime.now();
+        return d2.compareTo(d1);
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _orders = allOrders;
+        _isLoading = false;
+      });
     } catch (e) {
       debugPrint('Error fetching generalized orders: $e');
       if (!mounted) return;

@@ -8,6 +8,7 @@ import 'product_detail_screen.dart';
 import 'order_history_screen.dart';
 import 'marketplace_theme.dart';
 import 'marketplace_api.dart';
+import 'package:mobile_app/models/products.dart' as p;
 
 // ─── Product ──────────────────────────────────────────────────────────────────
 class Product {
@@ -42,7 +43,7 @@ class _MarketplaceScreen1State extends State<MarketplaceScreen1> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
-  final List<String> _categories = ['All', 'Seeds', 'Leafy Greens', 'Indoor', 'Tools'];
+  final List<String> _categories = ['All', ...p.Products.categories];
 
   List<Product> _products = [];
   bool _isLoading = true;

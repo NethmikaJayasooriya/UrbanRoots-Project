@@ -75,12 +75,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      String? finalPhotoUrl = _existingPhotoUrl;
+      
+      // If a new photo was picked, upload it via the API
+      if (_profileImage != null) {
+        finalPhotoUrl = await ApiService.uploadImage(_profileImage!.path);
+        
+        // Update Firebase Auth local cache so other screens sync automatically
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await user.updatePhotoURL(finalPhotoUrl);
+          await user.reload();
+        }
+      }
+
       // Using ApiService from the HEAD branch.
       await ApiService.updateProfile(
         firstName: firstName.text.trim(),
         lastName: lastName.text.trim(),
         email: email.text.trim(),
         phone: phone.text.trim(),
+        profileImageUrl: finalPhotoUrl,
       );
 
       if (!mounted) return;

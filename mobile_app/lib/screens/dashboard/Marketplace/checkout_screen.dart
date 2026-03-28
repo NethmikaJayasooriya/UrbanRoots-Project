@@ -48,15 +48,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       final orderId = await MarketplaceApi.createOrder(orderData);
 
-      // Save phone securely for order tracking later!
-      final prefs = await SharedPreferences.getInstance();
-      List<String> userPhones = prefs.getStringList('user_phones') ?? [];
-      if (!userPhones.contains(rawPhone)) {
-        userPhones.add(rawPhone);
-        await prefs.setStringList('user_phones', userPhones);
-      }
-      await prefs.setString('user_phone', rawPhone); // Legacy tracking
-
       if (_paymentMethod == 'cod') {
         if (!mounted) return;
         _showSuccessDialog();
@@ -91,6 +82,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           },
           (error) {
             if (!mounted) return;
+            MarketplaceApi.cancelOrder(orderId);
             setState(() => _isProcessing = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Payment Failed: $error', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
@@ -98,6 +90,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           },
           () {
             if (!mounted) return;
+            MarketplaceApi.cancelOrder(orderId);
             setState(() => _isProcessing = false);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Payment Canceled', style: TextStyle(color: MarketplaceTheme.textWhite)), backgroundColor: Colors.orange),

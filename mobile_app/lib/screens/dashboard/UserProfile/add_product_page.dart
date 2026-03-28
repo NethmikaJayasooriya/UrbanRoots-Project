@@ -49,13 +49,17 @@ class _State extends State<AddProductPage> {
 
     try {
       final bool isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(widget.sellerId);
+      if (!isUuid) {
+        throw const ApiException(400, "Critical Error: Your Seller Profile session is invalid. Please restart the app.");
+      }
+
       String imageUrl = '';
       if (_imageFile != null) {
         imageUrl = await ApiService.uploadProductImage(_imageFile!);
       }
 
       final payload = {
-        if (isUuid) 'seller_id': widget.sellerId,
+        'seller_id': widget.sellerId,
         'name': _nameCtrl.text.trim(),
         'category': _selectedCategory,
         'description': _descCtrl.text.trim(),

@@ -111,6 +111,12 @@ class _UpdateSellerDetailsPageState
     setState(() => _loading = true);
 
     try {
+      String? uploadedLogoUrl = widget.seller.logoUrl;
+      if (_logoFile != null) {
+        // Use the existing platform-agnostic file uploader for products
+        uploadedLogoUrl = await ApiService.uploadProductImage(_logoFile!);
+      }
+
       // ── Update seller profile ──────────────────────────
       final payload = {
         'brand_name':       _brandCtrl.text.trim(),
@@ -121,8 +127,7 @@ class _UpdateSellerDetailsPageState
         'account_number':   _accNoCtrl.text.trim(),
         'bank':             _bankCtrl.text.trim(),
         'branch':           _branchCtrl.text.trim(),
-        // TODO: upload logo and send URL
-        if (_logoFile != null) 'logo_url': '',
+        if (uploadedLogoUrl != null) 'logo_url': uploadedLogoUrl,
       };
 
       final updatedSeller = await ApiService

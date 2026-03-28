@@ -1,34 +1,36 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
+} from 'typeorm';
 
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'orderId', type: 'varchar', nullable: true })
   orderId: string; // e.g. ORD-12345
 
-  @Column({ nullable: true })
+  @Column({ name: 'customerPhone', type: 'varchar', nullable: true })
   customerPhone: string;
 
-  @Column('jsonb', { nullable: true })
+  @Column({ name: 'customerDetails', type: 'json', nullable: true })
   customerDetails: any;
 
-  @Column('jsonb')
+  @Column({ name: 'items', type: 'json', nullable: true })
   items: any[];
 
-  @Column('float', { nullable: true })
+  @Column({ name: 'totalAmount', type: 'numeric', precision: 10, scale: 2, nullable: true })
   totalAmount: number;
 
-  @Column({ nullable: true })
+  @Column({ name: 'paymentMethod', type: 'varchar', nullable: true })
   paymentMethod: string;
 
-  @Column({ default: 'PENDING' })
+  @Column({ name: 'status', type: 'varchar', default: 'PENDING', nullable: true })
   status: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ name: 'userId', type: 'varchar', nullable: true })
   userId: string;
 
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({ name: 'createdAt', type: 'timestamp with time zone' })
   createdAt: Date;
 }

@@ -67,11 +67,13 @@ export class ProductsController {
     return { imageUrl: publicUrlData.publicUrl };
   }
 
-  /** POST /products */
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateProductDto) {
     console.log('[DEBUG] Product Creation Payload received:', dto);
+    if (!('seller_id' in dto) || !dto['seller_id']) {
+      throw new BadRequestException('seller_id is strictly required');
+    }
     return this.service.create(dto);
   }
 
