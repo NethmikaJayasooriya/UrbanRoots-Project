@@ -14,7 +14,7 @@ export class Order {
   @Column('jsonb', { nullable: true })
   customerDetails: any;
 
-  @Column('jsonb')
+  @Column('jsonb', { nullable: true })
   items: any[];
 
   @Column('float', { nullable: true })
